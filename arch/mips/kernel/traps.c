@@ -10,6 +10,8 @@
  * Kevin D. Kissell, kevink@mips.com and Carsten Langgaard, carstenl@mips.com
  * Copyright (C) 2000, 01 MIPS Technologies, Inc.
  * Copyright (C) 2002, 2003, 2004, 2005  Maciej W. Rozycki
+ *
+ * KGDB specific changes - Manish Lachwani (mlachwani@mvista.com)
  */
 #include <linux/init.h>
 #include <linux/mm.h>
@@ -21,6 +23,7 @@
 #include <linux/kallsyms.h>
 #include <linux/bootmem.h>
 #include <linux/interrupt.h>
+#include <linux/kgdb.h>
 
 #include <asm/bootinfo.h>
 #include <asm/branch.h>
@@ -42,6 +45,7 @@
 #include <asm/watch.h>
 #include <asm/types.h>
 #include <asm/stacktrace.h>
+#include <asm/kdebug.h>
 
 extern asmlinkage void handle_int(void);
 extern asmlinkage void handle_tlbm(void);
@@ -120,6 +124,21 @@ static void show_backtrace(struct task_struct *task, struct pt_regs *regs)
 		pc = unwind_stack(task, &sp, pc, &ra);
 	} while (pc);
 	printk("\n");
+}
+
+ATOMIC_NOTIFIER_HEAD(mips_die_head);
+DEFINE_SPINLOCK(die_notifier_lock);
+
+int register_die_notifier(struct notifier_block *nb)
+{
+	int err = 0;
+	unsigned long flags;
+
+	spin_lock_irqsave(&die_notifier_lock, flags);
+	err = atomic_notifier_chain_register(&mips_die_head, nb);
+	spin_unlock_irqrestore(&die_notifier_lock, flags);
+
+	return err;
 }
 
 /*
@@ -1422,6 +1441,11 @@ void __init trap_init(void)
 	extern char except_vec3_generic, except_vec3_r4000;
 	extern char except_vec4;
 	unsigned long i;
+
+#if defined(CONFIG_KGDB)
+	if (kgdb_early_setup)
+		return;	/* Already done */
+#endif
 
 	if (cpu_has_veic || cpu_has_vint)
 		ebase = (unsigned long) alloc_bootmem_low_pages (0x200 + VECTORSPACING*64);
