@@ -72,6 +72,7 @@ enum die_val {
 	DIE_KDEBUG_LEAVE,
 	DIE_KDUMP_ENTER,
 	DIE_KDUMP_LEAVE,
+	DIE_PAGE_FAULT_NO_CONTEXT,
 };
 
 static inline int notify_die(enum die_val val, char *str, struct pt_regs *regs,
