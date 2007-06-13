@@ -45,9 +45,6 @@
  *      ppc4xx_map_io				arch/ppc/syslib/ppc4xx_setup.c
  *  start_kernel				init/main.c
  *    setup_arch				arch/ppc/kernel/setup.c
- * #if defined(CONFIG_KGDB)
- *      *ppc_md.kgdb_map_scc() == gen550_kgdb_map_scc
- * #endif
  *      *ppc_md.setup_arch == ml403_setup_arch	this file
  *        ppc4xx_setup_arch			arch/ppc/syslib/ppc4xx_setup.c
  *          ppc4xx_find_bridges			arch/ppc/syslib/ppc405_pci.c
@@ -103,7 +100,7 @@ ml403_map_io(void)
 static void __init
 ml403_early_serial_init(int num, struct plat_serial8250_port *pdata)
 {
-#if defined(CONFIG_SERIAL_TEXT_DEBUG) || defined(CONFIG_KGDB)
+#ifdef CONFIG_SERIAL_TEXT_DEBUG
 	struct uart_port serial_req;
 
 	memset(&serial_req, 0, sizeof(serial_req));
@@ -169,8 +166,5 @@ platform_init(unsigned long r3, unsigned long r4, unsigned long r5,
 	ppc_md.power_off = xilinx_power_off;
 #endif
 
-#ifdef CONFIG_KGDB
-	ppc_md.early_serial_map = ml403_early_serial_map;
-#endif
 }
 

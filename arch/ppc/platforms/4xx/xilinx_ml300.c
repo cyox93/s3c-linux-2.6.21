@@ -16,6 +16,8 @@
 #include <linux/serial_core.h>
 #include <linux/serial_8250.h>
 #include <linux/serialP.h>
+#include <linux/kgdb.h>
+
 #include <asm/io.h>
 #include <asm/machdep.h>
 #include <asm/ppc_sys.h>
@@ -41,9 +43,6 @@
  *      ppc4xx_map_io				arch/ppc/syslib/ppc4xx_setup.c
  *  start_kernel				init/main.c
  *    setup_arch				arch/ppc/kernel/setup.c
- * #if defined(CONFIG_KGDB)
- *      *ppc_md.kgdb_map_scc() == gen550_kgdb_map_scc
- * #endif
  *      *ppc_md.setup_arch == ml300_setup_arch	this file
  *        ppc4xx_setup_arch			arch/ppc/syslib/ppc4xx_setup.c
  *          ppc4xx_find_bridges			arch/ppc/syslib/ppc405_pci.c
@@ -99,7 +98,7 @@ ml300_map_io(void)
 static void __init
 ml300_early_serial_init(int num, struct plat_serial8250_port *pdata)
 {
-#if defined(CONFIG_SERIAL_TEXT_DEBUG) || defined(CONFIG_KGDB)
+#if defined(CONFIG_SERIAL_TEXT_DEBUG) || defined(CONFIG_KGDB_8250)
 	struct uart_port serial_req;
 
 	memset(&serial_req, 0, sizeof(serial_req));
@@ -110,14 +109,19 @@ ml300_early_serial_init(int num, struct plat_serial8250_port *pdata)
 	serial_req.regshift	= pdata->regshift;
 	serial_req.iotype	= pdata->iotype;
 	serial_req.flags	= pdata->flags;
+#ifdef CONFIG_SERIAL_TEXT_DEBUG
 	gen550_init(num, &serial_req);
+#endif
+#ifdef CONFIG_KGDB_8250
+	kgdb8250_add_port(num, &serial_req);
+#endif
 #endif
 }
 
 void __init
 ml300_early_serial_map(void)
 {
-#ifdef CONFIG_SERIAL_8250
+#if defined(CONFIG_SERIAL_8250) || defined(CONFIG_KGDB_8250)
 	struct plat_serial8250_port *pdata;
 	int i = 0;
 
@@ -129,7 +133,7 @@ ml300_early_serial_map(void)
 		pdata++;
 		i++;
 	}
-#endif /* CONFIG_SERIAL_8250 */
+#endif /* defined(CONFIG_SERIAL_8250) || defined(CONFIG_KGDB_8250) */
 }
 
 void __init
@@ -165,9 +169,4 @@ platform_init(unsigned long r3, unsigned long r4, unsigned long r5,
 #if defined(XPAR_POWER_0_POWERDOWN_BASEADDR)
 	ppc_md.power_off = xilinx_power_off;
 #endif
-
-#ifdef CONFIG_KGDB
-	ppc_md.early_serial_map = ml300_early_serial_map;
-#endif
 }
-
