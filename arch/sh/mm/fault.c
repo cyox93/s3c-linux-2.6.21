@@ -18,7 +18,6 @@
 #include <asm/system.h>
 #include <asm/mmu_context.h>
 #include <asm/tlbflush.h>
-#include <asm/kgdb.h>
 
 extern void die(const char *,struct pt_regs *,long);
 
@@ -40,11 +39,6 @@ asmlinkage void __kprobes do_page_fault(struct pt_regs *regs,
 
 	trace_hardirqs_on();
 	local_irq_enable();
-
-#ifdef CONFIG_SH_KGDB
-	if (kgdb_nofault && kgdb_bus_err_hook)
-		kgdb_bus_err_hook();
-#endif
 
 	tsk = current;
 	mm = tsk->mm;
@@ -191,6 +185,7 @@ no_context:
 	}
 	die("Oops", regs, writeaccess);
 	do_exit(SIGKILL);
+	dump_stack();
 
 /*
  * We ran out of memory, or some other thing happened to us that made
@@ -252,11 +247,6 @@ asmlinkage int __kprobes __do_page_fault(struct pt_regs *regs,
 	struct mm_struct *mm = current->mm;
 	spinlock_t *ptl;
 	int ret = 1;
-
-#ifdef CONFIG_SH_KGDB
-	if (kgdb_nofault && kgdb_bus_err_hook)
-		kgdb_bus_err_hook();
-#endif
 
 	/*
 	 * We don't take page faults for P1, P2, and parts of P4, these
