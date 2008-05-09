@@ -66,7 +66,6 @@ EXPORT_SYMBOL(oops_in_progress);
  * driver system.
  */
 static DECLARE_MUTEX(console_sem);
-static DECLARE_MUTEX(secondary_console_sem);
 struct console *console_drivers;
 /*
  * This is used for debugging the mess that is the VT code by
@@ -738,10 +737,12 @@ void suspend_console(void)
 	printk("Suspending console(s)\n");
 	acquire_console_sem();
 	console_suspended = 1;
+	up(&console_sem);
 }
 
 void resume_console(void)
 {
+	down(&console_sem);
 	console_suspended = 0;
 	release_console_sem();
 }
@@ -758,11 +759,9 @@ void resume_console(void)
 void acquire_console_sem(void)
 {
 	BUG_ON(in_interrupt());
-	if (console_suspended) {
-		down(&secondary_console_sem);
-		return;
-	}
 	down(&console_sem);
+	if (console_suspended)
+		return;
 	console_locked = 1;
 	console_may_schedule = 1;
 }
@@ -772,6 +771,10 @@ int try_acquire_console_sem(void)
 {
 	if (down_trylock(&console_sem))
 		return -1;
+	if (console_suspended) {
+		up(&console_sem);
+		return -1;
+	}
 	console_locked = 1;
 	console_may_schedule = 0;
 	return 0;
@@ -810,7 +813,7 @@ void release_console_sem(void)
 	unsigned long wake_klogd = 0;
 
 	if (console_suspended) {
-		up(&secondary_console_sem);
+		up(&console_sem);
 		return;
 	}
 
