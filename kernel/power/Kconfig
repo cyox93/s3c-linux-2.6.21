@@ -77,6 +77,25 @@ config PM_SYSFS_DEPRECATED
 	  handle the wide variability of device power states; any replacements
 	  are likely to be bus or driver specific.
 
+config HAS_WAKELOCK
+	bool
+
+config WAKELOCK
+	bool "Wake lock"
+	depends on PM && RTC_CLASS
+	default n
+	select HAS_WAKELOCK
+	---help---
+	  Enable wakelocks. When user space request a sleep state the
+	  sleep request will be delayed until no wake locks are held.
+
+config WAKELOCK_STAT
+	bool "Wake lock stats"
+	depends on WAKELOCK
+	default y
+	---help---
+	  Report wake lock stats in /proc/wakelocks
+
 config SOFTWARE_SUSPEND
 	bool "Software Suspend"
 	depends on PM && SWAP && ((X86 && (!SMP || SUSPEND_SMP)) || ((FRV || PPC32) && !SMP))

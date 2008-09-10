@@ -177,3 +177,10 @@ extern int suspend_enter(suspend_state_t state);
 struct timeval;
 extern void swsusp_show_speed(struct timeval *, struct timeval *,
 				unsigned int, char *);
+
+#ifdef CONFIG_WAKELOCK
+/* kernel/power/wakelock.c */
+extern struct workqueue_struct *suspend_work_queue;
+extern struct wake_lock main_wake_lock;
+extern suspend_state_t requested_suspend_state;
+#endif
