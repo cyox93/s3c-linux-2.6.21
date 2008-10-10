@@ -153,6 +153,9 @@ static void suspend_finish(suspend_state_t state)
 
 
 static const char * const pm_states[PM_SUSPEND_MAX] = {
+#ifdef CONFIG_EARLYSUSPEND
+	[PM_SUSPEND_ON]		= "on",
+#endif
 	[PM_SUSPEND_STANDBY]	= "standby",
 	[PM_SUSPEND_MEM]	= "mem",
 #ifdef CONFIG_SOFTWARE_SUSPEND
@@ -271,7 +274,11 @@ static ssize_t state_show(struct subsystem * subsys, char * buf)
 
 static ssize_t state_store(struct subsystem * subsys, const char * buf, size_t n)
 {
+#ifdef CONFIG_EARLYSUSPEND
+	suspend_state_t state = PM_SUSPEND_ON;
+#else
 	suspend_state_t state = PM_SUSPEND_STANDBY;
+#endif
 	const char * const *s;
 	char *p;
 	int error;
@@ -285,7 +292,14 @@ static ssize_t state_store(struct subsystem * subsys, const char * buf, size_t n
 			break;
 	}
 	if (state < PM_SUSPEND_MAX && *s)
+#ifdef CONFIG_EARLYSUSPEND
+		if (state == PM_SUSPEND_ON || valid_state(state)) {
+			error = 0;
+			request_suspend_state(state);
+		}
+#else
 		error = enter_state(state);
+#endif
 	else
 		error = -EINVAL;
 	return error ? error : n;
