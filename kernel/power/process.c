@@ -14,6 +14,7 @@
 #include <linux/module.h>
 #include <linux/syscalls.h>
 #include <linux/freezer.h>
+#include <linux/wakelock.h>
 
 /* 
  * Timeout for stopping processes
@@ -96,6 +97,7 @@ static unsigned int try_to_freeze_tasks(int freeze_user_space)
 	struct task_struct *g, *p;
 	unsigned long end_time;
 	unsigned int todo;
+	unsigned int wakeup = 0;
 
 	end_time = jiffies + TIMEOUT;
 	do {
@@ -131,7 +133,11 @@ static unsigned int try_to_freeze_tasks(int freeze_user_space)
 		} while_each_thread(g, p);
 		read_unlock(&tasklist_lock);
 		yield();			/* Yield is okay here */
-		if (todo && time_after(jiffies, end_time))
+		if (todo && has_wake_lock(WAKE_LOCK_SUSPEND)) {
+			wakeup = 1;
+			break;
+		}
+		if (time_after(jiffies, end_time))
 			break;
 	} while (todo);
 
@@ -141,12 +147,19 @@ static unsigned int try_to_freeze_tasks(int freeze_user_space)
 		 * and caller must call thaw_processes() if something fails),
 		 * but it cleans up leftover PF_FREEZE requests.
 		 */
-		printk("\n");
-		printk(KERN_ERR "Stopping %s timed out after %d seconds "
-				"(%d tasks refusing to freeze):\n",
-				freeze_user_space ? "user space processes" :
-					"kernel threads",
-				TIMEOUT / HZ, todo);
+		if(wakeup) {
+			printk("\n");
+			printk(KERN_ERR "Freezing of %s aborted\n",
+					freeze_user_space ? "user space " : "tasks ");
+		}
+		else {
+			printk("\n");
+			printk(KERN_ERR "Stopping %s timed out after %d seconds "
+					"(%d tasks refusing to freeze):\n",
+					freeze_user_space ? "user space processes" :
+						"kernel threads",
+					TIMEOUT / HZ, todo);
+		}
 		read_lock(&tasklist_lock);
 		do_each_thread(g, p) {
 			if (is_user_space(p) == !freeze_user_space)
