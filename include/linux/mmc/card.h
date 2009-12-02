@@ -72,6 +72,9 @@ struct mmc_card {
 #define MMC_STATE_READONLY	(1<<4)		/* card is read-only */
 #define MMC_STATE_HIGHSPEED	(1<<5)		/* card is in high speed mode */
 #define MMC_STATE_BLOCKADDR	(1<<6)		/* card uses block-addressing */
+#ifdef CONFIG_MMC_SUPPORT_MOVINAND
+#define MMC_STATE_MOVINAND	(1<<7)		/* is a moviNAND Card */
+#endif
 	u32			raw_cid[4];	/* raw card CID */
 	u32			raw_csd[4];	/* raw card CSD */
 	u32			raw_scr[2];	/* raw card SCR */
@@ -89,6 +92,9 @@ struct mmc_card {
 #define mmc_card_readonly(c)	((c)->state & MMC_STATE_READONLY)
 #define mmc_card_highspeed(c)	((c)->state & MMC_STATE_HIGHSPEED)
 #define mmc_card_blockaddr(c)	((c)->state & MMC_STATE_BLOCKADDR)
+#ifdef CONFIG_MMC_SUPPORT_MOVINAND
+#define mmc_card_movinand(c)	((c)->state & MMC_STATE_MOVINAND)
+#endif
 
 #define mmc_card_set_present(c)	((c)->state |= MMC_STATE_PRESENT)
 #define mmc_card_set_dead(c)	((c)->state |= MMC_STATE_DEAD)
@@ -97,6 +103,9 @@ struct mmc_card {
 #define mmc_card_set_readonly(c) ((c)->state |= MMC_STATE_READONLY)
 #define mmc_card_set_highspeed(c) ((c)->state |= MMC_STATE_HIGHSPEED)
 #define mmc_card_set_blockaddr(c) ((c)->state |= MMC_STATE_BLOCKADDR)
+#ifdef CONFIG_MMC_SUPPORT_MOVINAND
+#define mmc_card_set_movinand(c) ((c)->state |= MMC_STATE_MOVINAND)
+#endif
 
 #define mmc_card_name(c)	((c)->cid.prod_name)
 #define mmc_card_id(c)		((c)->dev.bus_id)

@@ -40,10 +40,18 @@
 #include <asm/plat-s3c24xx/clock.h>
 #include <asm/plat-s3c24xx/cpu.h>
 
+#include <asm/plat-s3c24xx/s3c2450.h>
+#include  <asm/arch/regs-gpio.h>
+
 static unsigned long timer_startval;
 static unsigned long timer_usec_ticks;
+static unsigned long max_buffer_cnt;
 
 #define TIMER_USEC_SHIFT 16
+#define OS_TIMER_Nr		4
+
+
+
 
 /* we use the shifted arithmetic to work out the ratio of timer ticks
  * to usecs, as often the peripheral clock is not a nice even multiple
@@ -124,6 +132,11 @@ static unsigned long s3c2410_gettimeoffset (void)
 }
 
 
+#ifdef CONFIG_NO_IDLE_HZ
+static unsigned long initial_match;
+static int match_posponed;
+#endif
+
 /*
  * IRQ handler for the timer
  */
@@ -131,6 +144,13 @@ static irqreturn_t
 s3c2410_timer_interrupt(int irq, void *dev_id)
 {
 	write_seqlock(&xtime_lock);
+
+#ifdef CONFIG_NO_IDLE_HZ
+	if (match_posponed) {
+		match_posponed = 0;
+		__raw_writel(initial_match,S3C2410_TCNTB(OS_TIMER_Nr));
+	}
+#endif
 	timer_tick();
 	write_sequnlock(&xtime_lock);
 	return IRQ_HANDLED;
@@ -203,15 +223,19 @@ static void s3c2410_timer_setup (void)
 
 		/* configure clock tick */
 
-		timer_usec_ticks = timer_mask_usec_ticks(6, pclk);
+		timer_usec_ticks = timer_mask_usec_ticks(PRESCALE*MUX4_VAL, pclk);
 
 		tcfg1 &= ~S3C2410_TCFG1_MUX4_MASK;
-		tcfg1 |= S3C2410_TCFG1_MUX4_DIV2;
+		tcfg1 |= MUX4_DIV;
 
+		/* when 66MHz PCLK, */
 		tcfg0 &= ~S3C2410_TCFG_PRESCALER1_MASK;
-		tcfg0 |= ((6 - 1) / 2) << S3C2410_TCFG_PRESCALER1_SHIFT;
+		tcfg0 |= (PRESCALE - 1) << S3C2410_TCFG_PRESCALER1_SHIFT;
 
-		tcnt = (pclk / 6) / HZ;
+		tcnt = (pclk/PRESCALE/MUX4_VAL) / HZ;	
+
+		max_buffer_cnt = (unsigned long)(0xffff/LATCH) ;
+
 	}
 
 	/* timers reload after counting zero, so reduce the count by 1 */
@@ -249,6 +273,47 @@ static void s3c2410_timer_setup (void)
 	__raw_writel(tcon, S3C2410_TCON);
 }
 
+#ifdef CONFIG_NO_IDLE_HZ
+static int s3c2410_dyn_tick_enable_disable(void)
+{
+	/* nothing to do */
+	return 0;
+}
+
+static void s3c2410_dyn_tick_reprogram(unsigned long ticks)
+{
+	unsigned long count_buffer_val;
+	if (ticks > 1) {
+		initial_match = __raw_readl(S3C2410_TCNTB(OS_TIMER_Nr));
+		count_buffer_val = (initial_match + ticks * LATCH);
+/* S3C2443,s3c2450,2416 , Timer 4 count buffer register bit width is 16bit (0x0 ~ 0xffff)*/
+		if(count_buffer_val &~0xffff)
+			count_buffer_val = max_buffer_cnt;
+		__raw_writel( count_buffer_val,S3C2410_TCNTB(OS_TIMER_Nr));
+		match_posponed = 1;
+	}
+}
+
+static irqreturn_t
+s3c2410_dyn_tick_handler(int irq, void *dev_id)
+{
+	if (match_posponed) {
+		match_posponed = 0;
+		__raw_writel(initial_match,S3C2410_TCNTB(OS_TIMER_Nr));
+		if ((signed long)(initial_match -__raw_readl(S3C2410_TCNTB(OS_TIMER_Nr))) <= 0)
+			return s3c2410_timer_interrupt(irq, dev_id);
+	}
+	return IRQ_NONE;
+}
+
+static struct dyn_tick_timer s3c2410_dyn_tick = {
+	.enable		= s3c2410_dyn_tick_enable_disable,
+	.disable	= s3c2410_dyn_tick_enable_disable,
+	.reprogram	= s3c2410_dyn_tick_reprogram,
+	.handler	= s3c2410_dyn_tick_handler,
+};
+#endif
+
 static void __init s3c2410_timer_init (void)
 {
 	s3c2410_timer_setup();
@@ -258,5 +323,8 @@ static void __init s3c2410_timer_init (void)
 struct sys_timer s3c24xx_timer = {
 	.init		= s3c2410_timer_init,
 	.offset		= s3c2410_gettimeoffset,
-	.resume		= s3c2410_timer_setup
+	.resume		= s3c2410_timer_setup,
+#ifdef CONFIG_NO_IDLE_HZ
+	.dyn_tick	= &s3c2410_dyn_tick,
+#endif
 };

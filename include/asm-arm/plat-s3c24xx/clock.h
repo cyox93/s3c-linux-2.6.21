@@ -46,6 +46,9 @@ extern struct clk clk_mpll;
 extern struct clk clk_upll;
 extern struct clk clk_xtal;
 
+#if defined (CONFIG_CPU_S3C6400) || defined (CONFIG_CPU_S3C6410) 
+extern struct clk clk_epll;
+#endif
 /* exports for arch/arm/mach-s3c2410
  *
  * Please DO NOT use these outside of arch/arm/mach-s3c2410
@@ -61,3 +64,18 @@ extern int s3c24xx_setup_clocks(unsigned long xtal,
 				unsigned long fclk,
 				unsigned long hclk,
 				unsigned long pclk);
+
+#if defined (CONFIG_CPU_S3C6400) || defined (CONFIG_CPU_S3C6410) 
+
+extern struct clk clk_48m;
+extern struct clk clk_s;
+extern struct clk clk_u;
+extern struct clk clk_27m;
+extern struct clk clk_hx2;
+
+extern struct clk s3c_dclk0;
+extern struct clk s3c_dclk1;
+extern struct clk s3c_clkout0;
+extern struct clk s3c_clkout1;
+
+#endif

@@ -22,6 +22,102 @@ typedef unsigned int upf_t;	/* cannot include linux/serial_core.h */
 
 #include <asm/arch/map.h>
 
+#if defined (CONFIG_CPU_S3C6400) || defined (CONFIG_CPU_S3C6410) 
+
+/* working in physical space... */
+#undef S3C_GPIOREG
+#define S3C_GPIOREG(x) ((S3C24XX_PA_GPIO + (x)))
+
+/* how many bytes we allow into the FIFO at a time in FIFO mode */
+#define FIFO_MAX	 (14)
+
+#define uart_base (S3C24XX_PA_UART + (0x400*CONFIG_S3C2410_LOWLEVEL_UART_PORT))
+
+static __inline__ void
+uart_wr(unsigned int reg, unsigned int val)
+{
+	volatile unsigned int *ptr;
+
+	ptr = (volatile unsigned int *)(reg + uart_base);
+	*ptr = val;
+}
+
+static __inline__ unsigned int
+uart_rd(unsigned int reg)
+{
+	volatile unsigned int *ptr;
+
+	ptr = (volatile unsigned int *)(reg + uart_base);
+	return *ptr;
+}
+
+
+/* currently we do not need the watchdog... */
+#define arch_decomp_wdog()
+
+
+static void error(char *err);
+
+static void
+arch_decomp_setup(void)
+{
+	/* we may need to setup the uart(s) here if we are not running
+	 * on an BAST... the BAST will have left the uarts configured
+	 * after calling linux.
+	 */
+}
+
+/* we can deal with the case the UARTs are being run
+ * in FIFO mode, so that we don't hold up our execution
+ * waiting for tx to happen...
+*/
+
+static void
+putc(char ch)
+{
+
+	if (ch == '\n')
+		putc('\r');    /* expand newline to \r\n */
+	if (uart_rd(S3C_UFCON) & S3C_UFCON_FIFOMODE) {
+		int level;
+
+		while (1) {
+			level = uart_rd(S3C_UFSTAT);
+
+				level &= S3C_UFSTAT_TXMASK;
+				level >>= S3C_UFSTAT_TXSHIFT;
+
+			if (level < FIFO_MAX)
+				break;
+		}
+
+	} else {
+		/* not using fifos */
+		while ((uart_rd(S3C_UTRSTAT) & S3C_UTRSTAT_TXE) != S3C_UTRSTAT_TXE);
+	}
+	/* write byte to transmission register */
+	uart_wr(S3C_UTXH, ch);
+}
+
+static inline void flush(void)
+{
+}
+
+#if 0
+static void
+putstr(const char *ptr)
+{
+	for (; *ptr != '\0'; ptr++) {
+		putc(*ptr);
+	}
+}
+#endif
+
+#else
+
+
+
+
 /* working in physical space... */
 #undef S3C2410_GPIOREG
 #undef S3C2410_WDOGREG
@@ -161,5 +257,7 @@ arch_decomp_setup(void)
 	arch_decomp_wdog_start();
 }
 
+
+#endif
 
 #endif /* __ASM_ARCH_UNCOMPRESS_H */

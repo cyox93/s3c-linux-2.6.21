@@ -112,4 +112,6 @@ obj-$(CONFIG_USB_QUICKCAM_MESSENGER)	+= usbvideo/
 
 obj-$(CONFIG_VIDEO_VIVI) += vivi.o
 
+obj-$(CONFIG_VIDEO_SAMSUNG)     += s3c_camera_driver.o s3c_camif.o samsung/
+
 EXTRA_CFLAGS += -Idrivers/media/dvb/dvb-core

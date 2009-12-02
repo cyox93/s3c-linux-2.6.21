@@ -643,7 +643,13 @@ static int s3c24xx_serial_calcbaud(struct baud_calc *calc,
 	rate /= clksrc->divisor;
 
 	calc->clksrc = clksrc;
+#if 0
+	/* Error to calculation of UART BAUD RATE DIVISOR */
 	calc->quot = (rate + (8 * baud)) / (16 * baud);
+#else
+	/* Error correction */
+	calc->quot = (rate) / (16 * baud);
+#endif
 	calc->calc = (rate / (calc->quot * 16));
 
 	calc->quot--;
@@ -726,8 +732,10 @@ static unsigned int s3c24xx_serial_getclk(struct uart_port *port,
 		printk(KERN_DEBUG "best %p (deviation %d)\n", best, deviation);
 	}
 
-	printk(KERN_DEBUG "selected clock %p (%s) quot %d, calc %d\n",
-	       best->clksrc, best->clksrc->name, best->quot, best->calc);
+	if (best != NULL){
+		printk(KERN_DEBUG "selected clock %p (%s) quot %d, calc %d\n",
+		       best->clksrc, best->clksrc->name, best->quot, best->calc);
+	}
 
 	/* store results to pass back */
 
@@ -1065,8 +1073,10 @@ static int s3c24xx_serial_init_port(struct s3c24xx_uart_port *ourport,
 	port->mapbase	= res->start;
 	port->membase	= S3C24XX_VA_UART + (res->start - S3C24XX_PA_UART);
 	port->irq	= platform_get_irq(platdev, 0);
+#if 0
 	if (port->irq < 0)
 		port->irq = 0;
+#endif
 
 	ourport->clk	= clk_get(&platdev->dev, "uart");
 
@@ -1364,8 +1374,7 @@ static inline void s3c2410_serial_exit(void)
 
 #endif /* CONFIG_CPU_S3C2410 */
 
-#if defined(CONFIG_CPU_S3C2440) || defined(CONFIG_CPU_S3C2442)
-
+#if defined(CONFIG_CPU_S3C2440)||defined(CONFIG_CPU_S3C2442)||defined(CONFIG_CPU_S3C2443)||defined(CONFIG_CPU_S3C2450) || defined(CONFIG_CPU_S3C2416)
 static int s3c2440_serial_setsource(struct uart_port *port,
 				     struct s3c24xx_uart_clksrc *clk)
 {
@@ -1379,7 +1388,11 @@ static int s3c2440_serial_setsource(struct uart_port *port,
 		ucon |= S3C2440_UCON_UCLK;
 	else if (strcmp(clk->name, "pclk") == 0)
 		ucon |= S3C2440_UCON_PCLK;
+#if defined(CONFIG_CPU_S3C2443)||defined(CONFIG_CPU_S3C2450) || defined(CONFIG_CPU_S3C2416)
+	else if (strcmp(clk->name, "esysclk") == 0)
+#else
 	else if (strcmp(clk->name, "fclk") == 0)
+#endif
 		ucon |= S3C2440_UCON_FCLK;
 	else {
 		printk(KERN_ERR "unknown clock source %s\n", clk->name);
@@ -1436,8 +1449,11 @@ static int s3c2440_serial_getsource(struct uart_port *port,
 			/* manual calims 44, seems to be 9 */
 			clk->divisor = 9;
 		}
-
+#if defined(CONFIG_CPU_S3C2443)||defined(CONFIG_CPU_S3C2450) || defined(CONFIG_CPU_S3C2416)
+		clk->name = "esysclk";
+#else
 		clk->name = "fclk";
+#endif
 		break;
 	}
 

@@ -33,6 +33,18 @@
 #include <asm/arch/regs-iis.h>
 #include <asm/arch/regs-spi.h>
 
+#ifdef CONFIG_CPU_S3C2450
+#define MAP(x) { \
+		[0]	= (x) | DMA_CH_VALID,	\
+		[1]	= (x) | DMA_CH_VALID,	\
+		[2]	= (x) | DMA_CH_VALID,	\
+		[3]	= (x) | DMA_CH_VALID,	\
+		[4]	= (x) | DMA_CH_VALID,	\
+		[5]     = (x) | DMA_CH_VALID,	\
+		[6]	= (x) | DMA_CH_VALID,	\
+		[7]     = (x) | DMA_CH_VALID,	\
+	}
+#else
 #define MAP(x) { \
 		[0]	= (x) | DMA_CH_VALID,	\
 		[1]	= (x) | DMA_CH_VALID,	\
@@ -41,6 +53,7 @@
 		[4]	= (x) | DMA_CH_VALID,	\
 		[5]     = (x) | DMA_CH_VALID,	\
 	}
+#endif
 
 static struct s3c24xx_dma_map __initdata s3c2443_dma_mappings[] = {
 	[DMACH_XD0] = {
@@ -56,6 +69,16 @@ static struct s3c24xx_dma_map __initdata s3c2443_dma_mappings[] = {
 		.channels	= MAP(S3C2443_DMAREQSEL_SDI),
 		.hw_addr.to	= S3C2410_PA_IIS + S3C2410_IISFIFO,
 		.hw_addr.from	= S3C2410_PA_IIS + S3C2410_IISFIFO,
+	},
+	[DMACH_SPI_TX] = {
+		.name		= "spi-tx",
+		.channels	= MAP(S3C2443_DMAREQSEL_SPI0TX),
+		.hw_addr.from	= S3C_PA_SPI_0 + S3C_SPI_TX_DATA,
+	},
+	[DMACH_SPI_RX] = {
+		.name		= "spi-rx",
+		.channels	= MAP(S3C2443_DMAREQSEL_SPI0RX),
+		.hw_addr.to	= S3C2410_PA_IIS + S3C_SPI_RX_DATA,
 	},
 	[DMACH_SPI0] = {
 		.name		= "spi0",
@@ -164,7 +187,11 @@ static struct s3c24xx_dma_selection __initdata s3c2443_dma_sel = {
 
 static int s3c2443_dma_add(struct sys_device *sysdev)
 {
+#ifdef CONFIG_CPU_S3C2450
+	s3c24xx_dma_init(8, IRQ_S3C2443_DMA0, 0x100);
+#else
 	s3c24xx_dma_init(6, IRQ_S3C2443_DMA0, 0x100);
+#endif
 	return s3c24xx_dma_init_map(&s3c2443_dma_sel);
 }
 

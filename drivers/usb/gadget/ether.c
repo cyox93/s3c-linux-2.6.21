@@ -266,6 +266,10 @@ MODULE_PARM_DESC(host_addr, "Host Ethernet Address");
 #define DEV_CONFIG_CDC
 #endif
 
+#if defined(CONFIG_USB_GADGET_S3C_FS) || defined(CONFIG_USB_GADGET_S3C_HS) || defined(CONFIG_USB_GADGET_S3C_OTGD_HS)
+#define DEV_CONFIG_CDC
+#endif
+
 #ifdef CONFIG_USB_GADGET_AT91
 #define DEV_CONFIG_CDC
 #endif
@@ -1312,6 +1316,7 @@ static void issue_start_status (struct eth_dev *dev)
 	req->context = dev;
 
 	value = usb_ep_queue (dev->status_ep, req, GFP_ATOMIC);
+
 	if (value < 0)
 		DEBUG (dev, "status buf queue --> %d\n", value);
 }

@@ -39,6 +39,62 @@ config MMC_ARMMMCI
 
 	  If unsure, say N.
 
+config MMC_S3C
+	tristate "Samsung S3C Multimedia Card Interface support"
+	select MMC_BLOCK
+	select MMC_SUPPORT_MOVINAND
+	depends on ARCH_S3C2410 && MMC && !(CPU_S3C6400 || CPU_S3C6410)
+	help
+	  This selects the Samsung S3C Multimedia Card Interface
+	  support.
+
+	  If unsure, say N.
+
+config HSMMC_S3C
+	tristate "Samsung S3C High Speed MMC Interface support"
+	select MMC_BLOCK
+	select MMC_SUPPORT_MOVINAND
+	depends on (CPU_S3C2443 || CPU_S3C2450 || CPU_S3C2416 || CPU_S3C6400 || CPU_S3C6410) && MMC
+	help
+	  This selects the Samsung S3C Multimedia Card Interface
+	  support.
+
+	  If unsure, say N.
+
+config USE_MMC_AS_ROOT
+	bool "MMC can be used as a Root Filesystem Device"
+	depends on HSMMC_S3C && !MACH_SANJOSE2
+	default y
+	help
+	  Say Y here when you want to use MMC as a root file system.
+
+config HSMMC_S3C_IRQ_WORKAROUND
+	bool "Fix IRQ Hanging in HS-MMC"
+	depends on HSMMC_S3C
+	default y
+	help
+	  Say Y here when you are using S3C6400 or S3C6410.
+
+config HSMMC_SCATTERGATHER
+	bool "Support Scatter and Gather in HS-MMC"
+	depends on HSMMC_S3C
+	help
+	  Say Y here. This option can support scatter and gather
+	  using DMA boundary in HS-MMC DMA engine.
+
+config MMC_SUPPORT_MOVINAND
+	bool "Support moviNAND from Samsung Electronics"
+	depends on (MMC_S3C || HSMMC_S3C) && MMC
+	help
+	  Say Y here to enable MMC Spec 4.2 and support Samsung
+	  moviNAND.
+
+config S3CMMC_DEBUG
+	bool "To debug interface, enable all debug messages"
+	depends on (MMC_S3C || HSMMC_S3C)
+	help
+	  Say Y here to enable Debug Messages.
+
 config MMC_PXA
 	tristate "Intel PXA25x/26x/27x Multimedia Card Interface support"
 	depends on ARCH_PXA && MMC

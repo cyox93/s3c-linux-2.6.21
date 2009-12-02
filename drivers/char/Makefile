@@ -73,6 +73,7 @@ obj-$(CONFIG_EFI_RTC)		+= efirtc.o
 obj-$(CONFIG_SGI_DS1286)	+= ds1286.o
 obj-$(CONFIG_SGI_IP27_RTC)	+= ip27-rtc.o
 obj-$(CONFIG_DS1302)		+= ds1302.o
+obj-$(CONFIG_S3C_ADC) += s3c-adc.o
 ifeq ($(CONFIG_GENERIC_NVRAM),y)
   obj-$(CONFIG_NVRAM)	+= generic_nvram.o
 else
@@ -103,6 +104,13 @@ obj-$(CONFIG_IPMI_HANDLER)	+= ipmi/
 
 obj-$(CONFIG_HANGCHECK_TIMER)	+= hangcheck-timer.o
 obj-$(CONFIG_TCG_TPM)		+= tpm/
+
+obj-$(CONFIG_CPU_S3C6400)	+= s3c-dvfs/
+obj-$(CONFIG_CPU_S3C6410)	+= s3c-dvfs/
+obj-$(CONFIG_CPU_S3C2450)	+= s3c-dvfs/
+obj-$(CONFIG_CPU_S3C2416)	+= s3c-dvfs/
+obj-$(CONFIG_CPU_S3C2443)	+= s3c-dvfs/
+
 
 # Files generated that shall be removed upon make clean
 clean-files := consolemap_deftbl.c defkeymap.c

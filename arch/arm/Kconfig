@@ -336,8 +336,9 @@ config ARCH_SA1100
 	  Support for StrongARM 11x0 based boards.
 
 config ARCH_S3C2410
-	bool "Samsung S3C2410, S3C2412, S3C2413, S3C2440, S3C2442, S3C2443"
+	bool "Samsung S3C24xx, S3C64xx"
 	select GENERIC_GPIO
+	select ISA
 	help
 	  Samsung S3C2410X CPU based systems, such as the Simtec Electronics
 	  BAST (<http://www.simtec.co.uk/products/EB110ITX/>), the IPAQ 1940 or
@@ -407,6 +408,10 @@ source "arch/arm/mach-s3c2412/Kconfig"
 source "arch/arm/mach-s3c2440/Kconfig"
 source "arch/arm/mach-s3c2442/Kconfig"
 source "arch/arm/mach-s3c2443/Kconfig"
+source "arch/arm/mach-s3c2450/Kconfig"
+source "arch/arm/mach-s3c2416/Kconfig"
+source "arch/arm/mach-s3c6400/Kconfig"
+source "arch/arm/mach-s3c6410/Kconfig"
 endif
 
 source "arch/arm/mach-lh7a40x/Kconfig"
@@ -653,7 +658,7 @@ config LEDS
 		   ARCH_LUBBOCK || MACH_MAINSTONE || ARCH_NETWINDER || \
 		   ARCH_OMAP || ARCH_P720T || ARCH_PXA_IDP || \
 		   ARCH_SA1100 || ARCH_SHARK || ARCH_VERSATILE || \
-		   ARCH_AT91 || MACH_TRIZEPS4
+		   ARCH_AT91 || MACH_TRIZEPS4 || MACH_SMDK6400 || MACH_SMDK6410
 	help
 	  If you say Y here, the LEDs on your machine will be used
 	  to provide useful information about your current system status.
@@ -667,7 +672,7 @@ config LEDS
 
 config LEDS_TIMER
 	bool "Timer LED" if (!ARCH_CDB89712 && !ARCH_OMAP) || \
-			    MACH_OMAP_H2 || MACH_OMAP_PERSEUS2
+			    MACH_OMAP_H2 || MACH_OMAP_PERSEUS2 || MACH_SMDK6400 || MACH_SMDK6410
 	depends on LEDS
 	default y if ARCH_EBSA110
 	help
@@ -683,7 +688,7 @@ config LEDS_TIMER
 
 config LEDS_CPU
 	bool "CPU usage LED" if (!ARCH_CDB89712 && !ARCH_EBSA110 && \
-			!ARCH_OMAP) || MACH_OMAP_H2 || MACH_OMAP_PERSEUS2
+			!ARCH_OMAP) || MACH_OMAP_H2 || MACH_OMAP_PERSEUS2 || MACH_SMDK6400 || MACH_SMDK6410
 	depends on LEDS
 	help
 	  If you say Y here, the red LED will be used to give a good real
@@ -975,7 +980,7 @@ source "drivers/w1/Kconfig"
 
 source "drivers/hwmon/Kconfig"
 
-#source "drivers/l3/Kconfig"
+source "drivers/l3/Kconfig"
 
 source "drivers/misc/Kconfig"
 
@@ -996,6 +1001,12 @@ source "drivers/usb/Kconfig"
 source "drivers/mmc/Kconfig"
 
 source "drivers/rtc/Kconfig"
+
+source "drivers/pwm/Kconfig"
+
+if CPU_S3C6410
+source "drivers/g3d/Kconfig"
+endif
 
 endmenu
 

@@ -19,8 +19,43 @@
 #define INTPND		(0x10)
 #define INTOFFSET	(0x14)
 
+#if defined(CONFIG_CPU_S3C2450) || defined(CONFIG_CPU_S3C2416)
+#define INTPND2		(0x50)
+#define INTOFFSET2	(0x54)
+#endif
+
 #include <asm/hardware.h>
 #include <asm/irq.h>
+
+#if defined (CONFIG_CPU_S3C6400) || defined (CONFIG_CPU_S3C6410) 
+
+	.macro  get_irqnr_preamble, base, tmp
+	.endm
+
+	.macro  arch_ret_to_user, tmp1, tmp2
+	.endm
+
+	.macro	get_irqnr_and_base, irqnr, irqstat, base, tmp
+	mov	\tmp, #0
+	ldr	\base, =S3C24XX_VA_IRQ
+	ldr	\irqstat, [\base, #0]		@ get masked status
+	cmp	\irqstat, \tmp
+	addeq	\base, \base, #0x100000
+	ldreq	\irqstat, [\base, #0]		@ get masked status
+	cmpeq	\irqstat, #0
+	ldr	\irqnr, [\base, #0xF00]		@ read for VICADDR[01]
+	@ exit irq routine
+	.endm
+
+	/* currently don't need an disable_fiq macro */
+	.macro	disable_fiq
+	.endm
+
+	/* we don't have an irq priority table */
+	.macro irq_prio_table
+	.endm
+
+#else
 
 	.macro  get_irqnr_preamble, base, tmp
 	.endm
@@ -67,7 +102,16 @@
 		@@ we have the value
 1001:
 		adds	\irqnr, \irqnr, #IRQ_EINT0
+		b	1003f
 1002:
+#if defined(CONFIG_CPU_S3C2450) || defined(CONFIG_CPU_S3C2416)
+		ldr	\irqstat, [ \base, #INTPND2 ]
+		teq     \irqstat, #0
+		beq	1003f
+                ldr     \irqnr, [ \base, #INTOFFSET2 ]
+		adds	\irqnr, \irqnr, #IRQ_S3C2450_2D
+#endif
+1003:
 		@@ exit here, Z flag unset if IRQ
 
 	.endm
@@ -76,3 +120,5 @@
 
 		.macro	disable_fiq
 		.endm
+
+#endif

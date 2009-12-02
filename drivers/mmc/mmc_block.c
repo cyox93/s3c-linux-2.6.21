@@ -250,6 +250,32 @@ static int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 
 		mmc_set_data_timeout(&brq.data, card, rq_data_dir(req) != READ);
 
+#ifdef CONFIG_MMC_SUPPORT_MOVINAND
+		if (mmc_card_movinand(card)) {
+			if ((brq.data.blocks > 1) || (rq_data_dir(req) == WRITE)) {
+				cmd.opcode = MMC_SET_BLOCK_COUNT;
+				cmd.arg = req->nr_sectors;
+				cmd.flags = MMC_RSP_R1;
+				ret = mmc_wait_for_cmd(card->host, &cmd, 2);
+			}
+			if (rq_data_dir(req) == READ) {
+				if (brq.data.blocks > 1) {
+					brq.cmd.opcode = MMC_READ_MULTIPLE_BLOCK;
+					brq.data.flags |= (MMC_DATA_READ | MMC_DATA_MULTI);
+//					brq.mrq.stop = &brq.stop;
+				} else {
+					brq.cmd.opcode = MMC_READ_SINGLE_BLOCK;
+					brq.data.flags |= MMC_DATA_READ;
+					brq.mrq.stop = NULL;
+				}
+			} else {
+				brq.cmd.opcode = MMC_WRITE_MULTIPLE_BLOCK;
+				brq.data.flags |= MMC_DATA_WRITE | MMC_DATA_MULTI;
+//				brq.mrq.stop = &brq.stop;
+			}
+		} else {
+#endif
+
 		/*
 		 * If the host doesn't support multiple block writes, force
 		 * block writes to single block. SD cards are excepted from
@@ -279,6 +305,9 @@ static int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 			brq.cmd.opcode = writecmd;
 			brq.data.flags |= MMC_DATA_WRITE;
 		}
+#ifdef CONFIG_MMC_SUPPORT_MOVINAND
+		}
+#endif
 
 		brq.data.sg = mq->sg;
 		brq.data.sg_len = blk_rq_map_sg(req->q, req, brq.data.sg);
@@ -315,6 +344,15 @@ static int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 					       req->rq_disk->disk_name, err);
 					goto cmd_err;
 				}
+#ifdef CONFIG_MMC_SUPPORT_MOVINAND
+				/* Work-around for broken cards setting READY_FOR_DATA
+				 * when not actually ready.
+				 */
+				if (mmc_card_movinand(card)) {
+					if (R1_CURRENT_STATE(cmd.resp[0]) == 7)
+						cmd.resp[0] &= ~R1_READY_FOR_DATA;
+				}
+#endif
 			} while (!(cmd.resp[0] & R1_READY_FOR_DATA));
 
 #if 0
@@ -461,6 +499,8 @@ static struct mmc_blk_data *mmc_blk_alloc(struct mmc_card *card)
 	md->disk->queue = md->queue.queue;
 	md->disk->driverfs_dev = &card->dev;
 
+	printk("mmc: major= %d, minor= %d \n",md->disk->major, md->disk->first_minor );
+
 	/*
 	 * As discussed on lkml, GENHD_FL_REMOVABLE should:
 	 *
@@ -480,8 +520,14 @@ static struct mmc_blk_data *mmc_blk_alloc(struct mmc_card *card)
 	/*
 	 * The CSD capacity field is in units of read_blkbits.
 	 * set_capacity takes units of 512 bytes.
+	 *
+	 * jsgood: sector mode card size patch	 
 	 */
-	set_capacity(md->disk, card->csd.capacity << (card->csd.read_blkbits - 9));
+	if (!mmc_card_blockaddr(card))
+		set_capacity(md->disk, card->csd.capacity << (card->csd.read_blkbits - 9));
+	else
+		set_capacity(md->disk, card->csd.capacity);
+
 	return md;
 
  err_putdisk:
@@ -499,7 +545,8 @@ mmc_blk_set_blksize(struct mmc_blk_data *md, struct mmc_card *card)
 	int err;
 
 	/* Block-addressed cards ignore MMC_SET_BLOCKLEN. */
-	if (mmc_card_blockaddr(card))
+	/* only in SD mode. by scsuh */
+	if (mmc_card_blockaddr(card) && mmc_card_sd(card))
 		return 0;
 
 	mmc_card_claim_host(card);

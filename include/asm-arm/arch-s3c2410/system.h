@@ -18,6 +18,7 @@
 #include <asm/arch/reset.h>
 
 #include <asm/arch/regs-watchdog.h>
+
 #include <asm/arch/regs-clock.h>
 
 void (*s3c24xx_idle)(void);
@@ -56,6 +57,7 @@ static void arch_idle(void)
 		s3c24xx_default_idle();
 }
 
+#if !defined (CONFIG_CPU_S3C6400) && !defined (CONFIG_CPU_S3C6410) 
 static void
 arch_reset(char mode)
 {
@@ -86,3 +88,29 @@ arch_reset(char mode)
 	/* we'll take a jump through zero as a poor second */
 	cpu_reset(0);
 }
+#else /* in case of S3C6400 */
+#define S3C6400_SW_RESET_OFF	0x114
+static void
+arch_reset(char mode)
+{
+	if (mode == 's') {
+		cpu_reset(0);
+	}
+
+	if (s3c24xx_reset_hook)
+		s3c24xx_reset_hook();
+
+	printk("arch_reset: attempting watchdog reset\n");
+
+	__raw_writel(0x6400, S3C24XX_VA_SYSCON+S3C6400_SW_RESET_OFF);
+
+	/* wait for reset to assert... */
+	mdelay(5000);
+
+	printk(KERN_ERR "Watchdog reset failed to assert reset\n");
+
+	/* we'll take a jump through zero as a poor second */
+	cpu_reset(0);
+}
+#endif
+

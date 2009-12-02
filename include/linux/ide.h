@@ -205,7 +205,7 @@ typedef enum {	ide_unknown,	ide_generic,	ide_pci,
 		ide_rz1000,	ide_trm290,
 		ide_cmd646,	ide_cy82c693,	ide_4drives,
 		ide_pmac,	ide_etrax100,	ide_acorn,
-		ide_au1xxx, ide_forced
+		ide_au1xxx,	ide_s3c,	ide_forced
 } hwif_chipset_t;
 
 /*
@@ -724,6 +724,9 @@ typedef struct hwif_s {
 //	u8	(*ratefilter)(ide_drive_t *, u8);
 #endif
 
+#ifdef CONFIG_IDE_HOOK_IRQ
+	int (*ide_irq_hook)(void *);
+#endif
 	void (*ata_input_data)(ide_drive_t *, void *, u32);
 	void (*ata_output_data)(ide_drive_t *, void *, u32);
 

@@ -161,6 +161,7 @@ struct i2c_client {
 	struct list_head list;
 	char name[I2C_NAME_SIZE];
 	struct completion released;
+	void * data;
 };
 #define to_i2c_client(d) container_of(d, struct i2c_client, dev)
 

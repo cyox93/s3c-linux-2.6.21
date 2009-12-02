@@ -23,6 +23,16 @@
 #define S3C2443_PLLCON_PDIVMASK		((1<<(1+(9-8)))-1)
 #define S3C2443_PLLCON_SDIVMASK		(3)
 
+#define S3C2443_EPLLCON_MDIVSHIFT	16
+#define S3C2443_EPLLCON_PDIVSHIFT	8
+#define S3C2443_EPLLCON_SDIVSHIFT	0
+#define S3C2443_EPLLCON_MDIVMASK	((1<<(1+(23-16)))-1)
+#define S3C2443_EPLLCON_PDIVMASK	((1<<(1+(13-8)))-1)
+#define S3C2443_EPLLCON_SDIVMASK	(3)
+
+#define S3C2443_LOCKCON0		S3C2443_CLKREG(0x00)
+#define S3C2443_LOCKCON1		S3C2443_CLKREG(0x04)
+#define S3C2443_OSCSET			S3C2443_CLKREG(0x08)
 #define S3C2443_MPLLCON			S3C2443_CLKREG(0x10)
 #define S3C2443_EPLLCON			S3C2443_CLKREG(0x18)
 #define S3C2443_CLKSRC			S3C2443_CLKREG(0x20)
@@ -37,6 +47,11 @@
 #define S3C2443_SYSID			S3C2443_CLKREG(0x5C)
 #define S3C2443_PWRCFG			S3C2443_CLKREG(0x60)
 #define S3C2443_RSTCON			S3C2443_CLKREG(0x64)
+#define S3C2443_RSTSTAT			S3C2443_CLKREG(0x68)
+#define S3C2443_PHYCTRL			S3C2443_CLKREG(0x80)
+#define S3C2443_PHYPWR			S3C2443_CLKREG(0x84)
+#define S3C2443_URSTCON			S3C2443_CLKREG(0x88)
+#define S3C2443_UCLKCON			S3C2443_CLKREG(0x8C)
 
 #define S3C2443_SWRST_RESET		(0x533c2443)
 
@@ -165,6 +180,7 @@ s3c2443_get_mpll(unsigned int pllval, unsigned int baseclk)
 	sdiv &= S3C2443_PLLCON_SDIVMASK;
 
 	fvco = (uint64_t)baseclk * (2 * (mdiv + 8));
+
 	do_div(fvco, pdiv << sdiv);
 
 	return (unsigned int)fvco;
@@ -176,13 +192,13 @@ s3c2443_get_epll(unsigned int pllval, unsigned int baseclk)
 	unsigned int mdiv, pdiv, sdiv;
 	uint64_t fvco;
 
-	mdiv = pllval >> S3C2443_PLLCON_MDIVSHIFT;
-	pdiv = pllval >> S3C2443_PLLCON_PDIVSHIFT;
-	sdiv = pllval >> S3C2443_PLLCON_SDIVSHIFT;
+	mdiv = pllval >> S3C2443_EPLLCON_MDIVSHIFT;
+	pdiv = pllval >> S3C2443_EPLLCON_PDIVSHIFT;
+	sdiv = pllval >> S3C2443_EPLLCON_SDIVSHIFT;
 
-	mdiv &= S3C2443_PLLCON_MDIVMASK;
-	pdiv &= S3C2443_PLLCON_PDIVMASK;
-	sdiv &= S3C2443_PLLCON_SDIVMASK;
+	mdiv &= S3C2443_EPLLCON_MDIVMASK;
+	pdiv &= S3C2443_EPLLCON_PDIVMASK;
+	sdiv &= S3C2443_EPLLCON_SDIVMASK;
 
 	fvco = (uint64_t)baseclk * (mdiv + 8);
 	do_div(fvco, (pdiv + 2) << sdiv);

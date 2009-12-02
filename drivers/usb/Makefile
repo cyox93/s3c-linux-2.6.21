@@ -17,6 +17,7 @@ obj-$(CONFIG_USB_SL811_HCD)	+= host/
 obj-$(CONFIG_USB_U132_HCD)	+= host/
 obj-$(CONFIG_ETRAX_USB_HOST)	+= host/
 obj-$(CONFIG_USB_OHCI_AT91)	+= host/
+obj-$(CONFIG_USB_S3C_OTG_HOST)	+= host/
 
 obj-$(CONFIG_USB_ACM)		+= class/
 obj-$(CONFIG_USB_PRINTER)	+= class/

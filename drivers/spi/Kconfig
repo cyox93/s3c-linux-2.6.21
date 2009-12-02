@@ -131,6 +131,73 @@ config SPI_S3C24XX_GPIO
 	  GPIO lines to provide the SPI bus. This can be used where
 	  the inbuilt hardware cannot provide the transfer mode, or
 	  where the board is using non hardware connected pins.
+
+config HS_SPI_S3C2443
+	tristate "S3C2443 High Speed SPI Driver"
+	depends on SPI && MACH_SMDK2443
+	help
+	  Say Y here to include support for SPI controller in the
+	  Samsung S3C2443 based System-on-Chip devices.
+
+config HS_SPI_S3C2450
+        tristate "S3C2450 High Speed SPI Driver"
+        depends on SPI && MACH_SMDK2450
+        help
+          Say Y here to include support for SPI controller in the
+          Samsung S3C2450 based System-on-Chip devices.
+
+config HS_SPI_S3C2416
+        tristate "S3C2416 High Speed SPI Driver"
+        depends on SPI && MACH_SMDK2416
+        help
+          Say Y here to include support for SPI controller in the
+          Samsung S3C2416 based System-on-Chip devices.
+
+config HS_SPI_S3C6400
+	tristate "S3C6400 High Speed SPI Driver"
+	depends on SPI && MACH_SMDK6400
+	help
+	  Say Y here to include support for SPI controller in the
+	  Samsung S3C6400 based System-on-Chip devices.
+
+config HS_SPI_S3C6410
+	tristate "S3C6410 High Speed SPI Driver"
+	depends on SPI && (MACH_SMDK6410 )
+	help
+	  Say Y here to include support for SPI controller in the
+	  Samsung S3C6410 based System-on-Chip devices.
+
+choice
+        prompt "High Speed SPI Clock Implementations"
+	depends on HS_SPI_S3C6400 || HS_SPI_S3C2443 || HS_SPI_S3C2450 || HS_SPI_S3C6410 || HS_SPI_S3C2416
+
+config SPICLK_PCLK
+	bool "PCLK"
+	depends on HS_SPI_S3C6400 || HS_SPI_S3C2443 || HS_SPI_S3C2450 || HS_SPI_S3C6410 || HS_SPI_S3C2416
+	help
+	  Say Y here to include support for pclk source.
+
+config SPICLK_EPLL
+	bool "EPLL"
+	depends on HS_SPI_S3C6400 || HS_SPI_S3C2443 || HS_SPI_S3C2450 || HS_SPI_S3C6410 || HS_SPI_S3C2416
+	help
+	  Say Y here to include support for EPLL source.
+
+config SPICLK_USBCLK
+	bool "USBCLK"
+	depends on HS_SPI_S3C6400 || HS_SPI_S3C6410
+	help
+	  Say Y here to include support for USB clock source.
+
+endchoice
+
+config WORD_TRANSIZE
+	bool "Tansfer size as Word"
+	depends on HS_SPI_S3C6400 || HS_SPI_S3C6410
+	help
+	  Say Y here to include support for word transfer size.
+
+
 #
 # Add new SPI master controllers in alphabetical order above this line
 #

@@ -141,6 +141,142 @@ config FB_TILEBLITTING
 
 comment "Frame buffer hardware drivers"
 	depends on FB
+config FB_S3C
+       tristate "S3C SMDK LCD framebuffer support"
+       depends on FB && ARCH_S3C2410 
+
+       default n
+       ---help---
+         TBA
+
+choice
+depends on FB_S3C
+prompt "Select LCD Type"
+default FB_LTE480WV
+config FB_LTD222OV
+       bool "LTD222OV"
+       ---help---
+         TBA
+
+config FB_LTE246QV
+       bool "LTE246QV"
+       ---help---
+         TBA
+
+config FB_LTS222QV
+       bool "LTS222QV"
+       ---help---
+         TBA
+
+config FB_LTV350QV
+       bool "LTV350QV"
+       ---help---
+         TBA
+
+config FB_LTE480WV
+       bool "LTE480WV/LTP700WV"
+       ---help---
+         TBA
+         
+config FB_LMS480QC
+       bool "LMS480QC0"
+       ---help---
+         TBA
+
+endchoice
+
+config FB_BPP
+       tristate "Advanced low level driver options"
+       depends on FB_S3C
+       default n
+       ---help---
+         This enables tile blitting.  Tile blitting is a drawing technique
+
+choice
+depends on FB_BPP
+prompt "Select BPP(Bit Per Pixel) type"
+default FB_BPP_16
+config FB_BPP_8
+       bool "8 BPP"
+       ---help---
+         TBA
+
+config FB_BPP_16
+       bool "16 BPP"
+       ---help---
+         TBA
+
+config FB_BPP_24
+       bool "24 BPP"
+       ---help---
+         TBA
+
+config FB_BPP_32
+       bool "32 BPP"
+       ---help---
+         TBA
+endchoice
+
+choice
+depends on FB_BPP
+prompt "Choose postprocessing "
+default PP_NOT_SUPPORTED
+config PP_NOT_SUPPORTED
+       bool "Postprocessing NOT supported"
+       ---help---
+         TBA
+
+config PP_S3C2443
+       bool "S3C2443 Postprocessing support"
+       depends on ARCH_S3C2443 
+       ---help---
+         TBA
+
+config PP_S3C2460
+       bool "S3C2460 Postprocessing support"
+       depends on ARCH_S3C2460 
+       ---help---
+         TBA
+endchoice
+
+config FB_NUM
+       int "Number of S3C FB windows"
+       depends on ARCH_S3C2410 && FB_BPP 
+	default "1"
+       ---help---
+         TBA
+
+choice
+depends on FB_BPP
+prompt "Choose virtual screen support "
+default VIRTUAL_SCREEN_NOT_SUPPORTED
+config VIRTUAL_SCREEN_NOT_SUPPORTED
+       bool "Virtual screen NOT supported"
+       ---help---
+         TBA
+
+config FB_VIRTUAL_SCREEN
+       bool "S3C virtual screen supported"
+       depends on ARCH_S3C2410 
+       ---help---
+         TBA
+endchoice
+
+choice
+depends on FB_BPP
+prompt "Choose double buffering support "
+default DOUBLE_BUFFERING_NOT_SUPPORTED
+config DOUBLE_BUFFERING_NOT_SUPPORTED
+       bool "double buffering NOT supported"
+       ---help---
+         TBA
+
+config FB_DOUBLE_BUFFERING
+       bool "S3C double buffering supported"
+       depends on ARCH_S3C2410 
+       ---help---
+         TBA
+endchoice
 
 config FB_CIRRUS
 	tristate "Cirrus Logic support"

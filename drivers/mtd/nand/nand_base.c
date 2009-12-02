@@ -303,6 +303,10 @@ static int nand_block_bad(struct mtd_info *mtd, loff_t ofs, int getchip)
 	struct nand_chip *chip = mtd->priv;
 	u16 bad;
 
+	/* jsgood: for Samsung MLC */
+	if ((chip->cellinfo >> 2) & 0x3)
+		ofs += (mtd->erasesize - mtd->writesize);
+
 	if (getchip) {
 		page = (int)(ofs >> chip->page_shift);
 		chipnr = (int)(ofs >> chip->chip_shift);
@@ -1522,13 +1526,7 @@ static int nand_write_page(struct mtd_info *mtd, struct nand_chip *chip,
 	else
 		chip->ecc.write_page(mtd, chip, buf);
 
-	/*
-	 * Cached progamming disabled for now, Not sure if its worth the
-	 * trouble. The speed gain is not very impressive. (2.3->2.6Mib/s)
-	 */
-	cached = 0;
-
-	if (!cached || !(chip->options & NAND_CACHEPRG)) {
+	if (chip->options & NAND_CACHEPRG) {
 
 		chip->cmdfunc(mtd, NAND_CMD_PAGEPROG, -1, -1);
 		status = chip->waitfunc(mtd, chip);
@@ -2123,7 +2121,7 @@ static int nand_block_isbad(struct mtd_info *mtd, loff_t offs)
 	if (offs > mtd->size)
 		return -EINVAL;
 
-	return nand_block_checkbad(mtd, offs, 1, 0);
+	return nand_block_checkbad(mtd, offs, 1, 1);
 }
 
 /**

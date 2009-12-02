@@ -576,8 +576,7 @@ static int s3c2443_setrate_cam(struct clk *clk, unsigned long rate)
 	unsigned long parent_rate = clk_get_rate(clk->parent);
 	unsigned long clkdiv1 = __raw_readl(S3C2443_CLKDIV1);
 
-	rate = s3c2443_roundrate_clksrc16(clk, rate);
-	rate = parent_rate / rate;
+	rate = (int) (parent_rate / 19200000);
 
 	clkdiv1 &= ~S3C2443_CLKDIV1_CAMDIV_MASK;
 	clkdiv1 |= (rate - 1) << S3C2443_CLKDIV1_CAMDIV_SHIFT;
@@ -791,7 +790,24 @@ static struct clk init_clocks[] = {
 		.name		= "usb-bus-host",
 		.id		= -1,
 		.parent		= &clk_usb_bus_host,
-	}
+	},{ 	
+		.name    	= "hsmmc",
+	  	.id	   	= -1,
+	 	.parent  	= &clk_h,
+	 	.enable  	= s3c2443_clkcon_enable_h,
+	 	.ctrlbit 	= S3C2443_HCLKCON_HSMMC
+	},{ 
+		.name    	= "hsmmc-epll",
+	  	.id	   	= -1,
+	  	.parent  	= &clk_epll,
+	},{ 
+		.name    	= "hsmmc-ext",
+	  	.id	   	= -1,
+	  	.parent  	= &clk_ext,
+	  	.enable  	= s3c2443_clkcon_enable_s,
+	  	.ctrlbit 	= S3C2443_SCLKCON_HSMMCCLK_EXT,
+	  	.rate    	= 12 * 1000 * 1000
+	},
 };
 
 /* clocks to add where we need to check their parentage */

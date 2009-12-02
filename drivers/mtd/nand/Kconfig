@@ -126,6 +126,59 @@ config MTD_NAND_S3C2410_HWECC
 	  incorrect ECC generation, and if using these, the default of
 	  software ECC is preferable.
 
+	  If you lay down a device with the hardware ECC, then you will
+	  currently not be able to switch to software, as there is no
+	  implementation for ECC method used by the S3C2410
+
+config MTD_NAND_S3C
+	tristate "NAND Flash support for S3C SoC"
+	depends on ARCH_S3C2410 && MTD_NAND
+	help
+	  This enables the NAND flash controller on the S3C.
+
+	  No board specfic support is done by this driver, each board
+	  must advertise a platform_device for the driver to attach.
+
+config MTD_NAND_S3C_DEBUG
+	bool "S3C NAND driver debug"
+	depends on MTD_NAND_S3C
+	help
+	  Enable debugging of the S3C NAND driver
+
+config MTD_NO_ECC_WARNING
+	bool "S3C MTD NO ECC warning"
+	depends on MTD_NAND_S3C
+	default y
+	help
+	  Disable warnings when reading or writing on NO ECC Mode.
+
+config MTD_NAND_S3C_HWECC
+	bool "S3C NAND Hardware ECC"
+	depends on MTD_NAND_S3C
+	help
+	  Enable the use of the S3C's internal ECC generator when
+	  using NAND. Early versions of the chip have had problems with
+	  incorrect ECC generation, and if using these, the default of
+	  software ECC is preferable.
+
+	  If you lay down a device with the hardware ECC, then you will
+	  currently not be able to switch to software, as there is no
+	  implementation for ECC method used by the S3C
+
+config MTD_NAND_S3C_FLASH_BBT
+	bool "S3C NAND Flash Based BBT Enable"
+	depends on MTD_NAND_S3C
+	default n
+	help
+	  Check y, if use flash based bbt for S3C NAND
+
+config MTD_NAND_S3C_CACHEDPROG
+	bool "S3C NAND Cached Programming Enable"
+	depends on MTD_NAND_S3C
+	default n
+	help
+	  Check y, if use cached programming for S3C NAND
+
 config MTD_NAND_NDFC
 	tristate "NDFC NanD Flash Controller"
 	depends on MTD_NAND && 44x

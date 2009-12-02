@@ -32,6 +32,9 @@ struct s3c24xx_dma_map {
 	struct s3c24xx_dma_addr  hw_addr;
 
 	unsigned long		 channels[S3C2410_DMA_CHANNELS];
+#if defined (CONFIG_CPU_S3C6400) || defined (CONFIG_CPU_S3C6410) 
+	unsigned long		 sdma_sel;
+#endif
 };
 
 struct s3c24xx_dma_selection {

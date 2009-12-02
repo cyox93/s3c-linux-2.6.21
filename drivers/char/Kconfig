@@ -848,6 +848,12 @@ config DS1302
 	  will get access to the real time clock (or hardware clock) built
 	  into your computer.
 
+config S3C_ADC
+	bool "S3C ADC Driver"
+	depends on ARCH_S3C2410
+	help
+	  ADC (A/D Conversion) driver for Samsung S3C2450/2416, S3C6400/6410.
+
 config COBALT_LCD
 	bool "Support for Cobalt LCD"
 	depends on MIPS_COBALT

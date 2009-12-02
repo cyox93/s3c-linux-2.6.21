@@ -28,6 +28,7 @@
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
 #include <asm/mach/irq.h>
+#include <asm/mach/flash.h>
 
 #include <asm/hardware.h>
 #include <asm/io.h>
@@ -147,6 +148,54 @@ static struct mtd_partition smdk_default_nand_part[] = {
 	}
 };
 
+/* ----------------S3C NAND partition information ---------------------*/
+struct mtd_partition s3c_partition_info[] = {
+        {
+                .name		= "Bootloader",
+                .offset		= 0,
+                .size		= (256*SZ_1K),
+                .mask_flags	= MTD_CAP_NANDFLASH,
+        },
+        {
+                .name		= "Kernel",
+                .offset		= (256*SZ_1K),    /* Block number is 0x10 */
+                .size		= (2*SZ_1M) - (256*SZ_1K),
+                .mask_flags	= MTD_CAP_NANDFLASH,
+        },
+#ifdef CONFIG_SPLIT_ROOT_FILESYSTEM
+        {
+                .name		= "Root - Cramfs",
+                .offset		= (2*SZ_1M),    /* Block number is 0x80 */
+                .size		= (48*SZ_1M),
+        },
+#endif
+        {
+                .name		= "File System",
+                .offset		= MTDPART_OFS_APPEND,
+                .size		= MTDPART_SIZ_FULL,
+        }
+};
+
+struct s3c_nand_mtd_info nand_mtd_info = {
+	.chip_nr = 1,
+	.mtd_part_nr = ARRAY_SIZE(s3c_partition_info),
+	.partition = s3c_partition_info,
+};
+
+struct s3c_nand_mtd_info * get_board_nand_mtd_info (void)
+{
+	return &nand_mtd_info;
+}
+
+struct flash_platform_data s3c_onenand_data = {
+	.parts		= s3c_partition_info,
+	.nr_parts	= ARRAY_SIZE(s3c_partition_info),
+};
+
+
+/* ---------------------------------------------------------------------*/
+
+
 static struct s3c2410_nand_set smdk_nand_sets[] = {
 	[0] = {
 		.name		= "NAND",
@@ -172,6 +221,7 @@ static struct s3c2410_platform_nand smdk_nand_info = {
 
 static struct platform_device __initdata *smdk_devs[] = {
 	&s3c_device_nand,
+	&s3c_device_onenand,
 	&smdk_led4,
 	&smdk_led5,
 	&smdk_led6,
@@ -192,7 +242,11 @@ void __init smdk_machine_init(void)
 	s3c2410_gpio_setpin(S3C2410_GPF6, 1);
 	s3c2410_gpio_setpin(S3C2410_GPF7, 1);
 
+	
 	s3c_device_nand.dev.platform_data = &smdk_nand_info;
+	
+	//For s3c nand partition
+	s3c_device_nand.dev.platform_data = &nand_mtd_info;
 
 	platform_add_devices(smdk_devs, ARRAY_SIZE(smdk_devs));
 

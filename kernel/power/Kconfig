@@ -162,3 +162,5 @@ config APM_EMULATION
 	  random kernel OOPSes or reboots that don't seem to be related to
 	  anything, try disabling/enabling this option (or disabling/enabling
 	  APM in your BIOS).
+
+source "drivers/char/s3c-dvfs/Kconfig"

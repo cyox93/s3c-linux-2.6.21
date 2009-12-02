@@ -484,6 +484,43 @@ config TUNER_3036
 	  Say Y here to include support for Philips SAB3036 compatible tuners.
 	  If in doubt, say N.
 
+
+config VIDEO_SAMSUNG
+       bool "S3C SMDK CAMERA support"
+       depends on VIDEO_DEV 
+
+       default n
+       ---help---
+         TBA
+choice
+depends on VIDEO_SAMSUNG
+prompt "Select CIS module type"
+default VIDEO_SAMSUNG_S5K3BA
+
+config VIDEO_SAMSUNG_S5K4BA
+       bool "S5K4BA (2.0M CIS module, 1600x1200)"
+       ---help---
+         TBA
+
+config VIDEO_SAMSUNG_S5K3BA
+       bool "S5K3BA (2.0M CIS module, 1600x1200)"
+       ---help---
+         TBA
+
+config VIDEO_SAMSUNG_S5K3AA
+       bool "S5K3AA (1.3M CIS module, 1280x1024)"
+       ---help---
+         TBA
+
+config VIDEO_ADV7180
+       bool "ADV7180 video decoder"
+       ---help---
+         TBA
+
+endchoice
+
+
+
 config VIDEO_VINO
 	tristate "SGI Vino Video For Linux (EXPERIMENTAL)"
 	depends on I2C && SGI_IP22 && EXPERIMENTAL && VIDEO_V4L2

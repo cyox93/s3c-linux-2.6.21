@@ -196,6 +196,59 @@ static struct irq_chip s3c_irq_chip = {
 	.set_wake	= s3c_irq_wake
 };
 
+
+#if defined(CONFIG_CPU_S3C2450) || defined(CONFIG_CPU_S3C2416)
+/*--- For additional interrupt sources on S3C2450/S3C2416 ----*/
+static void
+s3c2450_irq_mask(unsigned int irqno)
+{
+	unsigned long mask;
+
+	irqno -= IRQ_S3C2450_2D;
+
+	mask = __raw_readl(S3C2450_INTMSK);
+	mask |= 1UL << irqno;
+	__raw_writel(mask, S3C2450_INTMSK);
+}
+
+static inline void
+s3c2450_irq_maskack(unsigned int irqno)
+{
+	unsigned long bitval = 1UL << (irqno - IRQ_S3C2450_2D);
+	unsigned long mask;
+
+	mask = __raw_readl(S3C2450_INTMSK);
+	__raw_writel(mask|bitval, S3C2450_INTMSK);
+
+	__raw_writel(bitval, S3C2450_SRCPND);
+	__raw_writel(bitval, S3C2450_INTPND);
+}
+
+
+static void
+s3c2450_irq_unmask(unsigned int irqno)
+{
+	unsigned long mask;
+
+	irqno -= IRQ_S3C2450_2D;
+
+	mask = __raw_readl(S3C2450_INTMSK);
+	mask &= ~(1UL << irqno);
+	__raw_writel(mask, S3C2450_INTMSK);
+}
+
+struct irq_chip s3c2450_irq_level_chip = {
+	.name		= "s3c2450-level",
+	.ack		= s3c2450_irq_maskack,
+	.mask		= s3c2450_irq_mask,
+	.unmask		= s3c2450_irq_unmask,
+	//.set_wake	= s3c2450_irq_wake
+};
+
+/*--------------------------------------------------------------*/
+#endif
+
+
 static void
 s3c_irqext_mask(unsigned int irqno)
 {
@@ -796,6 +849,30 @@ void __init s3c24xx_init_irq(void)
 		set_irq_handler(irqno, handle_edge_irq);
 		set_irq_flags(irqno, IRQF_VALID);
 	}
+
+#if defined(CONFIG_CPU_S3C2450) || defined(CONFIG_CPU_S3C2416)
+	/* first, clear all interrupts pending... */
+	last = 0;
+	for (i = 0; i < 4; i++) {
+		pend = __raw_readl(S3C2450_INTPND);
+
+		if (pend == 0 || pend == last)
+			break;
+
+		__raw_writel(pend, S3C2450_SRCPND);
+		__raw_writel(pend, S3C2450_INTPND);
+		printk("irq: clearing pending status %08x\n", (int)pend);
+		last = pend;
+	}
+
+	for (irqno = IRQ_S3C2450_2D; irqno <= IRQ_S3C2450_I2S1; irqno++) {
+		irqdbf("registering irq %d (s3c gib irq)\n", irqno);
+
+		set_irq_chip(irqno, &s3c2450_irq_level_chip);
+		set_irq_handler(irqno, handle_level_irq);
+		set_irq_flags(irqno, IRQF_VALID);
+	}
+#endif
 
 	irqdbf("s3c2410: registered interrupt handlers\n");
 }

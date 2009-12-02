@@ -233,6 +233,21 @@ struct clk clk_upll = {
 	.ctrlbit	= 0,
 };
 
+#if defined (CONFIG_CPU_S3C6400) || defined (CONFIG_CPU_S3C6410) 
+struct clk clk_epll = {
+	.name		= "epll",
+	.id		= -1,
+	.rate		= 0,
+	.parent		= NULL,
+	.ctrlbit	= 0,
+#if 0
+	.enable		=,
+	.set_rate	=,
+	.get_rate	=,
+#endif
+};
+#endif
+
 struct clk clk_f = {
 	.name		= "fclk",
 	.id		= -1,
@@ -264,6 +279,48 @@ struct clk clk_usb_bus = {
 	.parent		= &clk_upll,
 };
 
+#if defined (CONFIG_CPU_S3C6400) || defined (CONFIG_CPU_S3C6410) 
+struct clk clk_hx2 = {
+	.name		= "hclkx2",
+	.id		= -1,
+	.rate		= 0,
+	.parent		= NULL,
+	.ctrlbit	= 0,
+};
+
+struct clk clk_s = {
+	.name		= "sclk",
+	.id		= -1,
+	.rate		= 0,
+	.parent		= NULL,
+	.ctrlbit	= 0,
+};
+
+struct clk clk_u = {
+	.name		= "uclk",
+	.id		= -1,
+	.rate		= 0,
+	.parent		= NULL,
+	.ctrlbit	= 0,
+};
+
+struct clk clk_48m = {
+	.name		= "clk48m",
+	.id		= -1,
+	.rate		= 48*1000*1000,
+	.parent		= NULL,
+	.ctrlbit	= 0,
+};
+
+struct clk clk_27m = {
+	.name		= "clk27m",
+	.id		= -1,
+	.rate		= 27*1000*1000,
+	.parent		= NULL,
+	.ctrlbit	= 0,
+};
+
+#endif
 /* clocks that could be registered by external code */
 
 static int s3c24xx_dclk_enable(struct clk *clk, int enable)
@@ -394,7 +451,7 @@ int s3c24xx_register_clock(struct clk *clk)
 
 	if (clk->enable == NULL)
 		clk->enable = clk_null_enable;
-
+	
 	/* add to the list of available clocks */
 
 	mutex_lock(&clocks_mutex);
@@ -416,8 +473,10 @@ int __init s3c24xx_setup_clocks(unsigned long xtal,
 	/* initialise the main system clocks */
 
 	clk_xtal.rate = xtal;
+	
+#if !defined (CONFIG_CPU_S3C6400) && !defined (CONFIG_CPU_S3C6410) 
 	clk_upll.rate = s3c2410_get_pll(__raw_readl(S3C2410_UPLLCON), xtal);
-
+#endif
 	clk_mpll.rate = fclk;
 	clk_h.rate = hclk;
 	clk_p.rate = pclk;
@@ -445,5 +504,29 @@ int __init s3c24xx_setup_clocks(unsigned long xtal,
 	if (s3c24xx_register_clock(&clk_p) < 0)
 		printk(KERN_ERR "failed to register cpu pclk\n");
 
+#if defined (CONFIG_CPU_S3C6400) || defined (CONFIG_CPU_S3C6410) 
+	if (s3c24xx_register_clock(&clk_epll) < 0)
+		printk(KERN_ERR "failed to register epll clock\n");
+	
+	/* register hclkx2  */
+	if (s3c24xx_register_clock(&clk_hx2) < 0)
+		printk(KERN_ERR "failed to register cpu hclkx2\n");
+
+	if (s3c24xx_register_clock(&clk_s) < 0)
+		printk(KERN_ERR "failed to register cpu pclk\n");
+
+	if (s3c24xx_register_clock(&clk_u) < 0)
+		printk(KERN_ERR "failed to register cpu uclk\n");
+
+	if (s3c24xx_register_clock(&clk_48m) < 0)
+		printk(KERN_ERR "failed to register cpu uclk\n");
+
+	if (s3c24xx_register_clock(&clk_27m) < 0)
+		printk(KERN_ERR "failed to register cpu uclk\n");
+#endif
+
 	return 0;
 }
+
+
+

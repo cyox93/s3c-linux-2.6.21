@@ -4,7 +4,7 @@
 #
 # Licensed under GPLv2
 
-config PLAT_S3C24XX
+config PLAT_S3C
 	bool
 	depends on ARCH_S3C2410
 	default y if ARCH_S3C2410
@@ -12,11 +12,31 @@ config PLAT_S3C24XX
 	help
 	  Base platform code for any Samsung S3C device
 
-if PLAT_S3C24XX
+if PLAT_S3C
+
+config PLAT_S3C24XX
+	bool "S3C24XX Platform support"
+	depends on ARCH_S3C2410
+	help
+	  Support for S3C2410, S3C2412, S3C2440, S3C2442, 
+	  and S3C24XX series Samsung Mobile CPU based systems.
+
+config PLAT_S3C64XX
+	bool "S3C64XX Platform support"
+	depends on ARCH_S3C2410
+	default y if CPU_S3C6400 || CPU_S3C6410
+	help
+	  Support for S3C6400 and S3C64XX series Samsung Mobile CPU based systems.
+
+config SPLIT_ROOT_FILESYSTEM
+	bool "S3C MTD has 4 partitions"
+	depends on ARCH_S3C2410 && MTD
+	help
+	  Testing now
 
 config CPU_S3C244X
 	bool
-	depends on ARCH_S3C2410 && (CPU_S3C2440 || CPU_S3C2442)
+	depends on ARCH_S3C2410 && CPU_S3C2443
 	help
 	  Support for S3C2440 and S3C2442 Samsung Mobile CPU based systems.
 
@@ -99,8 +119,17 @@ config S3C2410_DMA_DEBUG
 	  Enable debugging output for the DMA code. This option sends info
 	  to the kernel log, at priority KERN_DEBUG.
 
+config S3C64XX_DMA
+	bool "S3C64XX DMA support"
+	depends on CPU_S3C6400 || CPU_S3C6410
+	help
+	  S3C6400(6410) DMA support. This is needed for drivers like sound which
+	  use the S3C6400(6410)'s DMA system to move data to and from the
+	  peripheral blocks.
+
 config MACH_SMDK
-	bool
+	bool "S3C MACHINE SMDK"
+	depends on ARCH_S3C2410 
 	help
 	  Common machine code for SMDK2410 and SMDK2440
 

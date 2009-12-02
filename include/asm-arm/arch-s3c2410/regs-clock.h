@@ -11,13 +11,16 @@
 */
 
 #ifndef __ASM_ARM_REGS_CLOCK
-#define __ASM_ARM_REGS_CLOCK "$Id: clock.h,v 1.4 2003/04/30 14:50:51 ben Exp $"
+#define __ASM_ARM_REGS_CLOCK "$Id: regs-clock.h,v 1.5 2008/01/18 04:40:13 boyko Exp $"
 
 #define S3C2410_CLKREG(x) ((x) + S3C24XX_VA_CLKPWR)
+#define S3C_CLKREG(x) ((x) + S3C24XX_VA_SYSCON)
 
 #define S3C2410_PLLVAL(_m,_p,_s) ((_m) << 12 | ((_p) << 4) | ((_s)))
 
 #define S3C2410_LOCKTIME    S3C2410_CLKREG(0x00)
+#define S3C24XX_LOCKTIME0   S3C_CLKREG(0x00)
+#define S3C24XX_LOCKTIME1   S3C_CLKREG(0x04)
 #define S3C2410_MPLLCON	    S3C2410_CLKREG(0x04)
 #define S3C2410_UPLLCON	    S3C2410_CLKREG(0x08)
 #define S3C2410_CLKCON	    S3C2410_CLKREG(0x0C)

@@ -24,7 +24,7 @@
  *    o Automatic Mic Bias support
  *    o Jack insertion power event initiation - e.g. hp insertion will enable
  *      sinks, dacs, etc
- *    o Delayed powerdown of audio susbsytem to reduce pops between a quick
+ *    o Delayed powerdown of audio susbsystem to reduce pops between a quick
  *      device reopen.
  *
  *  Todo:
@@ -63,7 +63,7 @@
 #define POP_DEBUG 0
 #if POP_DEBUG
 #define POP_TIME 500 /* 500 msecs - change if pop debug is too fast */
-#define pop_wait(time) schedule_timeout_interruptible(msecs_to_jiffies(time))
+#define pop_wait(time) schedule_timeout_uninterruptible(msecs_to_jiffies(time))
 #define pop_dbg(format, arg...) printk(format, ## arg); pop_wait(POP_TIME)
 #else
 #define pop_dbg(format, arg...)
@@ -221,12 +221,23 @@ static int dapm_update_bits(struct snd_soc_dapm_widget *widget)
 	new = (old & ~(0x1 << widget->shift)) | (power << widget->shift);
 
 	change = old != new;
+
+//#define CONFIG_AC97_FULL_DUPLEX 1
+#ifndef CONFIG_AC97_FULL_DUPLEX
+	/* 
+	 * In the AC97 wm9713 full duplex test case,
+	 * the play-back and then record time, the codec reseted by 
+	 * below sequence.
+	 * so if want to play and then record at same time
+	 * define CONFIG_AC97_FULL_DUPLEX
+	 */
 	if (change) {
 		pop_dbg("pop test %s : %s in %d ms\n", widget->name,
 			widget->power ? "on" : "off", POP_TIME);
 		snd_soc_write(codec, widget->reg, new);
 		pop_wait(POP_TIME);
 	}
+#endif
 	dbg("reg old %x new %x change %d\n", old, new, change);
 	return change;
 }
@@ -523,14 +534,16 @@ static int dapm_power_widgets(struct snd_soc_codec *codec, int event)
 				if (!w->event)
 					continue;
 
-				if (event == SND_SOC_DAPM_STREAM_START) {
-					ret = w->event(w, SND_SOC_DAPM_PRE_PMU);
+ 				if (event == SND_SOC_DAPM_STREAM_START) {
+					ret = w->event(w,
+						NULL, SND_SOC_DAPM_PRE_PMU);
 					if (ret < 0)
-						return ret;
+					return ret;
 				} else if (event == SND_SOC_DAPM_STREAM_STOP) {
-					ret = w->event(w, SND_SOC_DAPM_PRE_PMD);
+					ret = w->event(w,
+						NULL, SND_SOC_DAPM_PRE_PMD);
 					if (ret < 0)
-						return ret;
+					return ret;
 				}
 				continue;
 			}
@@ -539,13 +552,13 @@ static int dapm_power_widgets(struct snd_soc_codec *codec, int event)
 					continue;
 
 				if (event == SND_SOC_DAPM_STREAM_START) {
-					ret = w->event(w, SND_SOC_DAPM_POST_PMU);
+					ret = w->event(w,NULL, SND_SOC_DAPM_POST_PMU);
 					if (ret < 0)
-						return ret;
+					return ret;
 				} else if (event == SND_SOC_DAPM_STREAM_STOP) {
-					ret = w->event(w, SND_SOC_DAPM_POST_PMD);
+					ret = w->event(w,NULL, SND_SOC_DAPM_POST_PMD);
 					if (ret < 0)
-						return ret;
+					return ret;
 				}
 				continue;
 			}
@@ -564,36 +577,36 @@ static int dapm_power_widgets(struct snd_soc_codec *codec, int event)
 				if (w->event) {
 					dbg("power %s event for %s flags %x\n",
 						w->power ? "on" : "off", w->name, w->event_flags);
-					if (power) {
+ 					if (power) {
 						/* power up event */
 						if (w->event_flags & SND_SOC_DAPM_PRE_PMU) {
-							ret = w->event(w, SND_SOC_DAPM_PRE_PMU);
+							ret = w->event(w,NULL, SND_SOC_DAPM_PRE_PMU);
 							if (ret < 0)
 								return ret;
 						}
 						dapm_update_bits(w);
 						if (w->event_flags & SND_SOC_DAPM_POST_PMU){
-							ret = w->event(w, SND_SOC_DAPM_POST_PMU);
-							if (ret < 0)
-								return ret;
+							ret = w->event(w,NULL, SND_SOC_DAPM_POST_PMU);
+						if (ret < 0)
+							return ret;
 						}
 					} else {
 						/* power down event */
 						if (w->event_flags & SND_SOC_DAPM_PRE_PMD) {
-							ret = w->event(w, SND_SOC_DAPM_PRE_PMD);
-							if (ret < 0)
-								return ret;
+							ret = w->event(w,NULL, SND_SOC_DAPM_PRE_PMD);
+						if (ret < 0)
+							return ret;
 						}
 						dapm_update_bits(w);
 						if (w->event_flags & SND_SOC_DAPM_POST_PMD) {
-							ret = w->event(w, SND_SOC_DAPM_POST_PMD);
-							if (ret < 0)
-								return ret;
+							ret = w->event(w,NULL, SND_SOC_DAPM_POST_PMD);
+						if (ret < 0)
+							return ret;
 						}
 					}
 				} else
-					/* no event handler */
-					dapm_update_bits(w);
+				/* no event handler */
+				dapm_update_bits(w);
 			}
 		}
 	}
@@ -692,7 +705,7 @@ static int dapm_mux_update_power(struct snd_soc_dapm_widget *widget,
 	return 0;
 }
 
-/* test and update the power status of a mixer widget */
+/* test and update the power status of a mixer or switch widget */
 static int dapm_mixer_update_power(struct snd_soc_dapm_widget *widget,
 				   struct snd_kcontrol *kcontrol, int reg,
 				   int val_mask, int val, int invert)
@@ -700,7 +713,7 @@ static int dapm_mixer_update_power(struct snd_soc_dapm_widget *widget,
 	struct snd_soc_dapm_path *path;
 	int found = 0;
 
-	if (widget->id != snd_soc_dapm_mixer)
+	if (widget->id != snd_soc_dapm_mixer && widget->id != snd_soc_dapm_switch)
 		return -ENODEV;
 
 	if (!snd_soc_test_bits(widget->codec, reg, val_mask, val))
@@ -882,13 +895,15 @@ int snd_soc_dapm_connect_input(struct snd_soc_codec *codec, const char *sink,
 	if (wsink->id == snd_soc_dapm_input) {
 		if (wsource->id == snd_soc_dapm_micbias ||
 			wsource->id == snd_soc_dapm_mic ||
-			wsink->id == snd_soc_dapm_line)
+			wsink->id == snd_soc_dapm_line ||
+			wsink->id == snd_soc_dapm_output)
 			wsink->ext = 1;
 	}
 	if (wsource->id == snd_soc_dapm_output) {
 		if (wsink->id == snd_soc_dapm_spk ||
 			wsink->id == snd_soc_dapm_hp ||
-			wsink->id == snd_soc_dapm_line)
+			wsink->id == snd_soc_dapm_line ||
+			wsink->id == snd_soc_dapm_input)
 			wsource->ext = 1;
 	}
 
@@ -961,7 +976,6 @@ int snd_soc_dapm_new_widgets(struct snd_soc_codec *codec)
 {
 	struct snd_soc_dapm_widget *w;
 
-	mutex_lock(&codec->mutex);
 	list_for_each_entry(w, &codec->dapm_widgets, list)
 	{
 		if (w->new)
@@ -996,7 +1010,6 @@ int snd_soc_dapm_new_widgets(struct snd_soc_codec *codec)
 	}
 
 	dapm_power_widgets(codec, SND_SOC_DAPM_STREAM_NOP);
-	mutex_unlock(&codec->mutex);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(snd_soc_dapm_new_widgets);
@@ -1017,8 +1030,9 @@ int snd_soc_dapm_get_volsw(struct snd_kcontrol *kcontrol,
 	int reg = kcontrol->private_value & 0xff;
 	int shift = (kcontrol->private_value >> 8) & 0x0f;
 	int rshift = (kcontrol->private_value >> 12) & 0x0f;
-	int mask = (kcontrol->private_value >> 16) & 0xff;
+	int max = (kcontrol->private_value >> 16) & 0xff;
 	int invert = (kcontrol->private_value >> 24) & 0x01;
+	int mask = (1 << fls(max)) - 1;
 
 	/* return the saved value if we are powered down */
 	if (widget->id == snd_soc_dapm_pga && !widget->power) {
@@ -1033,10 +1047,10 @@ int snd_soc_dapm_get_volsw(struct snd_kcontrol *kcontrol,
 			(snd_soc_read(widget->codec, reg) >> rshift) & mask;
 	if (invert) {
 		ucontrol->value.integer.value[0] =
-			mask - ucontrol->value.integer.value[0];
+			max - ucontrol->value.integer.value[0];
 		if (shift != rshift)
 			ucontrol->value.integer.value[1] =
-				mask - ucontrol->value.integer.value[1];
+				max - ucontrol->value.integer.value[1];
 	}
 
 	return 0;
@@ -1059,7 +1073,8 @@ int snd_soc_dapm_put_volsw(struct snd_kcontrol *kcontrol,
 	int reg = kcontrol->private_value & 0xff;
 	int shift = (kcontrol->private_value >> 8) & 0x0f;
 	int rshift = (kcontrol->private_value >> 12) & 0x0f;
-	int mask = (kcontrol->private_value >> 16) & 0xff;
+	int max = (kcontrol->private_value >> 16) & 0xff;
+	int mask = (1 << fls(max)) - 1;
 	int invert = (kcontrol->private_value >> 24) & 0x01;
 	unsigned short val, val2, val_mask;
 	int ret;
@@ -1067,13 +1082,13 @@ int snd_soc_dapm_put_volsw(struct snd_kcontrol *kcontrol,
 	val = (ucontrol->value.integer.value[0] & mask);
 
 	if (invert)
-		val = mask - val;
+		val = max - val;
 	val_mask = mask << shift;
 	val = val << shift;
 	if (shift != rshift) {
 		val2 = (ucontrol->value.integer.value[1] & mask);
 		if (invert)
-			val2 = mask - val2;
+			val2 = max - val2;
 		val_mask |= mask << rshift;
 		val |= val2 << rshift;
 	}
@@ -1091,13 +1106,15 @@ int snd_soc_dapm_put_volsw(struct snd_kcontrol *kcontrol,
 	dapm_mixer_update_power(widget, kcontrol, reg, val_mask, val, invert);
 	if (widget->event) {
 		if (widget->event_flags & SND_SOC_DAPM_PRE_REG) {
-			ret = widget->event(widget, SND_SOC_DAPM_PRE_REG);
-			if (ret < 0)
+			ret = widget->event(widget, kcontrol,SND_SOC_DAPM_PRE_REG);
+			if (ret < 0) {
+				ret = 1;
 				goto out;
+				}
 		}
 		ret = snd_soc_update_bits(widget->codec, reg, val_mask, val);
 		if (widget->event_flags & SND_SOC_DAPM_POST_REG)
-			ret = widget->event(widget, SND_SOC_DAPM_POST_REG);
+			ret = widget->event(widget,kcontrol, SND_SOC_DAPM_POST_REG);
 	} else
 		ret = snd_soc_update_bits(widget->codec, reg, val_mask, val);
 
@@ -1172,13 +1189,13 @@ int snd_soc_dapm_put_enum_double(struct snd_kcontrol *kcontrol,
 	dapm_mux_update_power(widget, kcontrol, mask, mux, e);
 	if (widget->event) {
 		if (widget->event_flags & SND_SOC_DAPM_PRE_REG) {
-			ret = widget->event(widget, SND_SOC_DAPM_PRE_REG);
+			ret = widget->event(widget, kcontrol, SND_SOC_DAPM_PRE_REG);
 			if (ret < 0)
 				goto out;
 		}
 		ret = snd_soc_update_bits(widget->codec, e->reg, mask, val);
 		if (widget->event_flags & SND_SOC_DAPM_POST_REG)
-			ret = widget->event(widget, SND_SOC_DAPM_POST_REG);
+			ret = widget->event(widget, kcontrol, SND_SOC_DAPM_POST_REG);
 	} else
 		ret = snd_soc_update_bits(widget->codec, e->reg, mask, val);
 
@@ -1276,6 +1293,29 @@ int snd_soc_dapm_stream_event(struct snd_soc_codec *codec,
 	return 0;
 }
 EXPORT_SYMBOL_GPL(snd_soc_dapm_stream_event);
+
+/**
+ * snd_soc_dapm_device_event - send a device event to the dapm core
+ * @socdev: audio device
+ * @event: device event
+ *
+ * Sends a device event to the dapm core. The core then makes any
+ * necessary machine or codec power changes..
+ *
+ * Returns 0 for success else error.
+ */
+int snd_soc_dapm_device_event(struct snd_soc_device *socdev, int event)
+{
+	struct snd_soc_codec *codec = socdev->codec;
+	struct snd_soc_machine *machine = socdev->machine;
+	
+	if (machine->dapm_event)
+		machine->dapm_event(machine, event);
+	if (codec->dapm_event)
+		codec->dapm_event(codec, event);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(snd_soc_dapm_device_event);
 
 /**
  * snd_soc_dapm_set_endpoint - set audio endpoint status

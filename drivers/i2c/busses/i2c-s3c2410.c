@@ -77,8 +77,8 @@ struct s3c24xx_i2c {
 static struct s3c2410_platform_i2c s3c24xx_i2c_default_platform = {
 	.flags		= 0,
 	.slave_addr	= 0x10,
-	.bus_freq	= 100*1000,
-	.max_freq	= 400*1000,
+	.bus_freq	= 200*1000,	/* org: 100k */
+	.max_freq	= 200*1000,	/* org: 400k */
 	.sda_delay	= S3C2410_IICLC_SDA_DELAY5 | S3C2410_IICLC_FILTER_ON,
 };
 
@@ -695,10 +695,18 @@ static int s3c24xx_i2c_init(struct s3c24xx_i2c *i2c)
 
 	pdata = s3c24xx_i2c_get_platformdata(i2c->adap.dev.parent);
 
+#if !defined(CONFIG_CPU_S3C6400) && !defined(CONFIG_CPU_S3C6410)
 	/* inititalise the gpio */
 
 	s3c2410_gpio_cfgpin(S3C2410_GPE15, S3C2410_GPE15_IICSDA);
 	s3c2410_gpio_cfgpin(S3C2410_GPE14, S3C2410_GPE14_IICSCL);
+#else
+	/*Set I2C port to controll WM8753 codec*/
+	s3c_gpio_pullup(S3C_GPB5, 0);
+	s3c_gpio_pullup(S3C_GPB6, 0);
+	s3c_gpio_cfgpin(S3C_GPB5, S3C_GPB5_I2C_SCL);
+	s3c_gpio_cfgpin(S3C_GPB6, S3C_GPB6_I2C_SDA);
+#endif
 
 	/* write slave address */
 	
@@ -836,7 +844,7 @@ static int s3c24xx_i2c_probe(struct platform_device *pdev)
 
 	i2c->irq = res;
 		
-	dev_dbg(&pdev->dev, "irq resource %p (%ld)\n", res, res->start);
+	dev_dbg(&pdev->dev, "irq resource %p (%x)\n", res, res->start);
 
 	ret = i2c_add_adapter(&i2c->adap);
 	if (ret < 0) {

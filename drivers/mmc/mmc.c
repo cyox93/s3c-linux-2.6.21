@@ -583,6 +583,13 @@ static void mmc_decode_cid(struct mmc_card *card)
 			mmc_card_set_bad(card);
 			break;
 		}
+
+#ifdef CONFIG_MMC_SUPPORT_MOVINAND
+		if (card->cid.manfid == 0x00000015) {
+			mmc_card_set_movinand(card);
+			printk("set movinand %x\n\n", card->state);
+		}
+#endif
 	}
 }
 
@@ -1056,12 +1063,19 @@ static void mmc_process_ext_csds(struct mmc_host *host)
 	}
 
 	list_for_each_entry(card, &host->cards, node) {
+#ifndef CONFIG_HSMMC_S3C
 		if (card->state & (MMC_STATE_DEAD|MMC_STATE_PRESENT))
 			continue;
+#endif
 		if (mmc_card_sd(card))
 			continue;
 		if (card->csd.mmca_vsn < CSD_SPEC_VER_4)
 			continue;
+
+#ifdef MULTICARD_ON_SINGLEBUS_SUPPORT
+		/* For 2 moviNANDs on a single MMC bus */
+		host->ios.bus_width = MMC_BUS_WIDTH_1;
+#endif
 
 		err = mmc_select_card(host, card);
 		if (err != MMC_ERR_NONE) {
@@ -1100,6 +1114,15 @@ static void mmc_process_ext_csds(struct mmc_host *host)
 			continue;
 		}
 
+		/* to detect sector addr, we can use ext_csd[215:212]. by scsuh */
+		{
+			uint sector = (ext_csd[215]<<24) | (ext_csd[214]<<16) |
+					(ext_csd[213]<<8) | ext_csd[212];
+			if (sector > 0x00600000) {				
+				mmc_card_set_blockaddr(card);
+				card->csd.capacity = sector;	// sector mode card size patch by jsgood
+			}
+		}
 		switch (ext_csd[EXT_CSD_CARD_TYPE]) {
 		case EXT_CSD_CARD_TYPE_52 | EXT_CSD_CARD_TYPE_26:
 			card->ext_csd.hs_max_dtr = 52000000;
@@ -1139,7 +1162,29 @@ static void mmc_process_ext_csds(struct mmc_host *host)
 		}
 
 		/* Check for host support for wide-bus modes. */
-		if (host->caps & MMC_CAP_4_BIT_DATA) {
+		if (host->caps & MMC_CAP_8_BIT_DATA) {
+			/* Activate 8-bit support. */
+			cmd.opcode = MMC_SWITCH;
+			cmd.arg = (MMC_SWITCH_MODE_WRITE_BYTE << 24) |
+				  (EXT_CSD_BUS_WIDTH << 16) |
+				  (EXT_CSD_BUS_WIDTH_8 << 8) |
+				  EXT_CSD_CMD_SET_NORMAL;
+			cmd.flags = MMC_RSP_R1B | MMC_CMD_AC;
+
+			err = mmc_wait_for_cmd(host, &cmd, CMD_RETRIES);
+			if (err != MMC_ERR_NONE) {
+				printk("%s: failed to switch card to "
+				       "mmc v4 8-bit bus mode.\n",
+				       mmc_hostname(card->host));
+				continue;
+			}
+
+			host->ios.bus_width = MMC_BUS_WIDTH_8;
+			mmc_set_ios(host);
+		}
+
+		/* Check for host support for wide-bus modes. */
+		else if (host->caps & MMC_CAP_4_BIT_DATA) {
 			/* Activate 4-bit support. */
 			cmd.opcode = MMC_SWITCH;
 			cmd.arg = (MMC_SWITCH_MODE_WRITE_BYTE << 24) |
@@ -1159,6 +1204,7 @@ static void mmc_process_ext_csds(struct mmc_host *host)
 			host->ios.bus_width = MMC_BUS_WIDTH_4;
 			mmc_set_ios(host);
 		}
+
 	}
 
 	kfree(ext_csd);
@@ -1432,7 +1478,12 @@ static void mmc_setup(struct mmc_host *host)
 		if (err != MMC_ERR_NONE) {
 			host->mode = MMC_MODE_MMC;
 
-			err = mmc_send_op_cond(host, 0, &ocr);
+			/*
+			 * to detect sector mode MMC cards, we need to send
+			 * (1<<30) not 0. by scsuh
+			 */
+			err = mmc_send_op_cond(host, 0x40FF8000, &ocr);
+			
 			if (err != MMC_ERR_NONE)
 				return;
 		}
@@ -1488,7 +1539,11 @@ static void mmc_setup(struct mmc_host *host)
 			mmc_send_app_op_cond(host, host->ocr | (sd2 << 30), NULL);
 		}
 	} else {
-		mmc_send_op_cond(host, host->ocr, NULL);
+		/*
+		 * to detect sector mode MMC cards, we must send
+		 * (1<<30) not 0. by scsuh
+		 */
+		mmc_send_op_cond(host, host->ocr | (1<<30), NULL);
 	}
 
 	mmc_discover_cards(host);
@@ -1644,6 +1699,9 @@ int mmc_add_host(struct mmc_host *host)
 		mmc_power_off(host);
 		mmc_detect_change(host, 0);
 	}
+#ifdef CONFIG_USE_MMC_AS_ROOT
+	mmc_rescan(&host->detect.work);
+#endif
 
 	return ret;
 }

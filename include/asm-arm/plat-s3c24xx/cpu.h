@@ -28,6 +28,9 @@ struct map_desc;
 
 /* core initialisation functions */
 
+#if defined (CONFIG_CPU_S3C6400) || defined (CONFIG_CPU_S3C6410) 
+extern void s3c_init_irq(void);
+#endif
 extern void s3c24xx_init_irq(void);
 
 extern void s3c24xx_init_io(struct map_desc *mach_desc, int size);
@@ -65,6 +68,9 @@ extern struct sys_timer s3c24xx_timer;
 
 extern struct sysdev_class s3c2410_sysclass;
 extern struct sysdev_class s3c2412_sysclass;
+extern struct sysdev_class s3c2416_sysclass;
 extern struct sysdev_class s3c2440_sysclass;
 extern struct sysdev_class s3c2442_sysclass;
 extern struct sysdev_class s3c2443_sysclass;
+extern struct sysdev_class s3c2450_sysclass;
+extern struct sysdev_class s3c6400_sysclass;

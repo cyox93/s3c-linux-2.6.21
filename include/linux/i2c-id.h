@@ -82,8 +82,9 @@
 #define I2C_DRIVERID_STM41T00	52	/* real time clock		*/
 #define I2C_DRIVERID_UDA1342	53	/* UDA1342 audio codec		*/
 #define I2C_DRIVERID_ADV7170	54	/* video encoder		*/
+#define I2C_DRIVERID_RADEON	55	/* I2C bus on Radeon boards	*/
 #define I2C_DRIVERID_MAX1617	56	/* temp sensor			*/
-#define I2C_DRIVERID_SAA7191	57	/* video decoder		*/
+#define I2C_DRIVERID_SAA7191	57	/* video encoder		*/
 #define I2C_DRIVERID_INDYCAM	58	/* SGI IndyCam			*/
 #define I2C_DRIVERID_BT832	59	/* CMOS camera video processor	*/
 #define I2C_DRIVERID_TDA9887	60	/* TDA988x IF-PLL demodulator	*/
@@ -117,6 +118,9 @@
 #define I2C_DRIVERID_ISL1208	88	/* Intersil ISL1208 RTC		*/
 #define I2C_DRIVERID_WM8731		89	/* Wolfson WM8731 audio codec */
 #define I2C_DRIVERID_WM8750		90	/* Wolfson WM8750 audio codec */
+#define I2C_DRIVERID_WM8753	91	/* Wolfson WM8753 audio codec */
+#define I2C_DRIVERID_LM4857 	92 	/* LM4857 Audio Amplifier */
+#define I2C_DRIVERID_WM8580	93	/* Wolfson WM8580 audio codec */
 
 #define I2C_DRIVERID_I2CDEV	900
 #define I2C_DRIVERID_ARP        902    /* SMBus ARP Client              */
@@ -133,6 +137,7 @@
 #define I2C_DRIVERID_ADM1021 1008
 #define I2C_DRIVERID_ADM9240 1009
 #define I2C_DRIVERID_LTC1710 1010
+#define I2C_DRIVERID_ICSPLL 1012
 #define I2C_DRIVERID_BT869 1013
 #define I2C_DRIVERID_MAXILIFE 1014
 #define I2C_DRIVERID_MATORB 1015
@@ -144,6 +149,7 @@
 #define I2C_DRIVERID_MTP008 1023
 #define I2C_DRIVERID_DS1621 1024
 #define I2C_DRIVERID_ADM1024 1025
+#define I2C_DRIVERID_IT87 1026
 #define I2C_DRIVERID_CH700X 1027 /* single driver for CH7003-7009 digital pc to tv encoders */
 #define I2C_DRIVERID_FSCPOS 1028
 #define I2C_DRIVERID_FSCSCY 1029
@@ -159,6 +165,12 @@
 #define I2C_DRIVERID_FSCHER 1046
 #define I2C_DRIVERID_W83L785TS 1047
 #define I2C_DRIVERID_OV7670 1048	/* Omnivision 7670 camera */
+
+#define I2C_DRIVERID_S5K_3XA	1500	/* Samsung MobileAP I2C adapter	*/
+#define I2C_DRIVERID_S5K_53BEA	1501	/* Samsung MobileAP I2C adapter	*/
+#define I2C_DRIVERID_S5K_532	1502	/* Samsung MobileAP I2C adapter	*/
+#define I2C_DRIVERID_S5K_3BA	1503	/* Samsung MobileAP I2C adapter	*/
+#define I2C_DRIVERID_S5K_4XA	1504	/* Samsung MobileAP I2C adapter	*/
 
 /*
  * ---- Adapter types ----------------------------------------------------
@@ -212,6 +224,9 @@
 /* --- MPC8xx PowerPC adapters						*/
 #define I2C_HW_MPC8XX_EPON	0x110000 /* Eponymous MPC8xx I2C adapter */
 
+/* --- ITE based algorithms						*/
+#define I2C_HW_I_IIC		0x080000 /* controller on the ITE */
+
 /* --- PowerPC on-chip adapters						*/
 #define I2C_HW_OCP		0x120000 /* IBM on-chip I2C adapter */
 
@@ -232,6 +247,7 @@
 #define I2C_HW_SMBUS_PIIX4	0x040000
 #define I2C_HW_SMBUS_ALI15X3	0x040001
 #define I2C_HW_SMBUS_VIA2	0x040002
+#define I2C_HW_SMBUS_VOODOO3	0x040003
 #define I2C_HW_SMBUS_I801	0x040004
 #define I2C_HW_SMBUS_AMD756	0x040005
 #define I2C_HW_SMBUS_SIS5595	0x040006
@@ -251,6 +267,9 @@
 
 /* --- ISA pseudo-adapter						*/
 #define I2C_HW_ISA		0x050000
+
+/* --- IPMI pseudo-adapter						*/
+#define I2C_HW_IPMI		0x0b0000
 
 /* --- IPMB adapter						*/
 #define I2C_HW_IPMB		0x0c0000

@@ -327,11 +327,18 @@ static int scan_block_full(struct mtd_info *mtd, struct nand_bbt_descr *bd,
 /*
  * Scan a given block partially
  */
-static int scan_block_fast(struct mtd_info *mtd, struct nand_bbt_descr *bd,
+int scan_block_fast(struct mtd_info *mtd, struct nand_bbt_descr *bd,
 			   loff_t offs, uint8_t *buf, int len)
 {
 	struct mtd_oob_ops ops;
 	int j, ret;
+	
+	/* jsgood: for Samsung MLC */
+	struct nand_chip *nand = mtd->priv;
+
+	/* jsgood: for Samsung MLC */
+	if ((nand->cellinfo >> 2) & 0x3)
+		offs += (mtd->erasesize - (mtd->writesize * len));
 
 	ops.ooblen = mtd->oobsize;
 	ops.oobbuf = buf;

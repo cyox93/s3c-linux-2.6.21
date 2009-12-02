@@ -21,6 +21,7 @@
  * partitions	 = mtd partition list
 */
 
+
 struct s3c2410_nand_set {
 	int			nr_chips;
 	int			nr_partitions;
@@ -41,5 +42,11 @@ struct s3c2410_platform_nand {
 
 	void			(*select_chip)(struct s3c2410_nand_set *,
 					       int chip);
+};
+
+struct s3c_nand_mtd_info {
+	uint chip_nr;
+	uint mtd_part_nr;
+	struct mtd_partition *partition;
 };
 

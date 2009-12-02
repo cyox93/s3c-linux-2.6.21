@@ -36,7 +36,11 @@
   #define SMC_USE_PXA_DMA	1
   #define SMC_USE_16BIT		0
   #define SMC_USE_32BIT		1
-#endif
+#elif defined(CONFIG_MACH_SMDK6410) || defined(CONFIG_MACH_SMDK2450)
+  #define SMC_USE_PXA_DMA      0
+  #define SMC_USE_16BIT        0
+  #define SMC_USE_32BIT        1
+#endif 
 
 
 /*
@@ -44,27 +48,27 @@
  */
 
 #if	SMC_USE_16BIT
-#define SMC_inb(a, r)			 readb((a) + (r))
-#define SMC_inw(a, r)			 readw((a) + (r))
+#define SMC_inb(a, r)			 __raw_readb((a) + (r))
+#define SMC_inw(a, r)			 __raw_readw((a) + (r))
 #define SMC_inl(a, r)			 ((SMC_inw(a, r) & 0xFFFF)+(SMC_inw(a+2, r)<<16))
-#define SMC_outb(v, a, r)		 writeb(v, (a) + (r))
-#define SMC_outw(v, a, r)		 writew(v, (a) + (r))
+#define SMC_outb(v, a, r)		 __raw_writeb(v, (a) + (r))
+#define SMC_outw(v, a, r)		 __raw_writew(v, (a) + (r))
 #define SMC_outl(v, a, r) 			 \
 	do{					 \
 		 writel(v & 0xFFFF, (a) + (r));	 \
 		 writel(v >> 16, (a) + (r) + 2); \
 	 } while (0)
-#define SMC_insl(a, r, p, l)	 readsw((short*)((a) + (r)), p, l*2)
-#define SMC_outsl(a, r, p, l)	 writesw((short*)((a) + (r)), p, l*2)
+#define SMC_insl(a, r, p, l)	 __raw_readsw((short*)((a) + (r)), p, l*2)
+#define SMC_outsl(a, r, p, l)	 __raw_writesw((short*)((a) + (r)), p, l*2)
 
 #elif	SMC_USE_32BIT
-#define SMC_inb(a, r)		 readb((a) + (r))
-#define SMC_inw(a, r)		 readw((a) + (r))
-#define SMC_inl(a, r)		 readl((a) + (r))
-#define SMC_outb(v, a, r)	 writeb(v, (a) + (r))
-#define SMC_outl(v, a, r)	 writel(v, (a) + (r))
-#define SMC_insl(a, r, p, l)	 readsl((int*)((a) + (r)), p, l)
-#define SMC_outsl(a, r, p, l)	 writesl((int*)((a) + (r)), p, l)
+#define SMC_inb(a, r)		 __raw_readb((a) + (r))
+#define SMC_inw(a, r)		 __raw_readw((a) + (r))
+#define SMC_inl(a, r)		 __raw_readl((a) + (r))
+#define SMC_outb(v, a, r)	 __raw_writeb(v, (a) + (r))
+#define SMC_outl(v, a, r)	 __raw_writel(v, (a) + (r))
+#define SMC_insl(a, r, p, l)	 __raw_readsl((int*)((a) + (r)), p, l)
+#define SMC_outsl(a, r, p, l)	 __raw_writesl((int*)((a) + (r)), p, l)
 
 #endif /* SMC_USE_16BIT */
 

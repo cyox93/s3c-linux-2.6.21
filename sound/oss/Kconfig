@@ -752,3 +752,32 @@ config SOUND_SH_DAC_AUDIO_CHANNEL
 	int "DAC channel"
 	default "1"
 	depends on SOUND_SH_DAC_AUDIO
+
+config SOUND_S3C6400_AC97
+        tristate "AC97 Sound Support of SMDK6400"
+        depends on  SOUND_PRIME && CPU_S3C6400
+        help
+          Answer Y to use the AC97 Sound Driver of S3C6400.
+                depends on SOUND_PRIME!=n && CPU_S3C6400
+
+config SOUND_S3C6400_I2S
+        tristate "I2S Sound Support of SMDK6400"
+        depends on  SOUND_PRIME && CPU_S3C6400
+        help
+          Answer Y to use the IIS Sound Driver of S3C6400.
+                depends on SOUND_PRIME!=n && CPU_S3C6400
+
+config SOUND_S3C24XX_I2S
+        tristate "I2S Sound Support of SMDK2443"
+	depends on SOUND_PRIME && CPU_S3C2443
+        help
+          Answer Y to use the IIS Sound Driver of S3C2443.
+                depends on SOUND_PRIME!=n && CPU_S3C2443 
+
+config SOUND_S3C6410_I2S
+        tristate "I2S Sound Support of SMDK6410"
+	depends on SOUND_PRIME && CPU_S3C6410
+        help
+          Answer Y to use the IIS Sound Driver of S3C6410 for UDA1342.
+                depends on SOUND_PRIME!=n && CPU_S3C2443 
+

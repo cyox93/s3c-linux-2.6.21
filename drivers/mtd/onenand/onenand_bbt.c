@@ -14,7 +14,13 @@
 
 #include <linux/slab.h>
 #include <linux/mtd/mtd.h>
+
+#if defined(CONFIG_CPU_S3C6400) || defined(CONFIG_CPU_S3C6410)
+#include "s3c_onenand.h"
+#else
 #include <linux/mtd/onenand.h>
+#endif
+
 #include <linux/mtd/compatmac.h>
 
 extern int onenand_bbt_read_oob(struct mtd_info *mtd, loff_t from,

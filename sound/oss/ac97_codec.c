@@ -253,7 +253,12 @@ static struct ac97_mixer_hw {
 	unsigned char offset;
 	int scale;
 } ac97_hw[SOUND_MIXER_NRDEVICES]= {
+#ifndef CONFIG_MACH_SMDK6400	
 	[SOUND_MIXER_VOLUME]	=	{AC97_MASTER_VOL_STEREO,64},
+#else
+	/* SMDK6400 use headphone out of WM9713 */
+	[SOUND_MIXER_VOLUME]	=	{AC97_HEADPHONE_VOL,64},
+#endif
 	[SOUND_MIXER_BASS]	=	{AC97_MASTER_TONE,	16},
 	[SOUND_MIXER_TREBLE]	=	{AC97_MASTER_TONE,	16},
 	[SOUND_MIXER_PCM]	=	{AC97_PCMOUT_VOL,	32},
@@ -1334,7 +1339,11 @@ unsigned int ac97_set_dac_rate(struct ac97_codec *codec, unsigned int rate)
 	unsigned int new_rate = rate;
 	u32 dacp;
 	u32 mast_vol, phone_vol, mono_vol, pcm_vol;
+#ifndef CONFIG_MACH_SMDK6400
 	u32 mute_vol = 0x8000;	/* The mute volume? */
+#else
+	u32 mute_vol = 0x8080;	/* The mute volume? */
+#endif
 
 	if(rate != codec->codec_read(codec, AC97_PCM_FRONT_DAC_RATE))
 	{
@@ -1384,14 +1393,23 @@ unsigned int ac97_set_adc_rate(struct ac97_codec *codec, unsigned int rate)
 
 	if(rate != codec->codec_read(codec, AC97_PCM_LR_ADC_RATE))
 	{
+#ifndef CONFIG_MACH_SMDK6400		
 		/* Power down the ADC */
 		dacp=codec->codec_read(codec, AC97_POWER_CONTROL);
 		codec->codec_write(codec, AC97_POWER_CONTROL, dacp|0x0100);
+#else
+		/* Power up the ADC */
+		dacp=codec->codec_read(codec, AC97_POWER_CONTROL);
+		codec->codec_write(codec, AC97_POWER_CONTROL, dacp&~(0x0100));
+
+#endif //CONFIG_MACH_SMDK6400
 		/* Load the rate and read the effective rate */
 		codec->codec_write(codec, AC97_PCM_LR_ADC_RATE, rate);
 		new_rate=codec->codec_read(codec, AC97_PCM_LR_ADC_RATE);
+#ifndef CONFIG_MACH_SMDK6400
 		/* Power it back up */
 		codec->codec_write(codec, AC97_POWER_CONTROL, dacp);
+#endif //CONFIG_MACH_SMDK6400
 	}
 	return new_rate;
 }

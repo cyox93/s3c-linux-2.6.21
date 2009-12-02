@@ -100,6 +100,27 @@ unsigned int s3c2410_gpio_getcfg(unsigned int pin)
 
 EXPORT_SYMBOL(s3c2410_gpio_getcfg);
 
+#if defined(CONFIG_CPU_S3C2443) || defined(CONFIG_CPU_S3C2450) || defined(CONFIG_CPU_S3C2416)
+void s3c2410_gpio_pullup(unsigned int pin, unsigned int to)
+{
+	void __iomem *base = S3C24XX_GPIO_BASE(pin);
+	unsigned long offs = S3C2410_GPIO_OFFSET(pin)*2;
+	unsigned long flags;
+	unsigned long up;
+
+	if (pin < S3C2410_GPIO_BANKB)
+		return;
+
+	local_irq_save(flags);
+
+	up = __raw_readl(base + 0x08);
+	up &= ~(0x3 << offs);
+	up |= to << offs;
+	__raw_writel(up, base + 0x08);
+
+	local_irq_restore(flags);
+}
+#else
 void s3c2410_gpio_pullup(unsigned int pin, unsigned int to)
 {
 	void __iomem *base = S3C24XX_GPIO_BASE(pin);
@@ -119,6 +140,7 @@ void s3c2410_gpio_pullup(unsigned int pin, unsigned int to)
 
 	local_irq_restore(flags);
 }
+#endif
 
 EXPORT_SYMBOL(s3c2410_gpio_pullup);
 
@@ -186,3 +208,192 @@ int s3c2410_gpio_getirq(unsigned int pin)
 }
 
 EXPORT_SYMBOL(s3c2410_gpio_getirq);
+
+
+#if defined(CONFIG_PLAT_S3C64XX)
+/* --------------------------------------------------------------
+ *                             Set up GPIOs
+ *-------------------------------------------------------------*/
+static void __iomem *gpio_base_offset[]=
+{
+	S3C24XX_VA_GPIO + 0x00,		//GPA ,4bit
+	S3C24XX_VA_GPIO + 0x20,		//GPB ,4bit
+	S3C24XX_VA_GPIO + 0x40,		//GPC ,4bit
+	S3C24XX_VA_GPIO + 0x60,		//GPD ,4bit
+	S3C24XX_VA_GPIO + 0x80,		//GPE ,4bit
+	S3C24XX_VA_GPIO + 0xA0,		//GPF ,2bit
+	S3C24XX_VA_GPIO + 0xC0,		//GPG ,4bit
+	S3C24XX_VA_GPIO + 0xE0,		//GPH ,4bit
+	S3C24XX_VA_GPIO + 0x100,	//GPI ,2bit
+	S3C24XX_VA_GPIO + 0x120,	//GPJ ,2bit
+	S3C24XX_VA_GPIO + 0x140,	//GPO ,2bit
+	S3C24XX_VA_GPIO + 0x160,	//GPP ,2bit
+	S3C24XX_VA_GPIO + 0x180,	//GPQ ,2bit
+	S3C24XX_VA_GPIO + 0x800,	//GPK ,4bit
+	S3C24XX_VA_GPIO + 0x810,	//GPL ,4bit
+	S3C24XX_VA_GPIO + 0x820,	//GPM ,4bit
+	S3C24XX_VA_GPIO + 0x830		//GPN ,2bit
+};
+
+void s3c_gpio_cfgpin(unsigned int pin, unsigned int function)
+{
+	void __iomem *base = gpio_base_offset[S3C_GPIO_BASE(pin)];
+	unsigned long mask;
+	unsigned long con;
+	unsigned long flags;
+	unsigned long offs =  S3C_GPIO_OFFSET(pin);
+
+	if ((pin < S3C_GPIO_BANKF)||((pin >=S3C_GPIO_BANKG)&&\
+		(pin<S3C_GPIO_BANKI))||((pin>=S3C_GPIO_BANKK)&&\
+		(pin<S3C_GPIO_BANKN)))
+	{
+		offs = (offs) *4;
+
+		if((pin == S3C_GPH8)||(pin==S3C_GPH9)||\
+			(pin>=S3C_GPK8&&pin<=S3C_GPK15)||\
+			(pin>=S3C_GPL8&&pin<=S3C_GPL14))
+		{
+			base = base + 0x04;
+  	           	/*  only for con1:8~14 or 15 regiter configuratio nvalue change ...*/
+			offs = offs - 32; 
+		}
+		mask = 0xF << offs;
+	}
+	else
+	{
+	       offs = offs*2;
+		mask = 0x3 << offs;
+	}
+
+	local_irq_save(flags);
+
+	con  = __raw_readl(base + 0x00);
+	con &= ~mask;
+	con |= (function << offs);
+
+	__raw_writel(con, base + 0x00);
+
+	local_irq_restore(flags);
+}
+
+EXPORT_SYMBOL(s3c_gpio_cfgpin);
+
+unsigned int s3c_gpio_getcfg(unsigned int pin)
+{
+	void __iomem *base = gpio_base_offset[S3C_GPIO_BASE(pin)];
+	unsigned long mask;
+
+	if ((pin < S3C_GPIO_BANKF)||((pin >=S3C_GPIO_BANKG)&&\
+		(pin<S3C_GPIO_BANKI))||((pin>=S3C_GPIO_BANKK)&&\
+		(pin<S3C_GPIO_BANKN)))
+	{
+		mask = 0xF << S3C_GPIO_OFFSET(pin)*4;
+		if((pin == S3C_GPH8)||(pin==S3C_GPH9)||\
+			(pin>=S3C_GPK8&&pin<=S3C_GPK15)||\
+			(pin>=S3C_GPL8&&pin<=S3C_GPL14))
+		{
+			base = base + 0x04;
+			mask = 0xF << (S3C_GPIO_OFFSET(pin)*4 -32); 
+		}
+
+	}
+	else
+	{
+		mask = 0x3 << S3C_GPIO_OFFSET(pin)*2;
+	}
+
+	return __raw_readl(base) & mask;
+}
+
+EXPORT_SYMBOL(s3c_gpio_getcfg);
+
+void s3c_gpio_pullup(unsigned int pin, unsigned int to)
+{
+	void __iomem *base = gpio_base_offset[S3C_GPIO_BASE(pin)];
+	unsigned long offs = S3C_GPIO_OFFSET(pin)*2;
+	unsigned long flags;
+	unsigned long up;
+	unsigned long mask;
+
+	mask = 0x3 << offs;
+
+	if((pin>=S3C_GPH0 && pin<=S3C_GPH9)||\
+		(pin>=S3C_GPK0 && pin<=S3C_GPK15)||\
+		(pin>=S3C_GPL0 && pin<=S3C_GPL14))
+	{
+		base = base+0x04;
+	}
+
+	local_irq_save(flags);
+
+	up = __raw_readl(base + 0x08);
+	up &= ~mask;
+	up |= to << offs;
+	__raw_writel(up, base + 0x08);
+
+	local_irq_restore(flags);
+}
+
+EXPORT_SYMBOL(s3c_gpio_pullup);
+
+void s3c_gpio_setpin(unsigned int pin, unsigned int to)
+{
+	void __iomem *base = gpio_base_offset[S3C_GPIO_BASE(pin)];
+	unsigned long offs = S3C_GPIO_OFFSET(pin);
+	unsigned long flags;
+	unsigned long dat;
+
+	if((pin>=S3C_GPH0 && pin<=S3C_GPH9)||\
+		(pin>=S3C_GPK0 && pin<=S3C_GPK15)||\
+		(pin>=S3C_GPL0 && pin<=S3C_GPL14))
+	{
+		base = base+0x04;
+	}
+
+	local_irq_save(flags);
+
+	dat = __raw_readl(base + 0x04);
+	dat &= ~(1 << offs);
+	dat |= to << offs;
+	__raw_writel(dat, base + 0x04);
+
+	local_irq_restore(flags);
+}
+
+EXPORT_SYMBOL(s3c_gpio_setpin);
+
+unsigned int s3c_gpio_getpin(unsigned int pin)
+{
+	void __iomem *base = gpio_base_offset[S3C_GPIO_BASE(pin)];
+	unsigned long offs = S3C_GPIO_OFFSET(pin);
+
+	if((pin>=S3C_GPH0 && pin<=S3C_GPH9)||\
+		(pin>=S3C_GPK0 && pin<=S3C_GPK15)||\
+		(pin>=S3C_GPL0 && pin<=S3C_GPL14))
+	{
+		base = base+0x04;
+	}
+	return __raw_readl(base + 0x04) & (1<< offs);
+}
+
+EXPORT_SYMBOL(s3c_gpio_getpin);
+
+int s3c_gpio_getirq(unsigned int pin)
+{
+
+/* mandatory */
+/* Implement this function */
+	return 0;
+}
+
+EXPORT_SYMBOL(s3c_gpio_getirq);
+
+int s3c_gpio_irqfilter(unsigned int pin, unsigned int on,
+			   unsigned int config)
+{
+
+	return 0;
+}
+
+EXPORT_SYMBOL(s3c_gpio_irqfilter);
+#endif

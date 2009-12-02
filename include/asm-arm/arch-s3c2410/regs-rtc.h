@@ -21,6 +21,15 @@
 #define S3C2410_RTCCON_CNTSEL (1<<2)
 #define S3C2410_RTCCON_CLKRST (1<<3)
 
+#if defined (CONFIG_CPU_S3C6400) || defined (CONFIG_CPU_S3C6410) 
+
+#define S3C_RTCCON_TICEN	(1<<8)
+
+#define S3C_INTP	S3C2410_RTCREG(0x30)
+#define S3C_INTP_ALM	(1<<1)
+#define S3C_INTP_TIC	(1<<0)
+#endif
+
 #define S3C2410_TICNT	      S3C2410_RTCREG(0x44)
 #define S3C2410_TICNT_ENABLE  (1<<7)
 
@@ -56,6 +65,5 @@
 #define S3C2410_RTCDAY	      S3C2410_RTCREG(0x80)
 #define S3C2410_RTCMON	      S3C2410_RTCREG(0x84)
 #define S3C2410_RTCYEAR	      S3C2410_RTCREG(0x88)
-
 
 #endif /* __ASM_ARCH_REGS_RTC_H */

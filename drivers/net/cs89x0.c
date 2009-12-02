@@ -194,6 +194,24 @@ static unsigned int cs8900_irq_map[] = {IRQ_IXDP2X01_CS8900, 0, 0, 0};
 #define CIRRUS_DEFAULT_IRQ	VH_INTC_INT_NUM_CASCADED_INTERRUPT_1 /* Event inputs bank 1 - ID 35/bit 3 */
 static unsigned int netcard_portlist[] __initdata = {CIRRUS_DEFAULT_BASE, 0};
 static unsigned int cs8900_irq_map[] = {CIRRUS_DEFAULT_IRQ, 0, 0, 0};
+#elif defined(CONFIG_MACH_SMDK2443)
+#include <asm/irq.h>
+#include <linux/irq.h>
+#include <linux/interrupt.h>
+static unsigned int netcard_portlist[] __initdata = {(uint)S3C24XX_VA_CS8900 + 0x300, 0};
+static unsigned int cs8900_irq_map[] = {IRQ_EINT13,0,0,0};
+#elif defined(CONFIG_MACH_SMDK2450) || defined(CONFIG_MACH_SMDK2416)
+#include <asm/irq.h>
+#include <linux/irq.h>
+#include <linux/interrupt.h>
+static unsigned int netcard_portlist[] __initdata = {(uint)S3C24XX_VA_CS8900 + 0x300, 0};
+static unsigned int cs8900_irq_map[] = {IRQ_EINT4,0,0,0};
+#elif defined(CONFIG_MACH_SMDK6400) || defined(CONFIG_MACH_SMDK6410)
+#include <asm/irq.h>
+#include <linux/irq.h>
+#include <linux/interrupt.h>
+static unsigned int netcard_portlist[] __initdata = {(uint)S3C24XX_VA_CS8900 + 0x300, 0};
+static unsigned int cs8900_irq_map[] = {IRQ_EINT10,0,0,0};
 #else
 static unsigned int netcard_portlist[] __initdata =
    { 0x300, 0x320, 0x340, 0x360, 0x200, 0x220, 0x240, 0x260, 0x280, 0x2a0, 0x2c0, 0x2e0, 0};
@@ -315,7 +333,13 @@ struct net_device * __init cs89x0_probe(int unit)
 	int err = 0;
 	int irq;
 	int io;
+#if defined(CONFIG_MACH_SMDK2443)||defined(CONFIG_MACH_SMDK6400)||defined(CONFIG_MACH_SMDK2450)||defined(CONFIG_MACH_SMDK2416)||defined(CONFIG_MACH_SMDK6410)
 
+    if(unit > 0){
+        err = -ENODEV;
+        return ERR_PTR(err);
+    }
+#endif
 	if (!dev)
 		return ERR_PTR(-ENODEV);
 
@@ -518,6 +542,11 @@ cs89x0_probe1(struct net_device *dev, int ioaddr, int modular)
 	int retval;
 
 	SET_MODULE_OWNER(dev);
+
+#if defined(CONFIG_MACH_SMDK2443)||defined(CONFIG_MACH_SMDK6400)||defined(CONFIG_MACH_SMDK2450)||defined(CONFIG_MACH_SMDK2416)||defined(CONFIG_MACH_SMDK6410)
+	set_irq_type(cs8900_irq_map[0], IRQT_HIGH);
+#endif
+
 	/* Initialize the device structure. */
 	if (!modular) {
 		memset(lp, 0, sizeof(*lp));
@@ -531,6 +560,10 @@ cs89x0_probe1(struct net_device *dev, int ioaddr, int modular)
 		}
 #endif
 		lp->force = g_cs89x0_media__force;
+#endif
+
+#if defined(CONFIG_MACH_SMDK2443)||defined(CONFIG_MACH_SMDK6400)||defined(CONFIG_MACH_SMDK2450)||defined(CONFIG_MACH_SMDK2416)||defined(CONFIG_MACH_SMDK6410)
+		lp->force = FORCE_RJ45;
 #endif
         }
 
@@ -839,6 +872,14 @@ cs89x0_probe1(struct net_device *dev, int ioaddr, int modular)
 	{
 		printk(", programmed I/O");
 	}
+#if defined(CONFIG_MACH_SMDK2443)||defined(CONFIG_MACH_SMDK6400)||defined(CONFIG_MACH_SMDK2450)||defined(CONFIG_MACH_SMDK2416)||defined(CONFIG_MACH_SMDK6410)
+	dev->dev_addr[0] = 0x00;
+	dev->dev_addr[1] = 0x09;
+	dev->dev_addr[2] = 0xc0;
+	dev->dev_addr[3] = 0xff;
+	dev->dev_addr[4] = 0xec;
+	dev->dev_addr[5] = 0x48;
+#endif
 
 	/* print the ethernet address. */
 	printk(", MAC");
@@ -1133,6 +1174,11 @@ detect_tp(struct net_device *dev)
                 case FORCE_FULL:
 			writereg(dev, PP_TestCTL, readreg(dev, PP_TestCTL) | FDX_8900);
 			break;
+#if 0
+                default:
+                        /*  only for evaluation in order to get full duplex mode */
+                        writereg(dev, PP_TestCTL, readreg(dev, PP_TestCTL) | FDX_8900);
+#endif
                 }
 		fdx = readreg(dev, PP_TestCTL) & FDX_8900;
 	} else {
@@ -1309,7 +1355,7 @@ net_open(struct net_device *dev)
 	else
 #endif
 	{
-#if !defined(CONFIG_MACH_IXDP2351) && !defined(CONFIG_ARCH_IXDP2X01) && !defined(CONFIG_ARCH_PNX010X)
+#if !defined(CONFIG_MACH_IXDP2351) && !defined(CONFIG_ARCH_IXDP2X01) && !defined(CONFIG_ARCH_PNX010X) && !defined(CONFIG_MACH_SMDK2443) && !defined(CONFIG_MACH_SMDK6400)&& !defined(CONFIG_MACH_SMDK2450) && !defined(CONFIG_MACH_SMDK2416) && !defined(CONFIG_MACH_SMDK6410) 
 		if (((1 << dev->irq) & lp->irq_map) == 0) {
 			printk(KERN_ERR "%s: IRQ %d is not in our map of allowable IRQs, which is %x\n",
                                dev->name, dev->irq, lp->irq_map);

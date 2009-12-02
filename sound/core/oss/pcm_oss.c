@@ -2326,6 +2326,20 @@ static int snd_pcm_oss_open(struct inode *inode, struct file *file)
 		goto __error;
 	}
 	memset(setup, 0, sizeof(setup));
+
+#ifdef OSS_DEBUG
+	printk("file->f_mode = 0x%x\n", file->f_mode);
+#endif
+	if (file->f_mode == 0xF)
+		file->f_mode = FMODE_READ;
+
+	if (file->f_mode == 0xE)
+		file->f_mode = FMODE_WRITE;
+
+#ifdef OSS_DEBUG
+	printk("file->f_mode = 0x%x\n", file->f_mode);
+#endif
+
 	if (file->f_mode & FMODE_WRITE)
 		snd_pcm_oss_look_for_setup(pcm, SNDRV_PCM_STREAM_PLAYBACK,
 					   task_name, &setup[0]);

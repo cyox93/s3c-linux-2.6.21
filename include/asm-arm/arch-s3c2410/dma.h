@@ -16,10 +16,6 @@
 #include <linux/sysdev.h>
 #include <asm/hardware.h>
 
-/*
- * This is the maximum DMA address(physical address) that can be DMAd to.
- *
- */
 #define MAX_DMA_ADDRESS		0x40000000
 #define MAX_DMA_TRANSFER_SIZE   0x100000 /* Data Unit is half word  */
 
@@ -34,6 +30,8 @@ enum dma_ch {
 	DMACH_XD1,
 	DMACH_SDI,
 	DMACH_SPI0,
+	DMACH_SPI_TX,
+	DMACH_SPI_RX,
 	DMACH_SPI1,
 	DMACH_UART0,
 	DMACH_UART1,
@@ -41,6 +39,10 @@ enum dma_ch {
 	DMACH_TIMER,
 	DMACH_I2S_IN,
 	DMACH_I2S_OUT,
+	DMACH_I2S_IN_1,		/* s3c2450 iis_1 rx */
+	DMACH_I2S_OUT_1,	/* s3c2450 iis_1 tx */
+	DMACH_I2S_V40_IN,
+	DMACH_I2S_V40_OUT,
 	DMACH_PCM_IN,
 	DMACH_PCM_OUT,
 	DMACH_MIC_IN,
@@ -53,16 +55,41 @@ enum dma_ch {
 	DMACH_UART2_SRC2,
 	DMACH_UART3,		/* s3c2443 has extra uart */
 	DMACH_UART3_SRC2,
+	DMACH_I2S1_IN,		/* S3C6400 */
+	DMACH_I2S1_OUT,
+	DMACH_SPI0_IN,
+	DMACH_SPI0_OUT,
+	DMACH_SPI1_IN,
+	DMACH_SPI1_OUT,
+	DMACH_AC97_PCM_OUT,
+	DMACH_AC97_PCM_IN,
+	DMACH_AC97_MIC_IN,
+	DMACH_ONENAND_IN,
 	DMACH_MAX,		/* the end entry */
+	DMACH_PCMIF_CH0_TX,
+	DMACH_PCMIF_CH0_RX,
+	DMACH_PCMIF_CH1_TX,
+	DMACH_PCMIF_CH1_RX,
 };
 
 #define DMACH_LOW_LEVEL	(1<<28)	/* use this to specifiy hardware ch no */
 
-/* we have 4 dma channels */
-#ifndef CONFIG_CPU_S3C2443
-#define S3C2410_DMA_CHANNELS		(4)
-#else
+/* Number of dma channels */
+#if defined (CONFIG_CPU_S3C2443)
 #define S3C2410_DMA_CHANNELS		(6)
+
+#elif defined (CONFIG_CPU_S3C2450) || defined (CONFIG_CPU_S3C2416)
+#define S3C2410_DMA_CHANNELS		(8)
+
+#elif defined CONFIG_CPU_S3C6400 || defined CONFIG_CPU_S3C6410 
+/* We have 4 dma controllers - DMA0, DMA1, SDMA0, SDMA1 */
+#define S3C_DMA_CONTROLLERS        	(4)
+#define S3C_CHANNELS_PER_DMA       	(8)
+#define S3C_CANDIDATE_CHANNELS_PER_DMA  (16)
+#define S3C2410_DMA_CHANNELS		(S3C_DMA_CONTROLLERS*S3C_CHANNELS_PER_DMA)
+
+#else
+#define S3C2410_DMA_CHANNELS		(4)
 #endif
 
 /* types */
@@ -109,15 +136,24 @@ enum s3c2410_dma_loadst {
 	S3C2410_DMALOAD_1LOADED_1RUNNING,
 };
 
+
 enum s3c2410_dma_buffresult {
 	S3C2410_RES_OK,
 	S3C2410_RES_ERR,
 	S3C2410_RES_ABORT
 };
 
+
+//#define S3C_DMA 
 enum s3c2410_dmasrc {
-	S3C2410_DMASRC_HW,		/* source is memory */
-	S3C2410_DMASRC_MEM		/* source is hardware */
+	S3C2410_DMASRC_HW,		/* source is memory - READ(P2M) */
+	S3C2410_DMASRC_MEM,		/* source is hardware - WRITE(M2P)*/
+	S3C_DMA_MEM2MEM,      		/* source is memory - READ/WRITE */
+	S3C_DMA_PER2PER,      		/* source is hardware - READ/WRITE */
+
+#if defined(CONFIG_G3D)
+	S3C_DMA_MEM2G3D
+#endif
 };
 
 /* enum s3c2410_chan_op
@@ -136,17 +172,20 @@ enum s3c2410_chan_op {
 	S3C2410_DMAOP_STARTED,		/* indicate channel started */
 };
 
+
 /* flags */
 
 #define S3C2410_DMAF_SLOW         (1<<0)   /* slow, so don't worry about
-					    * waiting for reloads */
+					    waiting for reloads */
 #define S3C2410_DMAF_AUTOSTART    (1<<1)   /* auto-start if buffer queued */
+
 
 /* dma buffer */
 
 struct s3c2410_dma_client {
 	char                *name;
 };
+
 
 /* s3c2410_dma_buf_s
  *
@@ -164,6 +203,7 @@ struct s3c2410_dma_buf {
 	void			*id;		/* client's id */
 };
 
+
 /* [1] is this updated for both recv/send modes? */
 
 struct s3c2410_dma_chan;
@@ -180,6 +220,7 @@ typedef void (*s3c2410_dma_cbfn_t)(struct s3c2410_dma_chan *,
 typedef int  (*s3c2410_dma_opfn_t)(struct s3c2410_dma_chan *,
 				   enum s3c2410_chan_op );
 
+
 struct s3c2410_dma_stats {
 	unsigned long		loads;
 	unsigned long		timeout_longest;
@@ -188,12 +229,42 @@ struct s3c2410_dma_stats {
 	unsigned long		timeout_failed;
 };
 
+
 struct s3c2410_dma_map;
 
 /* struct s3c2410_dma_chan
  *
  * full state information for each DMA channel
 */
+
+/*========================== S3C6400 ===========================================*/
+typedef struct s3c_dma_controller s3c_dma_controller_t;
+struct s3c_dma_controller {
+	/* channel state flags and information */
+	unsigned char          number;      /* number of this dma channel */
+	unsigned char          in_use;      /* channel allocated and how many channel are used */
+	unsigned char          irq_claimed; /* irq claimed for channel */
+	unsigned char          irq_enabled; /* irq enabled for channel */
+	unsigned char          xfer_unit;   /* size of an transfer */
+
+	/* channel state */
+
+	enum s3c2410_dma_state    state;
+	enum s3c2410_dma_loadst   load_state;
+	struct s3c2410_dma_client  *client;
+
+	/* channel configuration */
+	unsigned long          dev_addr;
+	unsigned long          load_timeout;
+	unsigned int           flags;        /* channel flags */
+
+	/* channel's hardware position and configuration */
+	void __iomem           *regs;        /* channels registers */
+	void __iomem           *addr_reg;    /* data address register */
+	unsigned int           irq;          /* channel irq */
+	unsigned long          dcon;         /* default value of DCON */
+
+};
 
 struct s3c2410_dma_chan {
 	/* channel state flags and information */
@@ -238,7 +309,15 @@ struct s3c2410_dma_chan {
 
 	/* system device */
 	struct sys_device	dev;
+	
+#if defined (CONFIG_CPU_S3C6400) || defined (CONFIG_CPU_S3C6410) 
+	unsigned int            index;        	/* channel index */
+	unsigned int            config_flags;        /* channel flags */
+	unsigned int            control_flags;        /* channel flags */
+	s3c_dma_controller_t	*dma_con;
+#endif
 };
+
 
 /* the currently allocated channel information */
 extern struct s3c2410_dma_chan s3c2410_chans[];
@@ -255,7 +334,8 @@ typedef unsigned long dma_device_t;
 
 extern int s3c2410_dma_request(dmach_t channel,
 			       struct s3c2410_dma_client *, void *dev);
-
+extern int s3c_dma_request(dmach_t channel,unsigned int subchannel,
+			       struct s3c2410_dma_client *, void *dev);
 
 /* s3c2410_dma_ctrl
  *
@@ -263,6 +343,7 @@ extern int s3c2410_dma_request(dmach_t channel,
 */
 
 extern int s3c2410_dma_ctrl(dmach_t channel, enum s3c2410_chan_op op);
+extern int s3c_dma_ctrl(dmach_t channel,unsigned int subchannel, enum s3c2410_chan_op op);
 
 /* s3c2410_dma_setflags
  *
@@ -271,6 +352,8 @@ extern int s3c2410_dma_ctrl(dmach_t channel, enum s3c2410_chan_op op);
 
 extern int s3c2410_dma_setflags(dmach_t channel,
 				unsigned int flags);
+extern int s3c_dma_setflags(dmach_t channel,unsigned int subchannel,
+				unsigned int flags);
 
 /* s3c2410_dma_free
  *
@@ -278,6 +361,8 @@ extern int s3c2410_dma_setflags(dmach_t channel,
 */
 
 extern int s3c2410_dma_free(dmach_t channel, struct s3c2410_dma_client *);
+extern int s3c_dma_free(dmach_t channel,unsigned int, struct s3c2410_dma_client *);
+
 
 /* s3c2410_dma_enqueue
  *
@@ -288,6 +373,8 @@ extern int s3c2410_dma_free(dmach_t channel, struct s3c2410_dma_client *);
 
 extern int s3c2410_dma_enqueue(dmach_t channel, void *id,
 			       dma_addr_t data, int size);
+extern int s3c_dma_enqueue(dmach_t channel,unsigned int subchannel, void *id,
+			       dma_addr_t data, int size);
 
 /* s3c2410_dma_config
  *
@@ -295,6 +382,7 @@ extern int s3c2410_dma_enqueue(dmach_t channel, void *id,
 */
 
 extern int s3c2410_dma_config(dmach_t channel, int xferunit, int dcon);
+extern int s3c_dma_config(dmach_t channel, unsigned int subchannel,int src_xferunit, int dst_xferunit);
 
 /* s3c2410_dma_devconfig
  *
@@ -311,9 +399,14 @@ extern int s3c2410_dma_devconfig(int channel, enum s3c2410_dmasrc source,
 
 extern int s3c2410_dma_getposition(dmach_t channel,
 				   dma_addr_t *src, dma_addr_t *dest);
+extern int s3c_dma_getposition(dmach_t channel,unsigned int subchannel,
+				   dma_addr_t *src, dma_addr_t *dest);
 
 extern int s3c2410_dma_set_opfn(dmach_t, s3c2410_dma_opfn_t rtn);
 extern int s3c2410_dma_set_buffdone_fn(dmach_t, s3c2410_dma_cbfn_t rtn);
+extern int s3c_dma_set_opfn(dmach_t,unsigned int, s3c2410_dma_opfn_t rtn);
+extern int s3c_dma_set_buffdone_fn(dmach_t,unsigned int, s3c2410_dma_cbfn_t rtn);
+
 
 /* DMA Register definitions */
 
@@ -373,6 +466,7 @@ extern int s3c2410_dma_set_buffdone_fn(dmach_t, s3c2410_dma_cbfn_t rtn);
 #define S3C2410_DCON_BYTE       (0<<20)
 #define S3C2410_DCON_HALFWORD   (1<<20)
 #define S3C2410_DCON_WORD       (2<<20)
+#define S3C2410_DCON_DSZ_MASK   (3<<20)
 
 #define S3C2410_DCON_AUTORELOAD (0<<22)
 #define S3C2410_DCON_NORELOAD   (1<<22)
@@ -433,6 +527,8 @@ extern int s3c2410_dma_set_buffdone_fn(dmach_t, s3c2410_dma_cbfn_t rtn);
 #define S3C2443_DMAREQSEL_SPI1RX	S3C2443_DMAREQSEL_SRC(3)
 #define S3C2443_DMAREQSEL_I2STX		S3C2443_DMAREQSEL_SRC(4)
 #define S3C2443_DMAREQSEL_I2SRX		S3C2443_DMAREQSEL_SRC(5)
+#define S3C2450_DMAREQSEL_I2STX_1	S3C2443_DMAREQSEL_SRC(6)
+#define S3C2450_DMAREQSEL_I2SRX_1	S3C2443_DMAREQSEL_SRC(7)
 #define S3C2443_DMAREQSEL_TIMER		S3C2443_DMAREQSEL_SRC(9)
 #define S3C2443_DMAREQSEL_SDI		S3C2443_DMAREQSEL_SRC(10)
 #define S3C2443_DMAREQSEL_XDREQ0	S3C2443_DMAREQSEL_SRC(17)
@@ -449,4 +545,192 @@ extern int s3c2410_dma_set_buffdone_fn(dmach_t, s3c2410_dma_cbfn_t rtn);
 #define S3C2443_DMAREQSEL_PCMIN 	S3C2443_DMAREQSEL_SRC(28)
 #define S3C2443_DMAREQSEL_MICIN		S3C2443_DMAREQSEL_SRC(29)
 
+
+/*=================================================*/
+/*   DMA Register Definitions for S3C6400          */
+
+#define S3C_DMAC_INT_STATUS   		(0x00)
+#define S3C_DMAC_INT_TCSTATUS   	(0x04)
+#define S3C_DMAC_INT_TCCLEAR   		(0x08)
+#define S3C_DMAC_INT_ERRORSTATUS   	(0x0c)
+#define S3C_DMAC_INT_ERRORCLEAR   	(0x10)
+#define S3C_DMAC_RAW_INTTCSTATUS   	(0x14)
+#define S3C_DMAC_RAW_INTERRORSTATUS   	(0x18)
+#define S3C_DMAC_ENBLD_CHANNELS	   	(0x1c)
+#define S3C_DMAC_SOFTBREQ	   	(0x20)
+#define S3C_DMAC_SOFTSREQ	   	(0x24)
+#define S3C_DMAC_SOFTLBREQ	   	(0x28)
+#define S3C_DMAC_SOFTLSREQ	   	(0x2c)
+#define S3C_DMAC_CONFIGURATION   	(0x30)
+#define S3C_DMAC_SYNC   		(0x34)
+
+#define S3C_DMAC_CxSRCADDR   		(0x00)
+#define S3C_DMAC_CxDESTADDR   		(0x04)
+#define S3C_DMAC_CxLLI   		(0x08)
+#define S3C_DMAC_CxCONTROL0   		(0x0C)
+#define S3C_DMAC_CxCONTROL1   		(0x10)
+#define S3C_DMAC_CxCONFIGURATION   	(0x14)
+
+#define S3C_DMAC_C0SRCADDR   		(0x100)
+#define S3C_DMAC_C0DESTADDR   		(0x104)
+#define S3C_DMAC_C0LLI   		(0x108)
+#define S3C_DMAC_C0CONTROL0   		(0x10C)
+#define S3C_DMAC_C0CONTROL1   		(0x110)
+#define S3C_DMAC_C0CONFIGURATION   	(0x114)
+
+#define S3C_DMAC_C1SRCADDR   		(0x120)
+#define S3C_DMAC_C1DESTADDR   		(0x124)
+#define S3C_DMAC_C1LLI   		(0x128)
+#define S3C_DMAC_C1CONTROL0   		(0x12C)
+#define S3C_DMAC_C1CONTROL1   		(0x130)
+#define S3C_DMAC_C1CONFIGURATION   	(0x134)
+
+#define S3C_DMAC_C2SRCADDR   		(0x140)
+#define S3C_DMAC_C2DESTADDR   		(0x144)
+#define S3C_DMAC_C2LLI   		(0x148)
+#define S3C_DMAC_C2CONTROL0   		(0x14C)
+#define S3C_DMAC_C2CONTROL1   		(0x150)
+#define S3C_DMAC_C2CONFIGURATION   	(0x154)
+
+#define S3C_DMAC_C3SRCADDR   		(0x160)
+#define S3C_DMAC_C3DESTADDR   		(0x164)
+#define S3C_DMAC_C3LLI   		(0x168)
+#define S3C_DMAC_C3CONTROL0   		(0x16C)
+#define S3C_DMAC_C3CONTROL1   		(0x170)
+#define S3C_DMAC_C3CONFIGURATION   	(0x174)
+
+#define S3C_DMAC_C4SRCADDR   		(0x180)
+#define S3C_DMAC_C4DESTADDR   		(0x184)
+#define S3C_DMAC_C4LLI   		(0x188)
+#define S3C_DMAC_C4CONTROL0   		(0x18C)
+#define S3C_DMAC_C4CONTROL1   		(0x190)
+#define S3C_DMAC_C4CONFIGURATION   	(0x194)
+
+#define S3C_DMAC_C5SRCADDR   		(0x1A0)
+#define S3C_DMAC_C5DESTADDR   		(0x1A4)
+#define S3C_DMAC_C5LLI   		(0x1A8)
+#define S3C_DMAC_C5CONTROL0   		(0x1AC)
+#define S3C_DMAC_C5CONTROL1   		(0x1B0)
+#define S3C_DMAC_C5CONFIGURATION   	(0x1B4)
+
+#define S3C_DMAC_C6SRCADDR   		(0x1C0)
+#define S3C_DMAC_C6DESTADDR   		(0x1C4)
+#define S3C_DMAC_C6LLI   		(0x1C8)
+#define S3C_DMAC_C6CONTROL0   		(0x1CC)
+#define S3C_DMAC_C6CONTROL1   		(0x1D0)
+#define S3C_DMAC_C6CONFIGURATION   	(0x1D4)
+
+#define S3C_DMAC_C7SRCADDR   		(0x1E0)
+#define S3C_DMAC_C7DESTADDR   		(0x1E4)
+#define S3C_DMAC_C7LLI   		(0x1E8)
+#define S3C_DMAC_C7CONTROL0   		(0x1EC)
+#define S3C_DMAC_C7CONTROL1   		(0x1F0)
+#define S3C_DMAC_C7CONFIGURATION   	(0x1F4)
+
+/*DMACConfiguration(0x30)*/
+#define S3C_DMA_CONTROLLER_ENABLE 	(1<<0)		
+
+/*DMACCxControl0 : Channel control register 0*/
+#define S3C_DMACONTROL_TC_INT_ENABLE 	(1<<31)	
+#define S3C_DMACONTROL_DEST_NO_INC	(0<<27)	
+#define S3C_DMACONTROL_DEST_INC		(1<<27)
+#define S3C_DMACONTROL_SRC_NO_INC	(0<<26)
+#define S3C_DMACONTROL_SRC_INC		(1<<26)
+#define S3C_DMACONTROL_DEST_AXI_SPINE	(0<<25)
+#define S3C_DMACONTROL_DEST_AXI_PERI	(1<<25)
+#define S3C_DMACONTROL_SRC_AXI_SPINE	(0<<24)
+#define S3C_DMACONTROL_SRC_AXI_PERI	(1<<24)
+#define S3C_DMACONTROL_DEST_WIDTH_BYTE	(0<<21)
+#define S3C_DMACONTROL_DEST_WIDTH_HWORD	(1<<21)
+#define S3C_DMACONTROL_DEST_WIDTH_WORD	(2<<21)
+#define S3C_DMACONTROL_SRC_WIDTH_BYTE	(0<<18)
+#define S3C_DMACONTROL_SRC_WIDTH_HWORD	(1<<18)
+#define S3C_DMACONTROL_SRC_WIDTH_WORD	(2<<18)
+#define S3C_DMACONTROL_SRC_WIDTH_16BURST 	(3<<18)
+
+#define S3C_DMACONTROL_DBSIZE_1		(0<<15)
+#define S3C_DMACONTROL_DBSIZE_4		(1<<15)
+#define S3C_DMACONTROL_DBSIZE_8		(2<<15)
+#define S3C_DMACONTROL_DBSIZE_16	(3<<15)
+#define S3C_DMACONTROL_DBSIZE_32	(4<<15)
+#define S3C_DMACONTROL_DBSIZE_64	(5<<15)
+#define S3C_DMACONTROL_DBSIZE_128	(6<<15)
+#define S3C_DMACONTROL_DBSIZE_256	(7<<15)
+
+#define S3C_DMACONTROL_SBSIZE_1		(0<<12)
+#define S3C_DMACONTROL_SBSIZE_4		(1<<12)
+#define S3C_DMACONTROL_SBSIZE_8		(2<<12)
+#define S3C_DMACONTROL_SBSIZE_16	(3<<12)
+#define S3C_DMACONTROL_SBSIZE_32	(4<<12)
+#define S3C_DMACONTROL_SBSIZE_64	(5<<12)
+#define S3C_DMACONTROL_SBSIZE_128	(6<<12)
+#define S3C_DMACONTROL_SBSIZE_256	(7<<12)
+
+
+/*Channel configuration register, DMACCxConfiguration*/
+#define S3C_DMACONFIG_HALT		(1<<18) /*The contents of the channels FIFO are drained*/
+#define S3C_DMACONFIG_ACTIVE		(1<<17) /*Check channel fifo has data or not*/
+#define S3C_DMACONFIG_LOCK		(1<<16)
+#define S3C_DMACONFIG_TCMASK	 	(1<<15) /*Terminal count interrupt mask*/
+#define S3C_DMACONFIG_ERRORMASK	 	(1<<14) /*Interrup error mask*/
+#define S3C_DMACONFIG_FLOWCTRL_MEM2MEM	(0<<11)
+#define S3C_DMACONFIG_FLOWCTRL_MEM2PER	(1<<11)
+#define S3C_DMACONFIG_FLOWCTRL_PER2MEM	(2<<11)
+#define S3C_DMACONFIG_FLOWCTRL_PER2PER	(3<<11)
+#define S3C_DMACONFIG_ONENANDMODEDST	(1<<10)	/* Reserved: OneNandModeDst */
+#define S3C_DMACONFIG_DESTPERIPHERAL(x)	((x)<<6)
+#define S3C_DMACONFIG_ONENANDMODESRC	(1<<5)	/* Reserved: OneNandModeSrc */
+#define S3C_DMACONFIG_SRCPERIPHERAL(x)	((x)<<1)
+#define S3C_DMACONFIG_CHANNEL_ENABLE	(1<<0)
+
+/* DMAC0 DMA request sources */
+#define S3C_DMA0_UART0CH0	0
+#define S3C_DMA0_UART0CH1	1
+#define S3C_DMA0_UART1CH0	2
+#define S3C_DMA0_UART1CH1	3
+#define S3C_DMA0_ONENAND_RX	3	/* Memory to Memory DMA */
+#define S3C_DMA0_UART2CH0	4
+#define S3C_DMA0_UART2CH1	5
+#define S3C_DMA0_UART3CH0	6
+#define S3C_DMA0_UART3CH1	7
+#define S3C_DMA0_PCM0_TX	8
+#define S3C_DMA0_PCM0_RX	9
+#define S3C_DMA0_I2S0_TX	10
+#define S3C_DMA0_I2S0_RX	11
+#define S3C_DMA0_SPI0_TX	12
+#define S3C_DMA0_SPI0_RX	13
+#define S3C_DMA0_HSI_TX		14
+#define S3C_DMA0_HSI_RX		15
+
+/* DMAC1 DMA request sources */
+#define S3C_DMA1_PCM1_TX	0
+#define S3C_DMA1_PCM1_RX	1
+#define S3C_DMA1_I2S1_TX	2
+#define S3C_DMA1_I2S1_RX	3
+#define S3C_DMA1_SPI1_TX	4
+#define S3C_DMA1_SPI1_RX	5
+#define S3C_DMA1_AC97_PCMOUT	6
+#define S3C_DMA1_AC97_PCMIN	7
+#define S3C_DMA1_AC97_MICIN	8
+#define S3C_DMA1_PWM		9
+#define S3C_DMA1_IRDA		10
+#define S3C_DMA1_EXT		11
+
+#define S3C_DMA1		16
+#define S3C_DMA2		32
+#define S3C_DMA3		48
+
+#define S3C_DEST_SHIFT 		6
+#define S3C_SRC_SHIFT 		1
+
+
+//#define S3C_DMAC_CSRCADDR(ch)   	S3C_DMAC_C##ch##SRCADDR
+#define S3C_DMAC_CSRCADDR(ch)   	(S3C_DMAC_C0SRCADDR+ch*0x20)
+#define S3C_DMAC_CDESTADDR(ch)   	(S3C_DMAC_C0DESTADDR+ch*0x20)
+#define S3C_DMAC_CLLI(ch)   		(S3C_DMAC_C0LLI+ch*0x20)
+#define S3C_DMAC_CCONTROL0(ch)   	(S3C_DMAC_C0CONTROL0+ch*0x20)
+#define S3C_DMAC_CCONTROL1(ch)   	(S3C_DMAC_C0CONTROL1+ch*0x20)
+#define S3C_DMAC_CCONFIGURATION(ch)   	(S3C_DMAC_C0CONFIGURATION+ch*0x20)
+
 #endif /* __ASM_ARCH_DMA_H */
+

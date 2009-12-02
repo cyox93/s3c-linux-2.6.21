@@ -1592,6 +1592,19 @@ irqreturn_t ide_intr (int irq, void *dev_id)
 		return IRQ_NONE;
 	}
 
+#if 0
+following code must be added in asm-arm/ide.h
+#define IDE_ARCH_ACK_INTR
+#define ide_ack_intr(hwif)	((hwif)->hw.ack_intr ? (hwif)->hw.ack_intr(hwif) : 1)
+#endif
+
+#ifdef CONFIG_IDE_HOOK_IRQ
+	if (hwif->ide_irq_hook(hwif)) {
+		spin_unlock_irqrestore(&ide_lock, flags);
+		return IRQ_HANDLED;
+	}
+#endif
+
 	if ((handler = hwgroup->handler) == NULL || hwgroup->polling) {
 		/*
 		 * Not expecting an interrupt from this drive.

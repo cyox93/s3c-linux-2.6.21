@@ -50,6 +50,9 @@
 #include <asm/plat-s3c24xx/s3c2440.h>
 #include <asm/plat-s3c24xx/s3c2442.h>
 #include <asm/plat-s3c24xx/s3c2443.h>
+#include <asm/plat-s3c24xx/s3c2416.h>
+#include <asm/plat-s3c24xx/s3c2450.h>
+#include <asm/plat-s3c24xx/s3c6400.h>
 
 struct cpu_table {
 	unsigned long	idcode;
@@ -66,11 +69,19 @@ struct cpu_table {
 static const char name_s3c2400[]  = "S3C2400";
 static const char name_s3c2410[]  = "S3C2410";
 static const char name_s3c2412[]  = "S3C2412";
+static const char name_s3c2416[]  = "S3C2416";
+static const char name_s3c2416a[]  = "S3C2416 EVT2";
+static const char name_s3c2416b[]  = "S3C2416 EVT3";
 static const char name_s3c2440[]  = "S3C2440";
 static const char name_s3c2442[]  = "S3C2442";
 static const char name_s3c2443[]  = "S3C2443";
+static const char name_s3c2450[]  = "S3C2450";
+static const char name_s3c2450a[]  = "S3C2450 EVT2";
+static const char name_s3c2450b[]  = "S3C2450 EVT3";
 static const char name_s3c2410a[] = "S3C2410A";
 static const char name_s3c2440a[] = "S3C2440A";
+static const char name_s3c6400[]  = "S3C6400";
+static const char name_s3c6410[]  = "S3C6410";
 
 static struct cpu_table cpu_ids[] __initdata = {
 	{
@@ -145,6 +156,64 @@ static struct cpu_table cpu_ids[] __initdata = {
 		.init		= s3c2443_init,
 		.name		= name_s3c2443,
 	},
+/* TODO */
+#if defined(CONFIG_CPU_S3C2416)
+	{			/* same with s3c2450 */
+		.idcode		= 0x32450001,
+		.idmask		= 0xffffffff,
+		.map_io		= s3c2416_map_io,
+		.init_clocks	= s3c2416_init_clocks,
+		.init_uarts	= s3c2416_init_uarts,
+		.init		= s3c2416_init,
+		.name		= name_s3c2416,
+	},
+	{			/* Evt2 s3c2416 */
+		.idcode		= 0x32450002,
+		.idmask		= 0xffffffff,
+		.map_io		= s3c2416_map_io,
+		.init_clocks	= s3c2416_init_clocks,
+		.init_uarts	= s3c2416_init_uarts,
+		.init		= s3c2416_init,
+		.name		= name_s3c2416a,
+	},
+	{			/* Evt3 s3c2416 */
+		.idcode		= 0x32450003,
+		.idmask		= 0xffffffff,
+		.map_io		= s3c2416_map_io,
+		.init_clocks	= s3c2416_init_clocks,
+		.init_uarts	= s3c2416_init_uarts,
+		.init		= s3c2416_init,
+		.name		= name_s3c2416b,
+	},
+#elif defined(CONFIG_CPU_S3C2450)
+	{			/* almost same as s3c2443 */
+		.idcode		= 0x32450001,
+		.idmask		= 0xffffffff,
+		.map_io		= s3c2450_map_io,
+		.init_clocks	= s3c2450_init_clocks,
+		.init_uarts	= s3c2450_init_uarts,
+		.init		= s3c2450_init,
+		.name		= name_s3c2450,
+	},
+	{			/* Evt2 s3c2450 */
+		.idcode		= 0x32450002,
+		.idmask		= 0xffffffff,
+		.map_io		= s3c2450_map_io,
+		.init_clocks	= s3c2450_init_clocks,
+		.init_uarts	= s3c2450_init_uarts,
+		.init		= s3c2450_init,
+		.name		= name_s3c2450a,
+	},
+	{			/* Evt3 s3c2450 */
+		.idcode		= 0x32450003,
+		.idmask		= 0xffffffff,
+		.map_io		= s3c2450_map_io,
+		.init_clocks	= s3c2450_init_clocks,
+		.init_uarts	= s3c2450_init_uarts,
+		.init		= s3c2450_init,
+		.name		= name_s3c2450b,
+	},
+#endif
 	{
 		.idcode		= 0x0,   /* S3C2400 doesn't have an idcode */
 		.idmask		= 0xffffffff,
@@ -154,6 +223,25 @@ static struct cpu_table cpu_ids[] __initdata = {
 		.init		= s3c2400_init,
 		.name		= name_s3c2400
 	},
+
+	{
+		.idcode		= 0x36400100,
+		.idmask		= 0xffffffff,
+		.map_io		= s3c6400_map_io,
+		.init_clocks    = s3c6400_init_clocks,
+		.init_uarts	= s3c6400_init_uarts,
+		.init		= s3c6400_init,
+		.name		= name_s3c6400
+	},
+	{
+		.idcode		= 0x36410100,
+		.idmask		= 0xfffffff0,
+		.map_io		= s3c6400_map_io,
+		.init_clocks    = s3c6400_init_clocks,
+		.init_uarts	= s3c6400_init_uarts,
+		.init		= s3c6400_init,
+		.name		= name_s3c6410
+	},
 };
 
 /* minimal IO mapping */
@@ -161,8 +249,16 @@ static struct cpu_table cpu_ids[] __initdata = {
 static struct map_desc s3c_iodesc[] __initdata = {
 	IODESC_ENT(GPIO),
 	IODESC_ENT(IRQ),
-	IODESC_ENT(MEMCTRL),
-	IODESC_ENT(UART)
+	IODESC_ENT(UART),
+
+#if !defined (CONFIG_CPU_S3C6400) && !defined (CONFIG_CPU_S3C6410)
+	IODESC_ENT(MEMCTRL)
+#else
+	IODESC_ENT(SROMC),
+	IODESC_ENT(DMC0),
+	IODESC_ENT(DMC1),
+	IODESC_ENT(SYSCON)
+#endif
 };
 
 
@@ -195,7 +291,8 @@ void s3c24xx_set_board(struct s3c24xx_board *b)
 		struct clk **ptr = b->clocks;
 
 		for (i = b->clocks_count; i > 0; i--, ptr++)
-			s3c24xx_register_clock(*ptr);
+			if (s3c24xx_register_clock(*ptr) < 0)
+				printk(KERN_ERR "failed to register clock.\n");
 	}
 }
 
@@ -203,10 +300,23 @@ void s3c24xx_set_board(struct s3c24xx_board *b)
 
 static struct cpu_table *cpu;
 
+/* For S3C6400 EVT1/S3C6410 */
+static unsigned long s3c64xx_read_idcode_v6(void)
+{
+#if !defined(CONFIG_CPU_S3C6400)
+	return __raw_readl(S3C24XX_VA_SYSCON+0x118);
+#else
+	return 0x36400100;
+#endif
+}
+
+
 static unsigned long s3c24xx_read_idcode_v5(void)
 {
 #if defined(CONFIG_CPU_S3C2412) || defined(CONFIG_CPU_S3C2413)
 	return __raw_readl(S3C2412_GSTATUS1);
+#elif defined(CONFIG_CPU_S3C2450) || defined(CONFIG_CPU_S3C2416)
+	return __raw_readl(S3C2410_GSTATUS1);
 #else
 	return 1UL;	/* don't look like an 2400 */
 #endif
@@ -228,10 +338,15 @@ void __init s3c24xx_init_io(struct map_desc *mach_desc, int size)
 	/* initialise the io descriptors we need for initialisation */
 	iotable_init(s3c_iodesc, ARRAY_SIZE(s3c_iodesc));
 
-	if (cpu_architecture() >= CPU_ARCH_ARMv5) {
+	if (cpu_architecture() >= CPU_ARCH_ARMv6) {
+		idcode = s3c64xx_read_idcode_v6();
+	} else if (cpu_architecture() >= CPU_ARCH_ARMv5) {
 		idcode = s3c24xx_read_idcode_v5();
-	} else {
+	} else if (cpu_architecture() >= CPU_ARCH_ARMv4) {
 		idcode = s3c24xx_read_idcode_v4();
+	} else 	{
+		panic("Unknown CPU Architecture");
+		idcode = 1UL; /* Unknown and error */
 	}
 
 	cpu = s3c_lookup_cpu(idcode);
@@ -278,7 +393,7 @@ void __init s3c24xx_init_clocks(int xtal)
 
 static int nr_uarts __initdata = 0;
 
-static struct s3c2410_uartcfg uart_cfgs[3];
+static struct s3c2410_uartcfg uart_cfgs[4];
 
 /* s3c24xx_init_uartdevs
  *

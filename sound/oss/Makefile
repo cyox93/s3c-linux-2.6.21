@@ -60,6 +60,12 @@ endif
 obj-$(CONFIG_SOUND_EMU10K1)	+= emu10k1/
 obj-$(CONFIG_DMASOUND)		+= dmasound/
 
+obj-$(CONFIG_SOUND_S3C6400_I2S) += s3c6400_pcm.o s3c6400_i2s.o
+obj-$(CONFIG_SOUND_S3C6400_AC97)+= s3c6400_pcm.o ac97_codec.o s3c6400_ac97.o
+
+obj-$(CONFIG_SOUND_S3C24XX_I2S) += s3c24xx_pcm.o s3c24xx_i2s.o uda1341.o
+obj-$(CONFIG_SOUND_S3C6410_I2S) += s3c6410_pcm.o s3c6410_i2s.o 
+
 # Declare multi-part drivers.
 
 sound-objs	:= 							\

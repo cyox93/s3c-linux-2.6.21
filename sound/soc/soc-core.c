@@ -40,6 +40,7 @@
 #include <sound/soc-dapm.h>
 #include <sound/initval.h>
 
+
 /* debug */
 #define SOC_DEBUG 0
 #if SOC_DEBUG
@@ -57,7 +58,8 @@ static DECLARE_WAIT_QUEUE_HEAD(soc_pm_waitq);
  * It can be used to eliminate pops between different playback streams, e.g.
  * between two audio tracks.
  */
-static int pmdown_time = 5000;
+//static int pmdown_time = 5000;
+static int pmdown_time = 100;
 module_param(pmdown_time, int, 0);
 MODULE_PARM_DESC(pmdown_time, "DAPM stream powerdown time (msecs)");
 
@@ -116,6 +118,7 @@ static int soc_ac97_dev_register(struct snd_soc_codec *codec)
 static inline const char* get_dai_name(int type)
 {
 	switch(type) {
+	case SND_SOC_DAI_AC97_BUS:
 	case SND_SOC_DAI_AC97:
 		return "AC97";
 	case SND_SOC_DAI_I2S:
@@ -194,7 +197,7 @@ static int soc_pcm_open(struct snd_pcm_substream *substream)
 		runtime->hw.formats =
 			codec_dai->playback.formats & cpu_dai->playback.formats;
 		runtime->hw.rates =
-			codec_dai->playback.rates & cpu_dai->playback.rates;
+			codec_dai->playback.rates & cpu_dai->playback.rates; 
 	} else {
 		runtime->hw.rate_min =
 			max(codec_dai->capture.rate_min, cpu_dai->capture.rate_min);
@@ -287,6 +290,13 @@ static void close_delayed_work(struct work_struct *work)
 		/* are we waiting on this codec DAI stream */
 		if (codec_dai->pop_wait == 1) {
 
+			/* power down the codec to D1 if no longer active */
+			if (codec->active == 0) {
+				dbg("pop wq D1 %s %s\n", codec->name,
+					codec_dai->playback.stream_name);
+				snd_soc_dapm_device_event(socdev, SNDRV_CTL_POWER_D1);
+			}
+
 			codec_dai->pop_wait = 0;
 			snd_soc_dapm_stream_event(codec, codec_dai->playback.stream_name,
 				SND_SOC_DAPM_STREAM_STOP);
@@ -295,8 +305,7 @@ static void close_delayed_work(struct work_struct *work)
 			if (codec->active == 0) {
 				dbg("pop wq D3 %s %s\n", codec->name,
 					codec_dai->playback.stream_name);
-		 		if (codec->dapm_event)
-					codec->dapm_event(codec, SNDRV_CTL_POWER_D3hot);
+		 		snd_soc_dapm_device_event(socdev, SNDRV_CTL_POWER_D3hot);
 			}
 		}
 	}
@@ -321,43 +330,57 @@ static int soc_codec_close(struct snd_pcm_substream *substream)
 	mutex_lock(&pcm_mutex);
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
+	{
+		dbg("%s,%d : current stream = playback\n",__FUNCTION__,__LINE__);
 		cpu_dai->playback.active = codec_dai->playback.active = 0;
-	else
+	}
+	else if (substream->stream == SNDRV_PCM_STREAM_CAPTURE)
+	{
+		dbg("%s,%d : current stream = capture\n",__FUNCTION__,__LINE__);
 		cpu_dai->capture.active = codec_dai->capture.active = 0;
+	}
 
 	if (codec_dai->playback.active == 0 &&
 		codec_dai->capture.active == 0) {
 		cpu_dai->active = codec_dai->active = 0;
 	}
-	codec->active--;
+	
+	if (!cpu_dai->playback.active && !cpu_dai->capture.active)
+	{
+		dbg("%s,%d : Background work is not active.. shutdown DAIs..\n",__FUNCTION__,__LINE__);
 
-	if (cpu_dai->ops.shutdown)
-		cpu_dai->ops.shutdown(substream);
+		codec->active--;
+		if (cpu_dai->ops.shutdown)
+			cpu_dai->ops.shutdown(substream);
 
-	if (codec_dai->ops.shutdown)
-		codec_dai->ops.shutdown(substream);
+		if (codec_dai->ops.shutdown)
+			codec_dai->ops.shutdown(substream);
 
-	if (machine->ops && machine->ops->shutdown)
-		machine->ops->shutdown(substream);
+		if (machine->ops && machine->ops->shutdown)
+			machine->ops->shutdown(substream);
 
-	if (platform->pcm_ops->close)
-		platform->pcm_ops->close(substream);
-	cpu_dai->runtime = NULL;
+		if (platform->pcm_ops->close)
+			platform->pcm_ops->close(substream);
+	
+		cpu_dai->runtime = NULL;
+	}
+	else
+	{
+		dbg("%s,%d : Background work is active..\n",__FUNCTION__,__LINE__);
+	}
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-		/* start delayed pop wq here for playback streams */
+		// start delayed pop wq here for playback streams 
 		codec_dai->pop_wait = 1;
 		schedule_delayed_work(&socdev->delayed_work,
 			msecs_to_jiffies(pmdown_time));
-	} else {
-		/* capture streams can be powered down now */
+	} else if (substream->stream == SNDRV_PCM_STREAM_CAPTURE){
+		// capture streams can be powered down now 
 		snd_soc_dapm_stream_event(codec,
 			codec_dai->capture.stream_name, SND_SOC_DAPM_STREAM_STOP);
 
-		if (codec->active == 0 && codec_dai->pop_wait == 0){
-			if (codec->dapm_event)
-				codec->dapm_event(codec, SNDRV_CTL_POWER_D3hot);
-		}
+		if (codec->active == 0 && codec_dai->pop_wait == 0)
+			snd_soc_dapm_device_event(socdev, SNDRV_CTL_POWER_D3hot);
 	}
 
 	mutex_unlock(&pcm_mutex);
@@ -432,8 +455,7 @@ static int soc_pcm_prepare(struct snd_pcm_substream *substream)
 		/* no delayed work - do we need to power up codec */
 		if (codec->dapm_state != SNDRV_CTL_POWER_D0) {
 
-			if (codec->dapm_event)
-				codec->dapm_event(codec, SNDRV_CTL_POWER_D1);
+			snd_soc_dapm_device_event(socdev,  SNDRV_CTL_POWER_D1);
 
 			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 				snd_soc_dapm_stream_event(codec,
@@ -444,8 +466,7 @@ static int soc_pcm_prepare(struct snd_pcm_substream *substream)
 					codec_dai->capture.stream_name,
 					SND_SOC_DAPM_STREAM_START);
 
-			if (codec->dapm_event)
-				codec->dapm_event(codec, SNDRV_CTL_POWER_D0);
+			snd_soc_dapm_device_event(socdev, SNDRV_CTL_POWER_D0);
 			if (codec_dai->dai_ops.digital_mute)
 				codec_dai->dai_ops.digital_mute(codec_dai, 0);
 
@@ -638,6 +659,12 @@ static int soc_suspend(struct platform_device *pdev, pm_message_t state)
 			dai->dai_ops.digital_mute(dai, 1);
 	}
 
+	snd_power_change_state(codec->card, SNDRV_CTL_POWER_D3cold);
+	
+	/* suspend all pcm's */
+	for(i = 0; i < machine->num_links; i++)
+		snd_pcm_suspend_all(machine->dai_link[i].pcm);
+
 	if (machine->suspend_pre)
 		machine->suspend_pre(pdev, state);
 
@@ -729,6 +756,12 @@ static int soc_resume(struct platform_device *pdev)
 
 	if (machine->resume_post)
 		machine->resume_post(pdev);
+
+#ifndef CONFIG_SND_S3C_SOC
+	snd_power_change_state(codec->card, SNDRV_CTL_POWER_D3hot);
+#else
+	snd_power_change_state(codec->card, SNDRV_CTL_POWER_D0);
+#endif
 
 	return 0;
 }
@@ -872,6 +905,7 @@ static int soc_new_pcm(struct snd_soc_device *socdev,
 		return ret;
 	}
 
+	dai_link->pcm = pcm;
 	pcm->private_data = rtd;
 	soc_pcm_ops.mmap = socdev->platform->pcm_ops->mmap;
 	soc_pcm_ops.pointer = socdev->platform->pcm_ops->pointer;
@@ -882,10 +916,14 @@ static int soc_new_pcm(struct snd_soc_device *socdev,
 	soc_pcm_ops.page = socdev->platform->pcm_ops->page;
 
 	if (playback)
+	{
 		snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_PLAYBACK, &soc_pcm_ops);
+	}
 
 	if (capture)
+	{
 		snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_CAPTURE, &soc_pcm_ops);
+	}
 
 	ret = socdev->platform->pcm_new(codec->card, codec_dai, pcm);
 	if (ret < 0) {
@@ -1099,7 +1137,8 @@ int snd_soc_register_card(struct snd_soc_device *socdev)
 				continue;
 			}
 		}
-		if (socdev->machine->dai_link[i].cpu_dai->type == SND_SOC_DAI_AC97)
+		if (socdev->machine->dai_link[i].codec_dai->type == 
+			SND_SOC_DAI_AC97_BUS)
 			ac97 = 1;
 	}
 	snprintf(codec->card->shortname, sizeof(codec->card->shortname),
@@ -1148,11 +1187,21 @@ EXPORT_SYMBOL_GPL(snd_soc_register_card);
 void snd_soc_free_pcms(struct snd_soc_device *socdev)
 {
 	struct snd_soc_codec *codec = socdev->codec;
+#ifdef CONFIG_SND_SOC_AC97_BUS
+	struct snd_soc_codec_dai *codec_dai;
+	int i;
+#endif
 
 	mutex_lock(&codec->mutex);
 #ifdef CONFIG_SND_SOC_AC97_BUS
-	if (codec->ac97)
-		soc_ac97_dev_unregister(codec);
+	for(i = 0; i < codec->num_dai; i++) {
+		codec_dai = &codec->dai[i];
+		if (codec_dai->type == SND_SOC_DAI_AC97_BUS && codec->ac97) {
+			soc_ac97_dev_unregister(codec);
+			goto free_card;
+		}
+	}
+free_card:
 #endif
 
 	if (codec->card)
@@ -1203,7 +1252,6 @@ struct snd_kcontrol *snd_soc_cnew(const struct snd_kcontrol_new *_template,
 	memcpy(&template, _template, sizeof(template));
 	if (long_name)
 		template.name = long_name;
-	template.access = SNDRV_CTL_ELEM_ACCESS_READWRITE;
 	template.index = 0;
 
 	return snd_ctl_new1(&template, data);
@@ -1338,13 +1386,13 @@ EXPORT_SYMBOL_GPL(snd_soc_info_enum_ext);
 int snd_soc_info_volsw_ext(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_info *uinfo)
 {
-	int mask = kcontrol->private_value;
+	int max = kcontrol->private_value;
 
 	uinfo->type =
-		mask == 1 ? SNDRV_CTL_ELEM_TYPE_BOOLEAN : SNDRV_CTL_ELEM_TYPE_INTEGER;
+		max == 1 ? SNDRV_CTL_ELEM_TYPE_BOOLEAN : SNDRV_CTL_ELEM_TYPE_INTEGER;
 	uinfo->count = 1;
 	uinfo->value.integer.min = 0;
-	uinfo->value.integer.max = mask;
+	uinfo->value.integer.max = max;
 	return 0;
 }
 EXPORT_SYMBOL_GPL(snd_soc_info_volsw_ext);
@@ -1381,15 +1429,15 @@ EXPORT_SYMBOL_GPL(snd_soc_info_bool_ext);
 int snd_soc_info_volsw(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_info *uinfo)
 {
-	int mask = (kcontrol->private_value >> 16) & 0xff;
+	int max = (kcontrol->private_value >> 16) & 0xff;
 	int shift = (kcontrol->private_value >> 8) & 0x0f;
 	int rshift = (kcontrol->private_value >> 12) & 0x0f;
 
 	uinfo->type =
-		mask == 1 ? SNDRV_CTL_ELEM_TYPE_BOOLEAN : SNDRV_CTL_ELEM_TYPE_INTEGER;
+		max == 1 ? SNDRV_CTL_ELEM_TYPE_BOOLEAN : SNDRV_CTL_ELEM_TYPE_INTEGER;
 	uinfo->count = shift == rshift ? 1 : 2;
 	uinfo->value.integer.min = 0;
-	uinfo->value.integer.max = mask;
+	uinfo->value.integer.max = max;
 	return 0;
 }
 EXPORT_SYMBOL_GPL(snd_soc_info_volsw);
@@ -1410,7 +1458,8 @@ int snd_soc_get_volsw(struct snd_kcontrol *kcontrol,
 	int reg = kcontrol->private_value & 0xff;
 	int shift = (kcontrol->private_value >> 8) & 0x0f;
 	int rshift = (kcontrol->private_value >> 12) & 0x0f;
-	int mask = (kcontrol->private_value >> 16) & 0xff;
+	int max = (kcontrol->private_value >> 16) & 0xff;
+	int mask = (1 << fls(max)) - 1;
 	int invert = (kcontrol->private_value >> 24) & 0x01;
 
 	ucontrol->value.integer.value[0] =
@@ -1420,10 +1469,10 @@ int snd_soc_get_volsw(struct snd_kcontrol *kcontrol,
 			(snd_soc_read(codec, reg) >> rshift) & mask;
 	if (invert) {
 		ucontrol->value.integer.value[0] =
-			mask - ucontrol->value.integer.value[0];
+			max - ucontrol->value.integer.value[0];
 		if (shift != rshift)
 			ucontrol->value.integer.value[1] =
-				mask - ucontrol->value.integer.value[1];
+				max - ucontrol->value.integer.value[1];
 	}
 
 	return 0;
@@ -1446,25 +1495,24 @@ int snd_soc_put_volsw(struct snd_kcontrol *kcontrol,
 	int reg = kcontrol->private_value & 0xff;
 	int shift = (kcontrol->private_value >> 8) & 0x0f;
 	int rshift = (kcontrol->private_value >> 12) & 0x0f;
-	int mask = (kcontrol->private_value >> 16) & 0xff;
+	int max = (kcontrol->private_value >> 16) & 0xff;
+	int mask = (1 << fls(max)) - 1;
 	int invert = (kcontrol->private_value >> 24) & 0x01;
-	int err;
 	unsigned short val, val2, val_mask;
 
 	val = (ucontrol->value.integer.value[0] & mask);
 	if (invert)
-		val = mask - val;
+		val = max - val;
 	val_mask = mask << shift;
 	val = val << shift;
 	if (shift != rshift) {
 		val2 = (ucontrol->value.integer.value[1] & mask);
 		if (invert)
-			val2 = mask - val2;
+			val2 = max - val2;
 		val_mask |= mask << rshift;
 		val |= val2 << rshift;
 	}
-	err = snd_soc_update_bits(codec, reg, val_mask, val);
-	return err;
+	return snd_soc_update_bits(codec, reg, val_mask, val);
 }
 EXPORT_SYMBOL_GPL(snd_soc_put_volsw);
 
@@ -1481,13 +1529,13 @@ EXPORT_SYMBOL_GPL(snd_soc_put_volsw);
 int snd_soc_info_volsw_2r(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_info *uinfo)
 {
-	int mask = (kcontrol->private_value >> 12) & 0xff;
+	int max = (kcontrol->private_value >> 12) & 0xff;
 
 	uinfo->type =
-		mask == 1 ? SNDRV_CTL_ELEM_TYPE_BOOLEAN : SNDRV_CTL_ELEM_TYPE_INTEGER;
+		max == 1 ? SNDRV_CTL_ELEM_TYPE_BOOLEAN : SNDRV_CTL_ELEM_TYPE_INTEGER;
 	uinfo->count = 2;
 	uinfo->value.integer.min = 0;
-	uinfo->value.integer.max = mask;
+	uinfo->value.integer.max = max;
 	return 0;
 }
 EXPORT_SYMBOL_GPL(snd_soc_info_volsw_2r);
@@ -1508,7 +1556,8 @@ int snd_soc_get_volsw_2r(struct snd_kcontrol *kcontrol,
 	int reg = kcontrol->private_value & 0xff;
 	int reg2 = (kcontrol->private_value >> 24) & 0xff;
 	int shift = (kcontrol->private_value >> 8) & 0x0f;
-	int mask = (kcontrol->private_value >> 12) & 0xff;
+	int max = (kcontrol->private_value >> 12) & 0xff;
+	int mask = (1<<fls(max))-1;
 	int invert = (kcontrol->private_value >> 20) & 0x01;
 
 	ucontrol->value.integer.value[0] =
@@ -1517,9 +1566,9 @@ int snd_soc_get_volsw_2r(struct snd_kcontrol *kcontrol,
 		(snd_soc_read(codec, reg2) >> shift) & mask;
 	if (invert) {
 		ucontrol->value.integer.value[0] =
-			mask - ucontrol->value.integer.value[0];
+			max - ucontrol->value.integer.value[0];
 		ucontrol->value.integer.value[1] =
-			mask - ucontrol->value.integer.value[1];
+			max - ucontrol->value.integer.value[1];
 	}
 
 	return 0;
@@ -1542,7 +1591,8 @@ int snd_soc_put_volsw_2r(struct snd_kcontrol *kcontrol,
 	int reg = kcontrol->private_value & 0xff;
 	int reg2 = (kcontrol->private_value >> 24) & 0xff;
 	int shift = (kcontrol->private_value >> 8) & 0x0f;
-	int mask = (kcontrol->private_value >> 12) & 0xff;
+	int max = (kcontrol->private_value >> 12) & 0xff;
+	int mask = (1 << fls(max)) - 1;
 	int invert = (kcontrol->private_value >> 20) & 0x01;
 	int err;
 	unsigned short val, val2, val_mask;
@@ -1552,8 +1602,8 @@ int snd_soc_put_volsw_2r(struct snd_kcontrol *kcontrol,
 	val2 = (ucontrol->value.integer.value[1] & mask);
 
 	if (invert) {
-		val = mask - val;
-		val2 = mask - val2;
+		val = max - val;
+		val2 = max - val2;
 	}
 
 	val = val << shift;

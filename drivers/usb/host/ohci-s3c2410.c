@@ -24,6 +24,20 @@
 
 #include <asm/hardware.h>
 #include <asm/arch/usb-control.h>
+#include <asm/arch/regs-gpio.h>
+
+#if defined(CONFIG_CPU_S3C6400)
+#include <asm/arch/regs-s3c6400-clock.h>
+#elif defined(CONFIG_CPU_S3C6410)
+#include <asm/arch/regs-s3c6410-clock.h>
+#endif
+
+#define USB_HOST_PORT2_EN	0
+
+#if (USB_HOST_PORT2_EN == 1) && (CONFIG_PLAT_S3C64XX == 1)
+#include <asm/arch/regs-usb-otg-hs.h>
+#endif
+
 
 #define valid_port(idx) ((idx) == 1 || (idx) == 2)
 
@@ -31,6 +45,10 @@
 
 static struct clk *clk;
 static struct clk *usb_clk;
+
+#if (USB_HOST_PORT2_EN == 1) && (CONFIG_PLAT_S3C64XX == 1)
+static struct clk *otg_clk;
+#endif
 
 /* forward definitions */
 
@@ -53,6 +71,10 @@ static void s3c2410_start_hc(struct platform_device *dev, struct usb_hcd *hcd)
 	mdelay(2);			/* let the bus clock stabilise */
 
 	clk_enable(clk);
+
+#if (USB_HOST_PORT2_EN == 1) && (CONFIG_PLAT_S3C64XX == 1)
+	clk_enable(otg_clk);
+#endif
 
 	if (info != NULL) {
 		info->hcd	= hcd;
@@ -346,6 +368,26 @@ static int usb_hcd_s3c2410_probe (const struct hc_driver *driver,
 {
 	struct usb_hcd *hcd = NULL;
 	int retval;
+#if defined(CONFIG_CPU_S3C2450) || defined(CONFIG_CPU_S3C2416)
+	/* USB host Power enable */
+	s3c2410_gpio_cfgpin(S3C2410_GPB4, S3C2410_GPB4_OUTP);
+	s3c2410_gpio_pullup(S3C2410_GPB4, 0);
+	s3c2410_gpio_setpin(S3C2410_GPB4, 1);
+#endif
+
+#if (USB_HOST_PORT2_EN == 1) && (CONFIG_PLAT_S3C64XX == 1)
+	/* set USB_SIG_MASK */
+	__raw_writel( __raw_readl(S3C_OTHERS)|(1<<16), S3C_OTHERS);
+
+	/* Initializes OTG PHY */
+	__raw_writel(0x0, S3C_USBOTG_PHYPWR);
+	__raw_writel(0x60, S3C_USBOTG_PHYCLK);
+
+	__raw_writel(0x1, S3C_USBOTG_RSTCON);	
+	udelay(20);
+	__raw_writel(0x0, S3C_USBOTG_RSTCON);
+	udelay(20);
+#endif
 
 	s3c2410_usb_set_power(dev->dev.platform_data, 1, 1);
 	s3c2410_usb_set_power(dev->dev.platform_data, 2, 1);
@@ -370,13 +412,23 @@ static int usb_hcd_s3c2410_probe (const struct hc_driver *driver,
 		goto err_mem;
 	}
 
+#if (USB_HOST_PORT2_EN == 1) && (CONFIG_PLAT_S3C64XX == 1)
+	otg_clk = clk_get(&dev->dev, "otg");
+	if (IS_ERR(clk)) {
+		dev_err(&dev->dev, "cannot get otg clock\n");
+		retval = -ENOENT;
+		goto err_mem;
+	}
+#endif
+
+#if !defined(CONFIG_CPU_S3C6400) && !defined(CONFIG_CPU_S3C6410)
 	usb_clk = clk_get(&dev->dev, "usb-bus-host");
 	if (IS_ERR(usb_clk)) {
 		dev_err(&dev->dev, "cannot get usb-host clock\n");
 		retval = -ENOENT;
 		goto err_clk;
 	}
-
+#endif
 	s3c2410_start_hc(dev, hcd);
 
 	hcd->regs = ioremap(hcd->rsrc_start, hcd->rsrc_len);
@@ -399,8 +451,10 @@ static int usb_hcd_s3c2410_probe (const struct hc_driver *driver,
 	iounmap(hcd->regs);
 	clk_put(usb_clk);
 
+#if !defined(CONFIG_CPU_S3C6400) && !defined(CONFIG_CPU_S3C6410)
  err_clk:
 	clk_put(clk);
+#endif
 
  err_mem:
 	release_mem_region(hcd->rsrc_start, hcd->rsrc_len);

@@ -264,6 +264,19 @@ struct usb_ep * __devinit usb_ep_autoconfig (
 				return ep;
 		}
 
+       } else if (gadget_is_s3c(gadget)) {
+		if (USB_ENDPOINT_XFER_INT == type) {
+			/* single buffering is enough */
+			ep = find_ep (gadget, "ep3-int");
+			if (ep && ep_matches (gadget, ep, desc))
+				return ep;
+		} else if (USB_ENDPOINT_XFER_BULK == type
+				&& (USB_DIR_IN & desc->bEndpointAddress)) {
+			ep = find_ep (gadget, "ep2-bulk");
+			if (ep && ep_matches (gadget, ep, desc))
+				return ep;
+		}
+
 	} else if (gadget_is_sh (gadget) && USB_ENDPOINT_XFER_INT == type) {
 		/* single buffering is enough; maybe 8 byte fifo is too */
 		ep = find_ep (gadget, "ep3in-bulk");

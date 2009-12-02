@@ -168,6 +168,10 @@ core-$(CONFIG_ARCH_S3C2410)	+= arch/arm/mach-s3c2412/
 core-$(CONFIG_ARCH_S3C2410)	+= arch/arm/mach-s3c2440/
 core-$(CONFIG_ARCH_S3C2410)	+= arch/arm/mach-s3c2442/
 core-$(CONFIG_ARCH_S3C2410)	+= arch/arm/mach-s3c2443/
+core-$(CONFIG_ARCH_S3C2410)	+= arch/arm/mach-s3c2450/
+core-$(CONFIG_ARCH_S3C2410)	+= arch/arm/mach-s3c2416/
+core-$(CONFIG_ARCH_S3C2410)	+= arch/arm/mach-s3c6400/
+core-$(CONFIG_ARCH_S3C2410)	+= arch/arm/mach-s3c6410/
 core-$(CONFIG_FPE_NWFPE)	+= arch/arm/nwfpe/
 core-$(CONFIG_FPE_FASTFPE)	+= $(FASTFPE_OBJ)
 core-$(CONFIG_VFP)		+= arch/arm/vfp/
@@ -175,7 +179,7 @@ core-$(CONFIG_VFP)		+= arch/arm/vfp/
 # If we have a common platform directory, then include it in the build.
 core-$(CONFIG_PLAT_IOP)		+= arch/arm/plat-iop/
 core-$(CONFIG_ARCH_OMAP)	+= arch/arm/plat-omap/
-core-$(CONFIG_PLAT_S3C24XX)		+= arch/arm/plat-s3c24xx/
+core-$(CONFIG_PLAT_S3C)		+= arch/arm/plat-s3c24xx/
 
 drivers-$(CONFIG_OPROFILE)      += arch/arm/oprofile/
 drivers-$(CONFIG_ARCH_CLPS7500)	+= drivers/acorn/char/

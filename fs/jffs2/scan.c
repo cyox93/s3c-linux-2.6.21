@@ -646,8 +646,8 @@ scan_more:
 			inbuf_ofs = ofs - buf_ofs;
 			while (inbuf_ofs < buf_len) {
 				if (*(uint32_t *)(&buf[inbuf_ofs]) != 0xffffffff) {
-					printk(KERN_WARNING "Empty flash at 0x%08x ends at 0x%08x\n",
-					       empty_start, ofs);
+					/* printk(KERN_WARNING "Empty flash at 0x%08x ends at 0x%08x\n",
+					       empty_start, ofs); */
 					if ((err = jffs2_scan_dirty_space(c, jeb, ofs-empty_start)))
 						return err;
 					goto scan_more;
@@ -708,9 +708,9 @@ scan_more:
 		}
 		if (je16_to_cpu(node->magic) != JFFS2_MAGIC_BITMASK) {
 			/* OK. We're out of possibilities. Whinge and move on */
-			noisy_printk(&noise, "jffs2_scan_eraseblock(): Magic bitmask 0x%04x not found at 0x%08x: 0x%04x instead\n",
+			/* noisy_printk(&noise, "jffs2_scan_eraseblock(): Magic bitmask 0x%04x not found at 0x%08x: 0x%04x instead\n",
 				     JFFS2_MAGIC_BITMASK, ofs,
-				     je16_to_cpu(node->magic));
+				     je16_to_cpu(node->magic)); */
 			if ((err = jffs2_scan_dirty_space(c, jeb, 4)))
 				return err;
 			ofs += 4;
@@ -838,8 +838,8 @@ scan_more:
 		case JFFS2_NODETYPE_CLEANMARKER:
 			D1(printk(KERN_DEBUG "CLEANMARKER node found at 0x%08x\n", ofs));
 			if (je32_to_cpu(node->totlen) != c->cleanmarker_size) {
-				printk(KERN_NOTICE "CLEANMARKER node found at 0x%08x has totlen 0x%x != normal 0x%x\n",
-				       ofs, je32_to_cpu(node->totlen), c->cleanmarker_size);
+				/* printk(KERN_NOTICE "CLEANMARKER node found at 0x%08x has totlen 0x%x != normal 0x%x\n",
+				       ofs, je32_to_cpu(node->totlen), c->cleanmarker_size); */
 				if ((err = jffs2_scan_dirty_space(c, jeb, PAD(sizeof(struct jffs2_unknown_node)))))
 					return err;
 				ofs += PAD(sizeof(struct jffs2_unknown_node));

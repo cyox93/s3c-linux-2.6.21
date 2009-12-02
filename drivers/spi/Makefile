@@ -31,3 +31,24 @@ obj-$(CONFIG_SPI_AT25)		+= at25.o
 
 # SPI slave drivers (protocol for that link)
 # 	... add above this line ...
+
+ifeq ($(CONFIG_MACH_SMDK2443),y)
+obj-$(CONFIG_SPI)			+= spi-dev.o hspi-s3c2443.o
+endif
+
+ifeq ($(CONFIG_MACH_SMDK2450),y)
+obj-$(CONFIG_SPI)                       += spi-dev.o hspi-s3c2443.o
+endif
+
+ifeq ($(CONFIG_MACH_SMDK2416),y)
+obj-$(CONFIG_SPI)                       += spi-dev.o hspi-s3c2443.o
+endif
+
+ifeq ($(CONFIG_MACH_SMDK6400),y)
+obj-$(CONFIG_SPI)			+= spi-dev.o hspi-s3c6400.o
+endif
+
+ifeq ($(CONFIG_MACH_SMDK6410),y)
+obj-$(CONFIG_SPI)			+= spi-dev.o hspi-s3c6400.o
+endif
+

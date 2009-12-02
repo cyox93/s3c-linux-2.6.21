@@ -16,6 +16,8 @@
 #include <asm/arch/regs-serial.h>
 #include <asm/arch/regs-gpio.h>
 
+#if !defined (CONFIG_CPU_S3C6400) && !defined (CONFIG_CPU_S3C6410) 
+
 #define S3C2410_UART1_OFF (0x4000)
 #define SHIFT_2440TXF (14-9)
 
@@ -100,3 +102,28 @@
 
 1002:		@ exit busyuart
 		.endm
+
+#else
+
+
+		.macro  addruart,rx
+		mrc     p15, 0, \rx, c1, c0
+		tst     \rx, #1                 @ MMU enabled ?
+		ldreq	\rx, = S3C24XX_PA_UART
+		ldrne	\rx, = S3C24XX_VA_UART
+		.endm
+
+		.macro  senduart,rd,rx
+		str     \rd, [\rx, #0x20]       @ UTXH
+		.endm
+
+		.macro  waituart,rd,rx
+		.endm
+
+		.macro  busyuart,rd,rx
+1001:   ldr     \rd, [\rx, #0x10]       @ read UTRSTAT
+		tst     \rd, #1 << 2            @ TX_EMPTY ?
+		beq     1001b
+		.endm
+
+#endif

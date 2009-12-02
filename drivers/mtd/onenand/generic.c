@@ -60,7 +60,9 @@ static int __devinit generic_onenand_probe(struct device *dev)
 		goto out_release_mem_region;
 	}
 
+#if !defined(CONFIG_CPU_S3C6400) && !defined(CONFIG_CPU_S3C6410)
 	info->onenand.mmcontrol = pdata->mmcontrol;
+#endif
 	info->onenand.irq = platform_get_irq(pdev, 0);
 
 	info->mtd.name = pdev->dev.bus_id;

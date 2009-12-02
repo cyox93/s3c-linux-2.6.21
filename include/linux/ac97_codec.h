@@ -64,7 +64,12 @@
 #define AC97_VENDOR_ID2           0x007e
 
 /* volume control bit defines */
+#if defined(CONFIG_MACH_SMDK6400) || defined(CONFIG_MACH_SMDK6410)
 #define AC97_MUTE                 0x8000
+#else
+/* SMDK6400 use headphone out of WM9713 */
+#define AC97_MUTE                 0x8080
+#endif
 #define AC97_MICBOOST             0x0040
 #define AC97_LEFTVOL              0x3f00
 #define AC97_RIGHTVOL             0x003f

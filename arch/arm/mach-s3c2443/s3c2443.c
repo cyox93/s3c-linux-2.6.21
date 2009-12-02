@@ -25,6 +25,9 @@
 #include <asm/mach/map.h>
 #include <asm/mach/irq.h>
 
+#include <asm/proc-fns.h>
+#include <asm/arch/idle.h>
+
 #include <asm/hardware.h>
 #include <asm/io.h>
 #include <asm/irq.h>
@@ -36,10 +39,17 @@
 #include <asm/plat-s3c24xx/devs.h>
 #include <asm/plat-s3c24xx/cpu.h>
 
+#undef  DVS_IDLE
+
 static struct map_desc s3c2443_iodesc[] __initdata = {
 	IODESC_ENT(WATCHDOG),
 	IODESC_ENT(CLKPWR),
 	IODESC_ENT(TIMER),
+	IODESC_ENT(LCD),
+	IODESC_ENT(USBDEV),
+	IODESC_ENT(CAMIF),
+	IODESC_ENT(EBI),
+	IODESC_ENT(SROMC),
 };
 
 struct sysdev_class s3c2443_sysclass = {
@@ -63,12 +73,39 @@ int __init s3c2443_init(void)
 
 	s3c_device_nand.name = "s3c2412-nand";
 
+	// For S3C nand
+	s3c_device_nand.name = "s3c-nand";
+	
+
 	return sysdev_register(&s3c2443_sysdev);
+}
+
+static void s3c2443_idle(void)
+{
+	unsigned long tmp;
+	/*if you want to reduce CPU clock with idle */
+	#ifdef DVS_IDLE
+	tmp = __raw_readl(S3C2443_CLKDIV0);
+	tmp &= ~(0x1<<13);
+	tmp |= (0x1<<13);
+	__raw_writel(tmp, S3C2443_CLKDIV0);
+	#else
+	/* ensure our idle mode is to go to idle */
+	tmp = __raw_readl(S3C2443_PWRMODE);
+	tmp &= ~(0x1<<17);
+	tmp |= (0x1<<17);
+	__raw_writel(tmp, S3C2443_PWRMODE);
+	#endif
+
+	cpu_do_idle();
 }
 
 void __init s3c2443_init_uarts(struct s3c2410_uartcfg *cfg, int no)
 {
 	s3c24xx_init_uartdevs("s3c2440-uart", s3c2410_uart_resources, cfg, no);
+	
+	/* rename devices that are s3c2413/s3c2443/s3c6400 specific */
+        s3c_device_lcd.name  = "s3c-lcd";
 }
 
 /* s3c2443_map_io
@@ -81,6 +118,8 @@ void __init s3c2443_map_io(struct map_desc *mach_desc, int mach_size)
 {
 	iotable_init(s3c2443_iodesc, ARRAY_SIZE(s3c2443_iodesc));
 	iotable_init(mach_desc, mach_size);
+
+	s3c24xx_idle = s3c2443_idle;
 }
 
 /* need to register class before we actually register the device, and
@@ -95,3 +134,56 @@ static int __init s3c2443_core_init(void)
 }
 
 core_initcall(s3c2443_core_init);
+
+
+#define CAMDIV_val     26
+
+int s3c_camif_set_clock (unsigned int camclk)
+{
+	unsigned int camclk_div, val, hclkcon;
+	struct clk *src_clk = clk_get(NULL, "hclk");
+
+	if (camclk == 4800000) {
+		printk(KERN_INFO "External camera clock is set to 48MHz\n");
+	}
+	else if (camclk > 48000000) {
+		printk(KERN_ERR "Invalid camera clock\n");
+	}
+
+	writel(readl(S3C2443_CLKSRC) | (1 << 20), S3C2443_CLKSRC);
+
+	camclk_div = clk_get_rate(src_clk) / camclk;
+	printk("Parent clock = %ld, CAMDIV = %d\n", clk_get_rate(src_clk), camclk_div);
+
+	// CAMIF HCLK Enable
+	hclkcon = __raw_readl(S3C2443_HCLKCON);
+	hclkcon |= S3C2443_HCLKCON_CAMIF;
+	__raw_writel(hclkcon, S3C2443_HCLKCON);
+
+	/* CAMCLK Enable */
+	val = readl(S3C2443_SCLKCON);
+	val |= S3C2443_SCLKCON_CAMCLK;
+	writel(val, S3C2443_SCLKCON);
+
+	val = readl(S3C2443_CLKDIV1);
+	val &= ~(0xf<<CAMDIV_val);
+	writel(val, S3C2443_CLKDIV1);
+
+	val |= ((camclk_div -1) << CAMDIV_val);
+	writel(val, S3C2443_CLKDIV1);
+	val = readl(S3C2443_CLKDIV1);
+
+	return 0;
+}
+
+void s3c_camif_disable_clock (void)
+{
+	unsigned int val;
+
+	val = readl(S3C2443_SCLKCON);
+	val &= ~S3C2443_SCLKCON_CAMCLK;
+	writel(val, S3C2443_SCLKCON);
+}
+
+
+
