@@ -125,7 +125,7 @@ EXPORT_SYMBOL_GPL(arm_pm_restart);
  */
 static void default_idle(void)
 {
-	if (hlt_counter)
+	if (hlt_counter || 1)
 		cpu_relax();
 	else {
 		local_irq_disable();
@@ -148,7 +148,8 @@ void cpu_idle(void)
 
 	/* endless idle loop with no priority at all */
 	while (1) {
-		void (*idle)(void) = pm_idle;
+		//void (*idle)(void) = pm_idle;
+		void (*idle)(void) = default_idle;
 
 #ifdef CONFIG_HOTPLUG_CPU
 		if (cpu_is_offline(smp_processor_id())) {
