@@ -1,0 +1,13 @@
+# arch/arm/plat-wpu7800/Kconfig
+#
+# Copyright 2009 Unidata Communication
+#
+# Licensed under GPLv2
+
+menu "WPU-7800 Platform"
+
+config PLAT_WPU7800
+	bool "WPU-7800 Platform"
+	help
+	  Say Y here if you are using an WPU-7800 platform
+endmenu
