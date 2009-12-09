@@ -166,7 +166,7 @@ struct mtd_partition s3c_partition_info[] = {
         {
                 .name		= "Root - Cramfs",
                 .offset		= (2*SZ_1M),    /* Block number is 0x80 */
-                .size		= (48*SZ_1M),
+                .size		= (24*SZ_1M),
         },
 #endif
         {
