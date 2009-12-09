@@ -36,7 +36,7 @@
   #define SMC_USE_PXA_DMA	1
   #define SMC_USE_16BIT		0
   #define SMC_USE_32BIT		1
-#elif defined(CONFIG_MACH_SMDK6410) || defined(CONFIG_MACH_SMDK2450)
+#elif defined(CONFIG_MACH_SMDK6410) || defined(CONFIG_MACH_SMDK2450) || defined(CONFIG_MACH_SMDK2416)
   #define SMC_USE_PXA_DMA      0
   #define SMC_USE_16BIT        0
   #define SMC_USE_32BIT        1

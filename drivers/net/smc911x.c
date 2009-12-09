@@ -2020,7 +2020,7 @@ static int __init smc911x_probe(struct net_device *dev, unsigned long ioaddr)
 	spin_lock_init(&lp->lock);
 
 
-#if defined(CONFIG_MACH_SMDK6410) || defined(CONFIG_MACH_SMDK2450)
+#if defined(CONFIG_MACH_SMDK6410) || defined(CONFIG_MACH_SMDK2450) || defined(CONFIG_MACH_SMDK2416)
 	dev->dev_addr[0] = 0x00;
 	dev->dev_addr[1] = 0x09;
 	dev->dev_addr[2] = 0xc0;

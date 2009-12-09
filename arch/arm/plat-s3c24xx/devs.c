@@ -1406,7 +1406,7 @@ EXPORT_SYMBOL(s3c_device_keypad);
 
 #endif // CONFIG_CPU_S3C6400
 
-#if defined (CONFIG_CPU_S3C6410) || defined (CONFIG_CPU_S3C2450)
+#if defined (CONFIG_CPU_S3C6410) || defined (CONFIG_CPU_S3C2450) || defined (CONFIG_CPU_S3C2416)
 static struct resource s3c_smc911x_resources[] = {
       [0] = {
               .start  = S3C_PA_SMC9115,
@@ -1417,7 +1417,7 @@ static struct resource s3c_smc911x_resources[] = {
 #if defined(CONFIG_CPU_S3C6410)
               .start = IRQ_EINT10,
               .end   = IRQ_EINT10,
-#elif defined(CONFIG_CPU_S3C2450)
+#elif defined(CONFIG_CPU_S3C2450) || defined(CONFIG_CPU_S3C2416)
               .start = IRQ_EINT4,
               .end   = IRQ_EINT4,
 #endif

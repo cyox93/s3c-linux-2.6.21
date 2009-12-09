@@ -126,6 +126,7 @@ static struct platform_device *smdk2416_devices[] __initdata = {
 	&s3c_device_usb,
 	&s3c_device_hsmmc0,
 	&s3c_device_hsmmc1,
+	&s3c_device_smc911x,
 
 };
 
@@ -190,10 +191,55 @@ static void smdk2416_cs89x0_set(void)
 
 }
 
+static void smdk2416_smc911x_set(void)
+{
+	u32 val;
+
+	/* Bank1 Idle cycle ctrl. */
+	writel(0xf, S3C_SSMC_SMBIDCYR4);
+
+	/* Bank1 Read Wait State cont. = 14 clk          Tacc? */
+	writel(12, S3C_SSMC_SMBWSTRDR4);
+
+	/* Bank1 Write Wait State ctrl. */
+	writel(12, S3C_SSMC_SMBWSTWRR4);
+
+	/* Bank1 Output Enable Assertion Delay ctrl.     Tcho? */
+	writel(2, S3C_SSMC_SMBWSTOENR4);
+
+	/* Bank1 Write Enable Assertion Delay ctrl. */
+	writel(2, S3C_SSMC_SMBWSTWENR4);
+
+	/* SMWAIT active High, Read Byte Lane Enabl      WS1? */
+	val = readl(S3C_SSMC_SMBCR4);
+
+	val |=  ((1<<15)|(1<<7));
+	writel(val, S3C_SSMC_SMBCR4);
+
+	val = readl(S3C_SSMC_SMBCR4);
+	val |=  ((1<<2)|(1<<0));
+	writel(val, S3C_SSMC_SMBCR4);
+
+	val = readl(S3C_SSMC_SMBCR4);
+	val &= ~((3<<20)|(3<<12));
+	writel(val, S3C_SSMC_SMBCR4);
+
+	val = readl(S3C_SSMC_SMBCR4);
+	val &= ~(3<<4);
+	writel(val, S3C_SSMC_SMBCR4);
+
+	val = readl(S3C_SSMC_SMBCR4);
+	val |= (1<<4);
+
+	writel(val, S3C_SSMC_SMBCR4);
+
+}
+
 static void __init smdk2416_machine_init(void)
 {
 	/* SROM init for NFS */
-	smdk2416_cs89x0_set();
+	//smdk2416_cs89x0_set();
+	smdk2416_smc911x_set();
 
 	smdk_machine_init();
 }
