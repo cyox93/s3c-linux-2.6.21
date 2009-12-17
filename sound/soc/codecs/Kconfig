@@ -6,6 +6,10 @@ config SND_SOC_WM8580
 	tristate
 	depends on SND_SOC
 
+config SND_SOC_WM8350
+	tristate
+	depends on SND_SOC
+
 config SND_SOC_WM8731
 	tristate
 	depends on SND_SOC

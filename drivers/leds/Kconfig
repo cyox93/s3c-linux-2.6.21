@@ -39,6 +39,12 @@ config LEDS_SPITZ
 	help
 	  This option enables support for the LEDs on Sharp Zaurus
 	  SL-Cxx00 series (C1000, C3000, C3100).
+	  
+config LEDS_WM8350
+	tristate "LED Support for the WM8350"
+	depends on LEDS_CLASS && REGULATOR_WM8350
+	help
+	  This option enables support for the LEDs driven by the WM8350.
 
 config LEDS_IXP4XX
 	tristate "LED Support for GPIO connected LEDs on IXP4XX processors"

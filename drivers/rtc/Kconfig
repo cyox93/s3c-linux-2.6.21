@@ -319,6 +319,16 @@ config RTC_DRV_AT91RM9200
 	help
 	  Driver for the Atmel AT91RM9200's internal RTC (Realtime Clock).
 
+config RTC_DRV_WM8350
+	tristate "Wolfson Microelectronics WM8350"
+	depends on RTC_CLASS && REGULATOR_WM8350
+	help
+	  If you say yes here you will get support for the
+	  WM8300 RTC chip.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called rtc-wm8350.
+
 config RTC_DRV_TEST
 	tristate "Test driver/device"
 	depends on RTC_CLASS

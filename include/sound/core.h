@@ -27,7 +27,7 @@
 #include <linux/rwsem.h>		/* struct rw_semaphore */
 #include <linux/pm.h>			/* pm_message_t */
 #include <linux/device.h>
-
+#include <sound/driver.h>//lg remove
 /* forward declarations */
 #ifdef CONFIG_PCI
 struct pci_dev;

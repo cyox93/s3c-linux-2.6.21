@@ -82,8 +82,8 @@ struct wm8753_setup_data {
 	unsigned short i2c_address;
 };
 
-#define WM8753_PLL1			0
-#define WM8753_PLL2			1
+#define WM8753_PLL1		0
+#define WM8753_PLL2		1
 
 /* clock inputs */
 #define WM8753_MCLK		0
@@ -118,9 +118,8 @@ struct wm8753_setup_data {
 #define WM8753_VXCLK_DIV_16	(4 << 6)
 
 #define WM8753_DAI_HIFI		0
-#define WM8753_DAI_VOICE		1
+#define WM8753_DAI_VOICE	1
 
-extern struct snd_soc_codec_dai wm8753_dai[2];
-extern struct snd_soc_codec_device soc_codec_dev_wm8753;
+extern const char wm8753_codec_id[];
 
 #endif

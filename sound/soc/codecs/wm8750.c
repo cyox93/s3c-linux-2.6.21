@@ -19,7 +19,6 @@
 #include <linux/pm.h>
 #include <linux/i2c.h>
 #include <linux/platform_device.h>
-#include <sound/driver.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -30,7 +29,7 @@
 #include "wm8750.h"
 
 #define AUDIO_NAME "WM8750"
-#define WM8750_VERSION "0.12"
+#define WM8750_VERSION "0.21"
 
 /*
  * Debug
@@ -52,8 +51,9 @@
 	printk(KERN_WARNING AUDIO_NAME ": " format "\n" , ## arg)
 
 /* codec private data */
-struct wm8750_priv {
+struct wm8750_data {
 	unsigned int sysclk;
+	struct snd_soc_dai *dai;
 };
 
 /*
@@ -112,7 +112,7 @@ static int wm8750_write(struct snd_soc_codec *codec, unsigned int reg,
 	data[1] = value & 0x00ff;
 
 	wm8750_write_reg_cache (codec, reg, value);
-	if (codec->hw_write(codec->control_data, data, 2) == 2)
+	if (codec->soc_card_write(codec->control_data, (long)data, 2) == 2)
 		return 0;
 	else
 		return -EIO;
@@ -189,7 +189,7 @@ SOC_ENUM("Bass Boost", wm8750_enum[0]),
 SOC_ENUM("Bass Filter", wm8750_enum[1]),
 SOC_SINGLE("Bass Volume", WM8750_BASS, 0, 15, 1),
 
-SOC_SINGLE("Treble Volume", WM8750_TREBLE, 0, 15, 0),
+SOC_SINGLE("Treble Volume", WM8750_TREBLE, 0, 15, 1),
 SOC_ENUM("Treble Cut-off", wm8750_enum[2]),
 
 SOC_SINGLE("3D Switch", WM8750_3D, 0, 1, 0),
@@ -250,20 +250,6 @@ SOC_DOUBLE_R("Speaker Playback Volume", WM8750_LOUT2V, WM8750_ROUT2V,
 SOC_SINGLE("Mono Playback Volume", WM8750_MOUTV, 0, 127, 0),
 
 };
-
-/* add non dapm controls */
-static int wm8750_add_controls(struct snd_soc_codec *codec)
-{
-	int err, i;
-
-	for (i = 0; i < ARRAY_SIZE(wm8750_snd_controls); i++) {
-		err = snd_ctl_add(codec->card,
-				snd_soc_cnew(&wm8750_snd_controls[i],codec, NULL));
-		if (err < 0)
-			return err;
-	}
-	return 0;
-}
 
 /*
  * DAPM Controls
@@ -378,7 +364,7 @@ static const struct snd_soc_dapm_widget wm8750_dapm_widgets[] = {
 	SND_SOC_DAPM_INPUT("RINPUT3"),
 };
 
-static const char *audio_map[][3] = {
+static const struct snd_soc_dapm_route audio_map[] = {
 	/* left mixer */
 	{"Left Mixer", "Playback Switch", "Left DAC"},
 	{"Left Mixer", "Left Bypass Switch", "Left Line Mux"},
@@ -470,27 +456,26 @@ static const char *audio_map[][3] = {
 	/* ADC */
 	{"Left ADC", NULL, "Left ADC Mux"},
 	{"Right ADC", NULL, "Right ADC Mux"},
-
-	/* terminator */
-	{NULL, NULL, NULL},
 };
 
-static int wm8750_add_widgets(struct snd_soc_codec *codec)
+static int wm8750_add_widgets(struct snd_soc_codec *codec,
+	struct snd_soc_card *soc_card)
 {
-	int i;
+	int ret;
 
-	for(i = 0; i < ARRAY_SIZE(wm8750_dapm_widgets); i++) {
-		snd_soc_dapm_new_control(codec, &wm8750_dapm_widgets[i]);
-	}
+	ret = snd_soc_dapm_new_controls(soc_card, codec,
+					wm8750_dapm_widgets,
+					ARRAY_SIZE(wm8750_dapm_widgets));
+	if (ret < 0)
+		return ret;
 
-	/* set up audio path audio_mapnects */
-	for(i = 0; audio_map[i][0] != NULL; i++) {
-		snd_soc_dapm_connect_input(codec, audio_map[i][0],
-			audio_map[i][1], audio_map[i][2]);
-	}
+	/* set up audio path audio_map */
+	ret = snd_soc_dapm_add_routes(soc_card, audio_map,
+				     ARRAY_SIZE(audio_map));
+	if (ret < 0)
+		return ret;
 
-	snd_soc_dapm_new_widgets(codec);
-	return 0;
+	return snd_soc_dapm_init(soc_card);
 }
 
 struct _coeff_div {
@@ -565,11 +550,10 @@ static inline int get_coeff(int mclk, int rate)
 	return -EINVAL;
 }
 
-static int wm8750_set_dai_sysclk(struct snd_soc_codec_dai *codec_dai,
+static int wm8750_set_dai_sysclk(struct snd_soc_dai *dai,
 		int clk_id, unsigned int freq, int dir)
 {
-	struct snd_soc_codec *codec = codec_dai->codec;
-	struct wm8750_priv *wm8750 = codec->private_data;
+	struct wm8750_data *wm8750 = dai->codec->private_data;
 
 	switch (freq) {
 	case 11289600:
@@ -583,12 +567,15 @@ static int wm8750_set_dai_sysclk(struct snd_soc_codec_dai *codec_dai,
 	return -EINVAL;
 }
 
-static int wm8750_set_dai_fmt(struct snd_soc_codec_dai *codec_dai,
+static int wm8750_set_dai_fmt(struct snd_soc_dai *dai,
 		unsigned int fmt)
 {
-	struct snd_soc_codec *codec = codec_dai->codec;
+	struct snd_soc_codec *codec = dai->codec;
 	u16 iface = 0;
-
+	
+	if (codec == NULL)
+		return -ENODEV;
+		
 	/* set master/slave audio interface */
 	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
 	case SND_SOC_DAIFMT_CBM_CFM:
@@ -642,12 +629,11 @@ static int wm8750_set_dai_fmt(struct snd_soc_codec_dai *codec_dai,
 }
 
 static int wm8750_pcm_hw_params(struct snd_pcm_substream *substream,
-	struct snd_pcm_hw_params *params)
+	struct snd_pcm_hw_params *params, struct snd_soc_dai *dai)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_device *socdev = rtd->socdev;
-	struct snd_soc_codec *codec = socdev->codec;
-	struct wm8750_priv *wm8750 = codec->private_data;
+	struct snd_soc_pcm_runtime *pcm_runtime = substream->private_data;
+	struct snd_soc_codec *codec = pcm_runtime->codec;
+	struct wm8750_data *wm8750 = dai->codec->private_data;
 	u16 iface = wm8750_read_reg_cache(codec, WM8750_IFACE) & 0x1f3;
 	u16 srate = wm8750_read_reg_cache(codec, WM8750_SRATE) & 0x1c0;
 	int coeff = get_coeff(wm8750->sysclk, params_rate(params));
@@ -676,7 +662,7 @@ static int wm8750_pcm_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-static int wm8750_mute(struct snd_soc_codec_dai *dai, int mute)
+static int wm8750_mute(struct snd_soc_dai *dai, int mute)
 {
 	struct snd_soc_codec *codec = dai->codec;
 	u16 mute_reg = wm8750_read_reg_cache(codec, WM8750_ADCDAC) & 0xfff7;
@@ -688,84 +674,50 @@ static int wm8750_mute(struct snd_soc_codec_dai *dai, int mute)
 	return 0;
 }
 
-static int wm8750_dapm_event(struct snd_soc_codec *codec, int event)
+static int wm8750_set_bias_level(struct snd_soc_codec *codec, 
+	enum snd_soc_dapm_bias_level level)
 {
 	u16 pwr_reg = wm8750_read_reg_cache(codec, WM8750_PWR1) & 0xfe3e;
 
-	switch (event) {
-	case SNDRV_CTL_POWER_D0: /* full On */
+	switch (level) {
+	case SND_SOC_BIAS_ON: /* full On */
 		/* set vmid to 50k and unmute dac */
 		wm8750_write(codec, WM8750_PWR1, pwr_reg | 0x00c0);
 		break;
-	case SNDRV_CTL_POWER_D1: /* partial On */
-	case SNDRV_CTL_POWER_D2: /* partial On */
+	case SND_SOC_BIAS_PREPARE: /* partial On */
 		/* set vmid to 5k for quick power up */
 		wm8750_write(codec, WM8750_PWR1, pwr_reg | 0x01c1);
 		break;
-	case SNDRV_CTL_POWER_D3hot: /* Off, with power */
+	case SND_SOC_BIAS_STANDBY: /* Off, with power */
 		/* mute dac and set vmid to 500k, enable VREF */
 		wm8750_write(codec, WM8750_PWR1, pwr_reg | 0x0141);
 		break;
-	case SNDRV_CTL_POWER_D3cold: /* Off, without power */
+	case SND_SOC_BIAS_OFF: /* Off, without power */
 		wm8750_write(codec, WM8750_PWR1, 0x0001);
 		break;
 	}
-	codec->dapm_state = event;
+	codec->bias_level = level;
 	return 0;
 }
-
-#define WM8750_RATES (SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_11025 |\
-		SNDRV_PCM_RATE_16000 | SNDRV_PCM_RATE_22050 | SNDRV_PCM_RATE_44100 | \
-		SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_88200 | SNDRV_PCM_RATE_96000)
-
-#define WM8750_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE |\
-	SNDRV_PCM_FMTBIT_S24_LE)
-
-struct snd_soc_codec_dai wm8750_dai = {
-	.name = "WM8750",
-	.playback = {
-		.stream_name = "Playback",
-		.channels_min = 1,
-		.channels_max = 2,
-		.rates = WM8750_RATES,
-		.formats = WM8750_FORMATS,},
-	.capture = {
-		.stream_name = "Capture",
-		.channels_min = 1,
-		.channels_max = 2,
-		.rates = WM8750_RATES,
-		.formats = WM8750_FORMATS,},
-	.ops = {
-		.hw_params = wm8750_pcm_hw_params,
-	},
-	.dai_ops = {
-		.digital_mute = wm8750_mute,
-		.set_fmt = wm8750_set_dai_fmt,
-		.set_sysclk = wm8750_set_dai_sysclk,
-	},
-};
-EXPORT_SYMBOL_GPL(wm8750_dai);
 
 static void wm8750_work(struct work_struct *work)
 {
 	struct snd_soc_codec *codec =
 		container_of(work, struct snd_soc_codec, delayed_work.work);
-	wm8750_dapm_event(codec, codec->dapm_state);
+	wm8750_set_bias_level(codec, codec->bias_level);
 }
 
 static int wm8750_suspend(struct platform_device *pdev, pm_message_t state)
 {
-	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
-	struct snd_soc_codec *codec = socdev->codec;
+	struct snd_soc_codec *codec = platform_get_drvdata(pdev);
 
-	wm8750_dapm_event(codec, SNDRV_CTL_POWER_D3cold);
+	wm8750_set_bias_level(codec, SND_SOC_BIAS_OFF);
 	return 0;
 }
 
 static int wm8750_resume(struct platform_device *pdev)
 {
-	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
-	struct snd_soc_codec *codec = socdev->codec;
+	struct snd_soc_codec *codec = platform_get_drvdata(pdev);
 	int i;
 	u8 data[2];
 	u16 *cache = codec->reg_cache;
@@ -776,224 +728,19 @@ static int wm8750_resume(struct platform_device *pdev)
 			continue;
 		data[0] = (i << 1) | ((cache[i] >> 8) & 0x0001);
 		data[1] = cache[i] & 0x00ff;
-		codec->hw_write(codec->control_data, data, 2);
+		codec->soc_card_write(codec->control_data, (long)data, 2);
 	}
 
-	wm8750_dapm_event(codec, SNDRV_CTL_POWER_D3hot);
+	wm8750_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 
 	/* charge wm8750 caps */
-	if (codec->suspend_dapm_state == SNDRV_CTL_POWER_D0) {
-		wm8750_dapm_event(codec, SNDRV_CTL_POWER_D2);
-		codec->dapm_state = SNDRV_CTL_POWER_D0;
+	if (codec->suspend_bias_level == SND_SOC_BIAS_ON) {
+		wm8750_set_bias_level(codec, SND_SOC_BIAS_PREPARE);
+		codec->bias_level = SND_SOC_BIAS_ON;
 		schedule_delayed_work(&codec->delayed_work, msecs_to_jiffies(1000));
 	}
 
 	return 0;
-}
-
-/*
- * initialise the WM8750 driver
- * register the mixer and dsp interfaces with the kernel
- */
-static int wm8750_init(struct snd_soc_device *socdev)
-{
-	struct snd_soc_codec *codec = socdev->codec;
-	int reg, ret = 0;
-
-	codec->name = "WM8750";
-	codec->owner = THIS_MODULE;
-	codec->read = wm8750_read_reg_cache;
-	codec->write = wm8750_write;
-	codec->dapm_event = wm8750_dapm_event;
-	codec->dai = &wm8750_dai;
-	codec->num_dai = 1;
-	codec->reg_cache_size = sizeof(wm8750_reg);
-	codec->reg_cache = kmemdup(wm8750_reg, sizeof(wm8750_reg), GFP_KERNEL);
-	if (codec->reg_cache == NULL)
-		return -ENOMEM;
-
-	wm8750_reset(codec);
-
-	/* register pcms */
-	ret = snd_soc_new_pcms(socdev, SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
-	if (ret < 0) {
-		printk(KERN_ERR "wm8750: failed to create pcms\n");
-		goto pcm_err;
-	}
-
-	/* charge output caps */
-	wm8750_dapm_event(codec, SNDRV_CTL_POWER_D2);
-	codec->dapm_state = SNDRV_CTL_POWER_D3hot;
-	schedule_delayed_work(&codec->delayed_work, msecs_to_jiffies(1000));
-
-	/* set the update bits */
-	reg = wm8750_read_reg_cache(codec, WM8750_LDAC);
-	wm8750_write(codec, WM8750_LDAC, reg | 0x0100);
-	reg = wm8750_read_reg_cache(codec, WM8750_RDAC);
-	wm8750_write(codec, WM8750_RDAC, reg | 0x0100);
-	reg = wm8750_read_reg_cache(codec, WM8750_LOUT1V);
-	wm8750_write(codec, WM8750_LOUT1V, reg | 0x0100);
-	reg = wm8750_read_reg_cache(codec, WM8750_ROUT1V);
-	wm8750_write(codec, WM8750_ROUT1V, reg | 0x0100);
-	reg = wm8750_read_reg_cache(codec, WM8750_LOUT2V);
-	wm8750_write(codec, WM8750_LOUT2V, reg | 0x0100);
-	reg = wm8750_read_reg_cache(codec, WM8750_ROUT2V);
-	wm8750_write(codec, WM8750_ROUT2V, reg | 0x0100);
-	reg = wm8750_read_reg_cache(codec, WM8750_LINVOL);
-	wm8750_write(codec, WM8750_LINVOL, reg | 0x0100);
-	reg = wm8750_read_reg_cache(codec, WM8750_RINVOL);
-	wm8750_write(codec, WM8750_RINVOL, reg | 0x0100);
-
-	wm8750_add_controls(codec);
-	wm8750_add_widgets(codec);
-	ret = snd_soc_register_card(socdev);
-	if (ret < 0) {
-		printk(KERN_ERR "wm8750: failed to register card\n");
-		goto card_err;
-	}
-	return ret;
-
-card_err:
-	snd_soc_free_pcms(socdev);
-	snd_soc_dapm_free(socdev);
-pcm_err:
-	kfree(codec->reg_cache);
-	return ret;
-}
-
-/* If the i2c layer weren't so broken, we could pass this kind of data
-   around */
-static struct snd_soc_device *wm8750_socdev;
-
-#if defined (CONFIG_I2C) || defined (CONFIG_I2C_MODULE)
-
-/*
- * WM8731 2 wire address is determined by GPIO5
- * state during powerup.
- *    low  = 0x1a
- *    high = 0x1b
- */
-static unsigned short normal_i2c[] = { 0, I2C_CLIENT_END };
-
-/* Magic definition of all other variables and things */
-I2C_CLIENT_INSMOD;
-
-static struct i2c_driver wm8750_i2c_driver;
-static struct i2c_client client_template;
-
-static int wm8750_codec_probe(struct i2c_adapter *adap, int addr, int kind)
-{
-	struct snd_soc_device *socdev = wm8750_socdev;
-	struct wm8750_setup_data *setup = socdev->codec_data;
-	struct snd_soc_codec *codec = socdev->codec;
-	struct i2c_client *i2c;
-	int ret;
-
-	if (addr != setup->i2c_address)
-		return -ENODEV;
-
-	client_template.adapter = adap;
-	client_template.addr = addr;
-
-	i2c = kmemdup(&client_template, sizeof(client_template), GFP_KERNEL);
-	if (i2c == NULL) {
-		kfree(codec);
-		return -ENOMEM;
-	}
-	i2c_set_clientdata(i2c, codec);
-	codec->control_data = i2c;
-
-	ret = i2c_attach_client(i2c);
-	if (ret < 0) {
-		err("failed to attach codec at addr %x\n", addr);
-		goto err;
-	}
-
-	ret = wm8750_init(socdev);
-	if (ret < 0) {
-	err("failed to initialise WM8750\n");
-		goto err;
-	}
-	return ret;
-
-err:
-	kfree(codec);
-	kfree(i2c);
-	return ret;
-}
-
-static int wm8750_i2c_detach(struct i2c_client *client)
-{
-	struct snd_soc_codec *codec = i2c_get_clientdata(client);
-	i2c_detach_client(client);
-	kfree(codec->reg_cache);
-	kfree(client);
-	return 0;
-}
-
-static int wm8750_i2c_attach(struct i2c_adapter *adap)
-{
-	return i2c_probe(adap, &addr_data, wm8750_codec_probe);
-}
-
-/* corgi i2c codec control layer */
-static struct i2c_driver wm8750_i2c_driver = {
-	.driver = {
-		.name = "WM8750 I2C Codec",
-		.owner = THIS_MODULE,
-	},
-	.id =             I2C_DRIVERID_WM8750,
-	.attach_adapter = wm8750_i2c_attach,
-	.detach_client =  wm8750_i2c_detach,
-	.command =        NULL,
-};
-
-static struct i2c_client client_template = {
-	.name =   "WM8750",
-	.driver = &wm8750_i2c_driver,
-};
-#endif
-
-static int wm8750_probe(struct platform_device *pdev)
-{
-	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
-	struct wm8750_setup_data *setup = socdev->codec_data;
-	struct snd_soc_codec *codec;
-	struct wm8750_priv *wm8750;
-	int ret = 0;
-
-	info("WM8750 Audio Codec %s", WM8750_VERSION);
-	codec = kzalloc(sizeof(struct snd_soc_codec), GFP_KERNEL);
-	if (codec == NULL)
-		return -ENOMEM;
-
-	wm8750 = kzalloc(sizeof(struct wm8750_priv), GFP_KERNEL);
-	if (wm8750 == NULL) {
-		kfree(codec);
-		return -ENOMEM;
-	}
-
-	codec->private_data = wm8750;
-	socdev->codec = codec;
-	mutex_init(&codec->mutex);
-	INIT_LIST_HEAD(&codec->dapm_widgets);
-	INIT_LIST_HEAD(&codec->dapm_paths);
-	wm8750_socdev = socdev;
-	INIT_DELAYED_WORK(&codec->delayed_work, wm8750_work);
-	
-#if defined (CONFIG_I2C) || defined (CONFIG_I2C_MODULE)
-	if (setup->i2c_address) {
-		normal_i2c[0] = setup->i2c_address;
-		codec->hw_write = (hw_write_t)i2c_master_send;
-		ret = i2c_add_driver(&wm8750_i2c_driver);
-		if (ret != 0)
-			printk(KERN_ERR "can't add i2c driver");
-	}
-#else
-		/* Add other interfaces here */
-#endif
-
-	return ret;
 }
 
 /*
@@ -1015,34 +762,179 @@ static int run_delayed_work(struct delayed_work *dwork)
 	return ret;
 }
 
-/* power down chip */
-static int wm8750_remove(struct platform_device *pdev)
+/*
+ * initialise the WM8750 codec
+ */
+static int wm8750_codec_init(struct snd_soc_codec *codec,
+	struct snd_soc_card *soc_card)
 {
-	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
-	struct snd_soc_codec *codec = socdev->codec;
+	int reg;
 
-	if (codec->control_data)
-		wm8750_dapm_event(codec, SNDRV_CTL_POWER_D3cold);
-	run_delayed_work(&codec->delayed_work);
-	snd_soc_free_pcms(socdev);
-	snd_soc_dapm_free(socdev);
-#if defined (CONFIG_I2C) || defined (CONFIG_I2C_MODULE)
-	i2c_del_driver(&wm8750_i2c_driver);
-#endif
-	kfree(codec->private_data);
-	kfree(codec);
+	wm8750_reset(codec);
+
+	/* charge output caps */
+	wm8750_set_bias_level(codec, SND_SOC_BIAS_PREPARE);
+	codec->bias_level = SND_SOC_BIAS_STANDBY;
+	schedule_delayed_work(&codec->delayed_work, msecs_to_jiffies(1000));
+
+	/* set the update bits */
+	reg = wm8750_read_reg_cache(codec, WM8750_LDAC);
+	wm8750_write(codec, WM8750_LDAC, reg | 0x0100);
+	reg = wm8750_read_reg_cache(codec, WM8750_RDAC);
+	wm8750_write(codec, WM8750_RDAC, reg | 0x0100);
+	reg = wm8750_read_reg_cache(codec, WM8750_LOUT1V);
+	wm8750_write(codec, WM8750_LOUT1V, reg | 0x0100);
+	reg = wm8750_read_reg_cache(codec, WM8750_ROUT1V);
+	wm8750_write(codec, WM8750_ROUT1V, reg | 0x0100);
+	reg = wm8750_read_reg_cache(codec, WM8750_LOUT2V);
+	wm8750_write(codec, WM8750_LOUT2V, reg | 0x0100);
+	reg = wm8750_read_reg_cache(codec, WM8750_ROUT2V);
+	wm8750_write(codec, WM8750_ROUT2V, reg | 0x0100);
+	reg = wm8750_read_reg_cache(codec, WM8750_LINVOL);
+	wm8750_write(codec, WM8750_LINVOL, reg | 0x0100);
+	reg = wm8750_read_reg_cache(codec, WM8750_RINVOL);
+	wm8750_write(codec, WM8750_RINVOL, reg | 0x0100);
+	
+	snd_soc_add_new_controls(soc_card, wm8750_snd_controls, codec,
+		ARRAY_SIZE(wm8750_snd_controls));
+	wm8750_add_widgets(codec, soc_card);
 
 	return 0;
 }
 
-struct snd_soc_codec_device soc_codec_dev_wm8750 = {
-	.probe = 	wm8750_probe,
-	.remove = 	wm8750_remove,
-	.suspend = 	wm8750_suspend,
-	.resume =	wm8750_resume,
+static void wm8750_codec_exit(struct snd_soc_codec *codec,
+	struct snd_soc_card *soc_card)
+{
+	wm8750_set_bias_level(codec, SND_SOC_BIAS_OFF);
+	run_delayed_work(&codec->delayed_work);
+}
+
+#define WM8750_RATES (SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_11025 |\
+		SNDRV_PCM_RATE_16000 | SNDRV_PCM_RATE_22050 | SNDRV_PCM_RATE_44100 | \
+		SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_88200 | SNDRV_PCM_RATE_96000)
+
+#define WM8750_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE |\
+	SNDRV_PCM_FMTBIT_S24_LE)
+
+static struct snd_soc_dai_caps wm8750_playback = {
+	.stream_name	= "Playback",
+	.channels_min	= 1,
+	.channels_max	= 2,
+	.rates		= WM8750_RATES,
+	.formats	= WM8750_FORMATS,
 };
 
-EXPORT_SYMBOL_GPL(soc_codec_dev_wm8750);
+static struct snd_soc_dai_caps wm8750_capture = {
+	.stream_name	= "Capture",
+	.channels_min	= 1,
+	.channels_max	= 2,
+	.rates		= WM8750_RATES,
+	.formats	= WM8750_FORMATS,
+};
+
+static struct snd_soc_dai_ops wm8750_dai_ops = {
+	/* alsa ops */
+	.hw_params	= wm8750_pcm_hw_params,
+	
+	/* dai ops */
+	.set_sysclk	= wm8750_set_dai_sysclk,
+	.set_fmt	= wm8750_set_dai_fmt,
+	.digital_mute	= wm8750_mute,
+};
+
+/* for modprobe */
+const char wm8750_codec_id[] = "wm8750-codec";
+EXPORT_SYMBOL_GPL(wm8750_codec_id);
+
+const char wm8750_codec_dai_id[] = "wm8750-codec-dai";
+EXPORT_SYMBOL_GPL(wm8750_codec_dai_id);
+
+struct snd_soc_dai_new wm8750_hifi_dai = {
+	.name		= wm8750_codec_dai_id,
+	.playback	= &wm8750_playback,
+	.capture	= &wm8750_capture,
+	.ops		= &wm8750_dai_ops,
+};
+
+static struct snd_soc_codec_new wm8750_codec = {
+	.name		= wm8750_codec_id,
+	.reg_cache_size = sizeof(wm8750_reg),
+	.reg_cache_step = 1,
+	.set_bias_level	= wm8750_set_bias_level,
+	.init		= wm8750_codec_init,
+	.exit		= wm8750_codec_exit,
+	.codec_read	= wm8750_read_reg_cache,
+	.codec_write	= wm8750_write,
+};
+
+static int wm8750_codec_probe(struct platform_device *pdev)
+{
+	struct snd_soc_codec *codec;
+	struct wm8750_data *wm8750;
+	int ret;
+
+	info("WM8750 Audio Codec %s", WM8750_VERSION);
+
+	codec = snd_soc_new_codec(&wm8750_codec, (char *) wm8750_reg);
+	if (codec == NULL)
+		return -ENOMEM;
+
+	wm8750 = kzalloc(sizeof(struct wm8750_data), GFP_KERNEL);
+	if (wm8750 == NULL) {
+		ret = -ENOMEM;
+		goto wm8750_err;
+	}
+	codec->private_data = wm8750;
+	platform_set_drvdata(pdev, codec);
+	INIT_DELAYED_WORK(&codec->delayed_work, wm8750_work);
+	ret = snd_soc_register_codec(codec, &pdev->dev);
+	if (ret < 0)
+		goto codec_err;
+	wm8750->dai = snd_soc_register_codec_dai(&wm8750_hifi_dai, &pdev->dev);
+	if (wm8750->dai == NULL)
+		goto codec_err;
+	return ret;
+
+codec_err:
+	kfree(wm8750);
+wm8750_err:
+	snd_soc_free_codec(codec);
+	return ret;
+}
+
+static int wm8750_codec_remove(struct platform_device *pdev)
+{
+	struct snd_soc_codec *codec = platform_get_drvdata(pdev);
+	struct wm8750_data *wm8750 = codec->private_data;
+	
+	snd_soc_unregister_codec_dai(wm8750->dai);
+	kfree(wm8750);
+	snd_soc_free_codec(codec);
+	return 0;
+}
+static struct platform_driver wm8750_codec_driver = {
+	.driver = {
+		.name		= wm8750_codec_id,
+		.owner		= THIS_MODULE,
+	},
+	.probe		= wm8750_codec_probe,
+	.remove		= __devexit_p(wm8750_codec_remove),
+	.suspend	= wm8750_suspend,
+	.resume		= wm8750_resume,
+};
+
+static __init int wm8750_init(void)
+{
+	return platform_driver_register(&wm8750_codec_driver);
+}
+
+static __exit void wm8750_exit(void)
+{
+	platform_driver_unregister(&wm8750_codec_driver);
+}
+
+module_init(wm8750_init);
+module_exit(wm8750_exit)
 
 MODULE_DESCRIPTION("ASoC WM8750 driver");
 MODULE_AUTHOR("Liam Girdwood");

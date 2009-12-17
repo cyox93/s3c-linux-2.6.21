@@ -129,20 +129,26 @@ static void pxa2xx_ac97_write(struct snd_ac97 *ac97, unsigned short reg,
 
 static void pxa2xx_ac97_warm_reset(struct snd_ac97 *ac97)
 {
+	int timeout = 100;
 	gsr_bits = 0;
 
-#ifdef CONFIG_PXA27x
-	/* warm reset broken on Bulverde,
-	   so manually keep AC97 reset high */
-	pxa_gpio_mode(113 | GPIO_OUT | GPIO_DFLT_HIGH);
-	udelay(10);
-	GCR |= GCR_WARM_RST;
-	pxa_gpio_mode(113 | GPIO_ALT_FN_2_OUT);
-	udelay(500);
-#else
-	GCR |= GCR_WARM_RST | GCR_PRIRDY_IEN | GCR_SECRDY_IEN;
-	wait_event_timeout(gsr_wq, gsr_bits & (GSR_PCR | GSR_SCR), 1);
-#endif
+	if (cpu_is_pxa27x()) {
+		/* warm reset broken on Bulverde, so manually keep
+		 * AC97 reset high */
+		pxa_gpio_mode(113 | GPIO_OUT | GPIO_DFLT_HIGH);
+		udelay(10);
+		GCR |= GCR_WARM_RST;
+		pxa_gpio_mode(113 | GPIO_ALT_FN_2_OUT);
+		udelay(500);
+	} else if (cpu_is_pxa3xx()) {
+		/* Can't use interrupts */
+		GCR |= GCR_WARM_RST;
+		while (!((GSR | gsr_bits) & (GSR_PCR | GSR_SCR)) && timeout--)
+			mdelay(1);
+	} else {
+		GCR |= GCR_WARM_RST | GCR_PRIRDY_IEN | GCR_SECRDY_IEN;
+		wait_event_timeout(gsr_wq, gsr_bits & (GSR_PCR | GSR_SCR), 1);
+	}
 
 	if (!((GSR | gsr_bits) & (GSR_PCR | GSR_SCR)))
 		printk(KERN_INFO "%s: warm reset timeout (GSR=%#lx)\n",
@@ -154,22 +160,42 @@ static void pxa2xx_ac97_warm_reset(struct snd_ac97 *ac97)
 
 static void pxa2xx_ac97_cold_reset(struct snd_ac97 *ac97)
 {
+	int timeout = 1000;
+
+	if (cpu_is_pxa3xx()) {
+		/* Hold CLKBPB for 100us */
+		GCR = 0;
+		GCR = GCR_CLKBPB;
+		udelay(100);
+		GCR = 0;
+	}
+
 	GCR &=  GCR_COLD_RST;  /* clear everything but nCRST */
 	GCR &= ~GCR_COLD_RST;  /* then assert nCRST */
 
 	gsr_bits = 0;
-#ifdef CONFIG_PXA27x
-	/* PXA27x Developers Manual section 13.5.2.2.1 */
-	pxa_set_cken(1 << 31, 1);
-	udelay(5);
-	pxa_set_cken(1 << 31, 0);
-	GCR = GCR_COLD_RST;
-	udelay(50);
-#else
-	GCR = GCR_COLD_RST;
-	GCR |= GCR_CDONE_IE|GCR_SDONE_IE;
-	wait_event_timeout(gsr_wq, gsr_bits & (GSR_PCR | GSR_SCR), 1);
-#endif
+
+	if (cpu_is_pxa27x()) {
+		/* PXA27x Developers Manual section 13.5.2.2.1 */
+		clk_enable(ac97conf_clk);
+		udelay(5);
+		clk_disable(ac97conf_clk);
+		GCR = GCR_COLD_RST;
+		udelay(50);
+
+	} else if (cpu_is_pxa3xx()) {
+		/* Can't use interrupts on PXA3xx */
+		GCR &= ~(GCR_PRIRDY_IEN|GCR_SECRDY_IEN);
+
+		GCR = GCR_WARM_RST | GCR_COLD_RST;
+		while (!(GSR & (GSR_PCR | GSR_SCR)) && timeout--)
+			mdelay(10);
+
+	} else {
+		GCR = GCR_COLD_RST;
+		GCR |= GCR_CDONE_IE|GCR_SDONE_IE;
+		wait_event_timeout(gsr_wq, gsr_bits & (GSR_PCR | GSR_SCR), 1);
+	}
 
 	if (!((GSR | gsr_bits) & (GSR_PCR | GSR_SCR)))
 		printk(KERN_INFO "%s: cold reset timeout (GSR=%#lx)\n",
@@ -361,34 +387,148 @@ static int pxa2xx_ac97_hw_mic_params(struct snd_pcm_substream *substream,
 		SNDRV_PCM_RATE_16000 | SNDRV_PCM_RATE_22050 | SNDRV_PCM_RATE_44100 | \
 		SNDRV_PCM_RATE_48000)
 
-/*
- * There is only 1 physical AC97 interface for pxa2xx, but it
- * has extra fifo's that can be used for aux DACs and ADCs.
- */
-struct snd_soc_cpu_dai pxa_ac97_dai[] = {
+static struct snd_soc_dai_ops pxa_ac97_mic_ops = {
+	/* alsa ops */
+	.hw_params	= pxa2xx_ac97_hw_mic_params,
+	/* ac97_ops */
+	.ac97_ops	= &pxa2xx_ac97_ops,
+};
+
+struct snd_soc_dai_new dais[] = {
+	{
+		.name         = pxa_ac97_hifi_dai_id,
+		.ac97_control = 1,
+		.playback     = &pxa_ac97_hifi_playback,
+		.capture      = &pxa_ac97_hifi_capture,
+		.ops          = &pxa_ac97_hifi_ops,
+	},
+	{
+		.name         = pxa_ac97_aux_dai_id,
+		.ac97_control = 1,
+		.playback     = &pxa_ac97_aux_playback,
+		.capture      = &pxa_ac97_aux_capture,
+		.ops          = &pxa_ac97_aux_ops,
+	},
+	{
+		.name         = pxa_ac97_mic_dai_id,
+		.ac97_control = 1,
+		.capture      = &pxa_ac97_mic_capture,
+		.ops          = &pxa_ac97_mic_ops,
+	},
+};
+
+struct snd_soc_dai_new dais[] = {
+	{
+		.name         = pxa_ac97_hifi_dai_id,
+		.ac97_control = 1,
+		.playback     = &pxa_ac97_hifi_playback,
+		.capture      = &pxa_ac97_hifi_capture,
+		.ops          = &pxa_ac97_hifi_ops,
+	},
+	{
+		.name         = pxa_ac97_aux_dai_id,
+		.ac97_control = 1,
+		.playback     = &pxa_ac97_aux_playback,
+		.capture      = &pxa_ac97_aux_capture,
+		.ops          = &pxa_ac97_aux_ops,
+	},
+	{
+		.name         = pxa_ac97_mic_dai_id,
+		.ac97_control = 1,
+		.capture      = &pxa_ac97_mic_capture,
+		.ops          = &pxa_ac97_mic_ops,
+	},
+};
+
+/* IRQ and GPIO's could be platform data */
+static int pxa2xx_ac97_probe(struct platform_device *pdev)
 {
-	.name = "pxa2xx-ac97",
-	.id = 0,
-	.type = SND_SOC_DAI_AC97,
-	.probe = pxa2xx_ac97_probe,
-	.remove = pxa2xx_ac97_remove,
-	.suspend = pxa2xx_ac97_suspend,
-	.resume = pxa2xx_ac97_resume,
-	.playback = {
-		.stream_name = "AC97 Playback",
-		.channels_min = 2,
-		.channels_max = 2,
-		.rates = PXA2XX_AC97_RATES,
-		.formats = SNDRV_PCM_FMTBIT_S16_LE,},
-	.capture = {
-		.stream_name = "AC97 Capture",
-		.channels_min = 2,
-		.channels_max = 2,
-		.rates = PXA2XX_AC97_RATES,
-		.formats = SNDRV_PCM_FMTBIT_S16_LE,},
-	.ops = {
-		.hw_params = pxa2xx_ac97_hw_params,},
-},
+	struct pxa_ac97_data *ac97;
+	int ret, i;
+
+	ac97 = kzalloc(sizeof(struct pxa_ac97_data), GFP_KERNEL);
+	if (ac97 == NULL)
+		return -ENOMEM;
+
+#ifdef CONFIG_PXA27x
+	/* Use GPIO 113 as AC97 Reset on Bulverde */
+	pxa_gpio_mode(113 | GPIO_ALT_FN_2_OUT);
+
+	ac97conf_clk = clk_get(&pdev->dev, "AC97CONFCLK");
+	if (IS_ERR(ac97conf_clk)) {
+		ret = -ENODEV;
+		goto unwind_data;
+	}
+#endif
+
+	ac97_clk = clk_get(&pdev->dev, "AC97CLK");
+	if (IS_ERR(ac97_clk)) {
+		ret = -ENODEV;
+		goto unwind_data;
+	}
+	clk_enable(ac97_clk);
+
+	for (i = 0; i < ARRAY_SIZE(dais); i++) {
+		ac97->dai[i] = snd_soc_register_platform_dai(&dais[i],
+							     &pdev->dev);
+		if (ac97->dai[i] == NULL) {
+			ret = -ENOMEM;
+			goto unwind_create;
+		}
+	}
+
+	ret = request_irq(IRQ_AC97, pxa2xx_ac97_irq, IRQF_DISABLED, "AC97",
+		ac97->dai[0]);
+	if (ret < 0)
+		goto unwind_create;
+
+	pxa_gpio_mode(GPIO31_SYNC_AC97_MD);
+	pxa_gpio_mode(GPIO30_SDATA_OUT_AC97_MD);
+	pxa_gpio_mode(GPIO28_BITCLK_AC97_MD);
+	pxa_gpio_mode(GPIO29_SDATA_IN_AC97_MD);
+
+	platform_set_drvdata(pdev, ac97);
+	return ret;
+
+unwind_create:
+	i--;
+	for (; i >= 0; i--) {
+		snd_soc_unregister_platform_dai(ac97->dai[i]);
+	}
+unwind_data:
+	kfree(ac97);
+	return ret;
+}
+
+static int pxa2xx_ac97_remove(struct platform_device *pdev)
+{
+	struct pxa_ac97_data *ac97 = platform_get_drvdata(pdev);
+	int i;
+
+	GCR |= GCR_ACLINK_OFF;
+	free_irq(IRQ_AC97, ac97->dai[0]);
+	clk_disable(ac97_clk);
+
+	for (i = 0; i < 3; i++) {
+		kfree(ac97->dai[i]->private_data);
+		snd_soc_unregister_platform_dai(ac97->dai[i]);
+	}
+
+	return 0;
+}
+
+static struct platform_driver pxa_ac97_driver = {
+	.driver = {
+		.name		= "pxa2xx-ac97",
+		.owner		= THIS_MODULE,
+	},
+	.probe		= pxa2xx_ac97_probe,
+	.remove		= __devexit_p(pxa2xx_ac97_remove),
+	.suspend	= pxa2xx_ac97_suspend,
+	.resume		= pxa2xx_ac97_resume,
+};
+
+static __init int pxa_ac97_init(void)
 {
 	.name = "pxa2xx-ac97-aux",
 	.id = 1,

@@ -84,3 +84,4 @@ obj-$(CONFIG_SH_WDT) += shwdt.o
 
 # Architecture Independant
 obj-$(CONFIG_SOFT_WATCHDOG) += softdog.o
+obj-$(CONFIG_WM8350_WATCHDOG) += wm8350_wdt.o
