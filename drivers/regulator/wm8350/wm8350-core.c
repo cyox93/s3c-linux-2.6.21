@@ -76,6 +76,14 @@ static const u16 wm8350_reg_map[] = WM8350_REGISTER_DEFAULTS_1;
 static const u16 wm8350_reg_map[] = WM8350_REGISTER_DEFAULTS_2;
 #elif defined(CONFIG_PMIC_WM8350_MODE_3)
 static const u16 wm8350_reg_map[] = WM8350_REGISTER_DEFAULTS_3;
+#elif defined(CONFIG_PMIC_WM8351_MODE_0)
+static const u16 wm8350_reg_map[] = WM8351_REGISTER_DEFAULTS_0;
+#elif defined(CONFIG_PMIC_WM8351_MODE_1)
+static const u16 wm8350_reg_map[] = WM8351_REGISTER_DEFAULTS_1;
+#elif defined(CONFIG_PMIC_WM8351_MODE_2)
+static const u16 wm8350_reg_map[] = WM8351_REGISTER_DEFAULTS_2;
+#elif defined(CONFIG_PMIC_WM8351_MODE_3)
+static const u16 wm8350_reg_map[] = WM8351_REGISTER_DEFAULTS_3;
 #else
 #error Invalid WM8350 configuration
 #endif
@@ -101,6 +109,7 @@ static int wm8350_read_i2c_device(struct wm8350 *wm8350, char reg,
 	ret = i2c_master_send(wm8350->i2c_client, &reg, 1);
 	if (ret < 0)
 		return ret;
+
 	return i2c_master_recv(wm8350->i2c_client, dest, bytes);
 }
 
@@ -115,6 +124,7 @@ static int wm8350_write_i2c_device(struct wm8350 *wm8350, char reg,
 
 	msg[0] = reg;
 	memcpy(&msg[1], src, bytes);
+
 	return i2c_master_send(wm8350->i2c_client, msg, bytes + 1);
 }
 #endif
@@ -242,6 +252,7 @@ static int wm8350_read(struct wm8350 *wm8350, u8 reg, int num_regs, u16 * dest)
 	if (wm8350->read_dev == NULL)
 		return -ENODEV;
 
+
 	if ((reg + num_regs - 1) > WM8350_MAX_REGISTER) {
 		printk(KERN_ERR "wm8350: invalid reg %x\n", reg + num_regs - 1);
 		return -EINVAL;
@@ -270,7 +281,7 @@ static int wm8350_read(struct wm8350 *wm8350, u8 reg, int num_regs, u16 * dest)
 			return ret;
 		}
 	}
-
+ 
 	/* no volatiles, then cache is good */
 	dbg("cache read ");
 	memcpy(dest, &wm8350->reg_cache[reg], bytes);
@@ -290,6 +301,7 @@ static inline int is_reg_locked(struct wm8350 *wm8350, u8 reg)
 	    (reg >= WM8350_BATTERY_CHARGER_CONTROL_1 &&
 	     reg <= WM8350_BATTERY_CHARGER_CONTROL_3))
 		return 1;
+	
 	return 0;
 }
 
@@ -331,6 +343,7 @@ static int wm8350_write(struct wm8350 *wm8350, u8 reg, int num_regs, u16 * src)
 
 	/* write registers and update cache if successful */
 	ret = wm8350->write_dev(wm8350, reg, bytes, (char *)src);
+
 	return ret;
 }
 
@@ -343,21 +356,23 @@ int wm8350_clear_bits(struct wm8350 *wm8350, u16 reg, u16 mask)
 	int err;
 
 	mutex_lock(&io_mutex);
+
 	err = wm8350_read(wm8350, reg, 1, &data);
-	if (err) {
+	if (err < 0) {
 		printk(KERN_ERR "wm8350: read from reg R%d failed\n", reg);
 		goto out;
 	}
 
 	data &= ~mask;
 	err = wm8350_write(wm8350, reg, 1, &data);
-	if (err)
+	if (err < 0)
 		printk(KERN_ERR "wm8350: write to reg R%d failed\n", reg);
+
 out:
 	mutex_unlock(&io_mutex);
 	return err;
 }
-EXPORT_SYMBOL_GPL(wm8350_clear_bits);
+EXPORT_SYMBOL(wm8350_clear_bits);
 
 int wm8350_set_bits(struct wm8350 *wm8350, u16 reg, u16 mask)
 {
@@ -366,20 +381,21 @@ int wm8350_set_bits(struct wm8350 *wm8350, u16 reg, u16 mask)
 
 	mutex_lock(&io_mutex);
 	err = wm8350_read(wm8350, reg, 1, &data);
-	if (err) {
+	if (err <  0) {
 		printk(KERN_ERR "wm8350: read from reg R%d failed\n", reg);
 		goto out;
 	}
 
 	data |= mask;
 	err = wm8350_write(wm8350, reg, 1, &data);
-	if (err)
+	if (err < 0)
 		printk(KERN_ERR "wm8350: write to reg R%d failed\n", reg);
+
 out:
 	mutex_unlock(&io_mutex);
 	return err;
 }
-EXPORT_SYMBOL_GPL(wm8350_set_bits);
+EXPORT_SYMBOL(wm8350_set_bits);
 
 u16 wm8350_reg_read(struct wm8350 *wm8350, int reg)
 {
@@ -388,13 +404,14 @@ u16 wm8350_reg_read(struct wm8350 *wm8350, int reg)
 
 	mutex_lock(&io_mutex);
 	err = wm8350_read(wm8350, reg, 1, &data);
-	if (err)
-		printk(KERN_ERR "wm8350: read from reg R%d failed\n", reg);
+
+	if (err < 0)
+		printk(KERN_ERR "wm8350: read from reg R%d [%d] failed\n", reg, err);
 
 	mutex_unlock(&io_mutex);
 	return data;
 }
-EXPORT_SYMBOL_GPL(wm8350_reg_read);
+EXPORT_SYMBOL(wm8350_reg_read);
 
 int wm8350_reg_write(struct wm8350 *wm8350, int reg, u16 val)
 {
@@ -403,12 +420,12 @@ int wm8350_reg_write(struct wm8350 *wm8350, int reg, u16 val)
 
 	mutex_lock(&io_mutex);
 	ret = wm8350_write(wm8350, reg, 1, &data);
-	if (ret)
-		printk(KERN_ERR "wm8350: write to reg R%d failed\n", reg);
+	if (ret < 0)
+		printk(KERN_ERR "wm8350: write to reg R%d [%d] failed\n", reg, ret);
 	mutex_unlock(&io_mutex);
 	return ret;
 }
-EXPORT_SYMBOL_GPL(wm8350_reg_write);
+EXPORT_SYMBOL(wm8350_reg_write);
 
 int wm8350_block_read(struct wm8350 *wm8350, int start_reg, int regs,
 		      u16 * dest)
@@ -423,7 +440,7 @@ int wm8350_block_read(struct wm8350 *wm8350, int start_reg, int regs,
 	mutex_unlock(&io_mutex);
 	return err;
 }
-EXPORT_SYMBOL_GPL(wm8350_block_read);
+EXPORT_SYMBOL(wm8350_block_read);
 
 int wm8350_block_write(struct wm8350 *wm8350, int start_reg, int regs,
 		       u16 * src)
@@ -438,7 +455,7 @@ int wm8350_block_write(struct wm8350 *wm8350, int start_reg, int regs,
 	mutex_unlock(&io_mutex);
 	return ret;
 }
-EXPORT_SYMBOL_GPL(wm8350_block_write);
+EXPORT_SYMBOL(wm8350_block_write);
 
 int wm8350_reg_lock(struct wm8350 *wm8350)
 {
@@ -447,13 +464,16 @@ int wm8350_reg_lock(struct wm8350 *wm8350)
 
 	ldbg("%s\n", __FUNCTION__);
 	mutex_lock(&io_mutex);
+
 	ret = wm8350_write(wm8350, WM8350_SECURITY, 1, &key);
-	if (ret)
+
+	if (ret < 0)
 		printk(KERN_ERR "wm8350: lock failed\n");
+
 	mutex_unlock(&io_mutex);
 	return ret;
 }
-EXPORT_SYMBOL_GPL(wm8350_reg_lock);
+EXPORT_SYMBOL(wm8350_reg_lock);
 
 int wm8350_reg_unlock(struct wm8350 *wm8350)
 {
@@ -462,13 +482,16 @@ int wm8350_reg_unlock(struct wm8350 *wm8350)
 
 	ldbg("%s\n", __FUNCTION__);
 	mutex_lock(&io_mutex);
+
 	ret = wm8350_write(wm8350, WM8350_SECURITY, 1, &key);
-	if (ret)
+
+	if (ret < 0)
 		printk(KERN_ERR "wm8350: unlock failed\n");
+
 	mutex_unlock(&io_mutex);
 	return ret;
 }
-EXPORT_SYMBOL_GPL(wm8350_reg_unlock);
+EXPORT_SYMBOL(wm8350_reg_unlock);
 
 /*
  * For Switching between SPI and I2C IO
@@ -515,7 +538,7 @@ int wm8350_set_io(struct wm8350 *wm8350, int io,
 	mutex_unlock(&io_mutex);
 	return 0;
 }
-EXPORT_SYMBOL_GPL(wm8350_set_io);
+EXPORT_SYMBOL(wm8350_set_io);
 
 /*
  * Cache is always host endian.
@@ -555,7 +578,7 @@ int wm8350_create_cache(struct wm8350 *wm8350)
 out:
 	return ret;
 }
-EXPORT_SYMBOL_GPL(wm8350_create_cache);
+EXPORT_SYMBOL(wm8350_create_cache);
 
 static void wm8350_irq_call_worker(struct wm8350 *wm8350, int irq)
 {
@@ -749,7 +772,7 @@ void wm8350_irq_worker(struct work_struct *work)
 		}
 	}
 }
-EXPORT_SYMBOL_GPL(wm8350_irq_worker);
+EXPORT_SYMBOL(wm8350_irq_worker);
 
 int wm8350_register_irq(struct wm8350 *wm8350, int irq,
 			void (*handler) (struct wm8350 *, int, void *),
@@ -767,7 +790,7 @@ int wm8350_register_irq(struct wm8350 *wm8350, int irq,
 	mutex_unlock(&wm8350->work_mutex);
 	return 0;
 }
-EXPORT_SYMBOL_GPL(wm8350_register_irq);
+EXPORT_SYMBOL(wm8350_register_irq);
 
 int wm8350_free_irq(struct wm8350 *wm8350, int irq)
 {
@@ -779,7 +802,7 @@ int wm8350_free_irq(struct wm8350 *wm8350, int irq)
 	mutex_unlock(&wm8350->work_mutex);
 	return 0;
 }
-EXPORT_SYMBOL_GPL(wm8350_free_irq);
+EXPORT_SYMBOL(wm8350_free_irq);
 
 int wm8350_mask_irq(struct wm8350 *wm8350, int irq)
 {
@@ -1016,7 +1039,7 @@ int wm8350_mask_irq(struct wm8350 *wm8350, int irq)
 	}
 	return 0;
 }
-EXPORT_SYMBOL_GPL(wm8350_mask_irq);
+EXPORT_SYMBOL(wm8350_mask_irq);
 
 int wm8350_unmask_irq(struct wm8350 *wm8350, int irq)
 {
@@ -1253,7 +1276,7 @@ int wm8350_unmask_irq(struct wm8350 *wm8350, int irq)
 	}
 	return 0;
 }
-EXPORT_SYMBOL_GPL(wm8350_unmask_irq);
+EXPORT_SYMBOL(wm8350_unmask_irq);
 
 static int gpio_set_dir(struct wm8350 *wm8350, int gpio, int dir)
 {
@@ -1382,14 +1405,14 @@ int wm8350_gpio_set_status(struct wm8350 *wm8350, int gpio, int status)
 		return wm8350_clear_bits(wm8350,
 					 WM8350_GPIO_PIN_STATUS, 1 << gpio);
 }
-EXPORT_SYMBOL_GPL(wm8350_gpio_set_status);
+EXPORT_SYMBOL(wm8350_gpio_set_status);
 
 int wm8350_gpio_get_status(struct wm8350 *wm8350, int gpio)
 {
 	return (wm8350_reg_read(wm8350, WM8350_GPIO_PIN_STATUS) &
 		(1 << gpio)) ? 1 : 0;
 }
-EXPORT_SYMBOL_GPL(wm8350_gpio_get_status);
+EXPORT_SYMBOL(wm8350_gpio_get_status);
 
 static int gpio_set_pull_up(struct wm8350 *wm8350, int gpio, int up)
 {
@@ -1441,36 +1464,37 @@ int wm8350_gpio_config(struct wm8350 *wm8350, int gpio, int dir, int func,
 {
 	/* make sure we never pull up and down at the same time */
 	if (pull == WM8350_GPIO_PULL_NONE) {
-		if (gpio_set_pull_up(wm8350, gpio, 0))
+		if (gpio_set_pull_up(wm8350, gpio, 0) < 0)
 			goto err;
-		if (gpio_set_pull_down(wm8350, gpio, 0))
+		if (gpio_set_pull_down(wm8350, gpio, 0) < 0)
 			goto err;
 	} else if (pull == WM8350_GPIO_PULL_UP) {
-		if (gpio_set_pull_down(wm8350, gpio, 0))
+		if (gpio_set_pull_down(wm8350, gpio, 0) < 0)
 			goto err;
-		if (gpio_set_pull_up(wm8350, gpio, 1))
+		if (gpio_set_pull_up(wm8350, gpio, 1) < 0)
 			goto err;
 	} else if (pull == WM8350_GPIO_PULL_DOWN) {
-		if (gpio_set_pull_up(wm8350, gpio, 0))
+		if (gpio_set_pull_up(wm8350, gpio, 0) < 0)
 			goto err;
-		if (gpio_set_pull_down(wm8350, gpio, 1))
+		if (gpio_set_pull_down(wm8350, gpio, 1) < 0)
 			goto err;
 	}
 
-	if (gpio_set_invert(wm8350, gpio, invert))
+	if (gpio_set_invert(wm8350, gpio, invert) < 0)
 		goto err;
-	if (gpio_set_polarity(wm8350, gpio, pol))
+	if (gpio_set_polarity(wm8350, gpio, pol) < 0)
 		goto err;
-	if (gpio_set_debounce(wm8350, gpio, debounce))
+	if (gpio_set_debounce(wm8350, gpio, debounce) < 0)
 		goto err;
-	if (gpio_set_dir(wm8350, gpio, dir))
+	if (gpio_set_dir(wm8350, gpio, dir) < 0)
 		goto err;
+
 	return gpio_set_func(wm8350, gpio, func);
 
 err:
 	return -EIO;
 }
-EXPORT_SYMBOL_GPL(wm8350_gpio_config);
+EXPORT_SYMBOL(wm8350_gpio_config);
 
 int wm8350_read_auxadc(struct wm8350 *wm8350, int channel, int scale, int vref)
 {
@@ -1517,7 +1541,7 @@ int wm8350_read_auxadc(struct wm8350 *wm8350, int channel, int scale, int vref)
 	mutex_unlock(&auxadc_mutex);
 	return result & WM8350_AUXADC_DATA1_MASK;
 }
-EXPORT_SYMBOL_GPL(wm8350_read_auxadc);
+EXPORT_SYMBOL(wm8350_read_auxadc);
 
 int wm8350_device_init(struct wm8350 *wm8350)
 {
@@ -1536,6 +1560,7 @@ int wm8350_device_init(struct wm8350 *wm8350)
 	/* get WM8350 revision and config mode */
 	id1 = wm8350_reg_read(wm8350, WM8350_RESET_ID);
 	id2 = wm8350_reg_read(wm8350, WM8350_ID);
+	
 	if (id1 == 0x0)
 		printk(KERN_INFO "wm8350: found Rev C device\n");
 	else if (id1 == 0x6143) {
@@ -1551,6 +1576,10 @@ int wm8350_device_init(struct wm8350 *wm8350)
 		case WM8350_REV_G:
 			printk(KERN_INFO "wm8350: found Rev G device\n");
 			wm8350->rev = WM8350_REV_G;
+			break;
+		case 0x01:
+			printk(KERN_INFO "wm8350: found Rev V device\n");
+			wm8350->rev = 0x01;
 			break;
 		default:
 			printk(KERN_ERR "wm8350: found unknown rev\n");
@@ -1570,11 +1599,11 @@ err:
 	kfree(wm8350->reg_cache);
 	return ret;
 }
-EXPORT_SYMBOL_GPL(wm8350_device_init);
+EXPORT_SYMBOL(wm8350_device_init);
 
 void wm8350_device_exit(struct wm8350 *wm8350)
 {
 	if (wm8350->reg_cache)
 		kfree(wm8350->reg_cache);
 }
-EXPORT_SYMBOL_GPL(wm8350_device_exit);
+EXPORT_SYMBOL(wm8350_device_exit);

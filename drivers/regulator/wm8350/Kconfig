@@ -15,15 +15,27 @@ config PMIC_WM8350_MODE_2
 config PMIC_WM8350_MODE_3
 	bool
 
-config IMX32ADS_WM8350_PMU
-	bool "WOLFSON WM8350 IMX32ADS board PMU support"
+config PMIC_WM8351_MODE_0
+	bool
+
+config PMIC_WM8351_MODE_1
+	bool
+
+config PMIC_WM8351_MODE_2
+	bool
+
+config PMIC_WM8351_MODE_3
+	bool
+
+
+config S3C24XX_WM8350_PMU
+	bool "WOLFSON WM8350 S3C24XX board PMU support"
 	depends on REGULATOR
 	select REGULATOR_WM8350
-	select I2C_MXC_SELECT2
-	select PMIC_WM8350_MODE_0
+	select PMIC_WM8351_MODE_0
 	help
 	  If you say yes here you get support for the
-	  Wolfon WM8350 PMIC chip on the Freescale IMX32ADS.
+	  Wolfon WM8350 PMIC chip on the Freescale S3C24XX.
 
 	  This driver can also be built as a module. If so, the module
 	  will be called imx32ads-wm8350.

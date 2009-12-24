@@ -1313,10 +1313,7 @@ static int wm8350_resume(struct platform_device *pdev)
 {
 	struct snd_soc_codec *codec = platform_get_drvdata(pdev);
 
-	wm8350_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
-
-	/* charge wm8350 caps */
-	if (codec->suspend_bias_level == SND_SOC_BIAS_ON) {
+	wm8350_set_bias_level(codec, SND_SOC_BIAS_STANDBY); /* charge wm8350 caps */ if (codec->suspend_bias_level == SND_SOC_BIAS_ON) {
 		wm8350_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 		codec->bias_level = SND_SOC_BIAS_ON;
 	}
@@ -1331,13 +1328,13 @@ static int wm8350_codec_init(struct snd_soc_codec *codec,
 	struct wm8350_data *wm8350_data = codec->private_data;
 	struct wm8350_output *out1 = &wm8350_data->out1,
 	    *out2 = &wm8350_data->out2;
-
+	
 	snd_assert(wm8350 != NULL, return -EINVAL);
 
 	/* reset codec */
 	wm8350_clear_bits(wm8350, WM8350_POWER_MGMT_5, WM8350_CODEC_ENA);
 	wm8350_set_bits(wm8350, WM8350_POWER_MGMT_5, WM8350_CODEC_ENA);
-
+	
 	/* enable clock gen - could probably be done later */
 	wm8350_set_bits(wm8350, WM8350_POWER_MGMT_4, WM8350_SYSCLK_ENA);
 
@@ -1458,7 +1455,7 @@ static struct snd_soc_codec_new wm8350_codec = {
 	.codec_write	= wm8350_codec_write,
 };
 
-static int wm8350_codec_probe(struct platform_device *pdev)
+static int __init wm8350_codec_probe(struct platform_device *pdev)
 {
 	struct snd_soc_codec *codec;
 	struct wm8350_data *wm8350;
@@ -1485,6 +1482,7 @@ static int wm8350_codec_probe(struct platform_device *pdev)
 	wm8350->dai = snd_soc_register_codec_dai(&wm8350_hifi_dai, &pdev->dev);
 	if (wm8350->dai == NULL)
 		goto codec_err;
+
 	return 0;
 
 codec_err:
@@ -1506,19 +1504,19 @@ static int wm8350_codec_remove(struct platform_device *pdev)
 }
 
 static struct platform_driver wm8350_codec_driver = {
-	.driver = {
-		   .name = wm8350_codec_id,
-		   .owner = THIS_MODULE,
-		   },
-	.probe = wm8350_codec_probe,
-	.remove = __devexit_p(wm8350_codec_remove),
-	.suspend = wm8350_suspend,
-	.resume = wm8350_resume,
+	.probe		= wm8350_codec_probe,
+	.remove		= __devexit_p(wm8350_codec_remove),
+	.suspend	= wm8350_suspend,
+	.resume		= wm8350_resume,
+	.driver		= {
+		.name	= wm8350_codec_id,
+		.owner	= THIS_MODULE,
+	},
 };
 
 static __init int wm8350_init(void)
 {
-	return platform_driver_register(&wm8350_codec_driver);
+	return  platform_driver_register(&wm8350_codec_driver);
 }
 
 static __exit void wm8350_exit(void)
