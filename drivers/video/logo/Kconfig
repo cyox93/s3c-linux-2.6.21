@@ -15,6 +15,11 @@ config LOGO_LINUX_MONO
 	depends on LOGO
 	default y
 
+config LOGO_SUN_CLUT224
+	bool "224-color Sun Linux logo"
+	depends on LOGO && SPARC
+	default y
+
 config LOGO_LINUX_VGA16
 	bool "Standard 16-color Linux logo"
 	depends on LOGO
@@ -48,11 +53,6 @@ config LOGO_PARISC_CLUT224
 config LOGO_SGI_CLUT224
 	bool "224-color SGI Linux logo"
 	depends on LOGO && (SGI_IP22 || SGI_IP27 || SGI_IP32 || X86_VISWS)
-	default y
-
-config LOGO_SUN_CLUT224
-	bool "224-color Sun Linux logo"
-	depends on LOGO && SPARC
 	default y
 
 config LOGO_SUPERH_MONO

@@ -127,6 +127,8 @@ static struct platform_device *smdk2416_devices[] __initdata = {
 	&s3c_device_hsmmc0,
 	&s3c_device_hsmmc1,
 	&s3c_device_smc911x,
+	&s3c_device_keypad,
+	&s3c_device_ucc,
 
 };
 

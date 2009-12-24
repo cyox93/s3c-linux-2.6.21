@@ -99,6 +99,7 @@ obj-$(CONFIG_FB_LTD222OV)         += s3cfb.o s3c_ltd222ov.o cfbimgblt.o cfbcopya
 obj-$(CONFIG_FB_LTV350QV)         += s3cfb.o s3c_ltv350qv.o cfbimgblt.o cfbcopyarea.o cfbfillrect.o
 obj-$(CONFIG_FB_LTE246QV)         += s3cfb.o s3c_lte246qv.o cfbimgblt.o cfbcopyarea.o cfbfillrect.o
 obj-$(CONFIG_FB_LTE480WV)         += s3cfb.o s3c_lte480wv.o cfbimgblt.o cfbcopyarea.o cfbfillrect.o
+obj-$(CONFIG_FB_ILI9225QC)        += s3cfb.o s3c_ili9225qc.o cfbimgblt.o cfbcopyarea.o cfbfillrect.o
 obj-$(CONFIG_FB_LMS480QC)         += s3cfb.o s3c_lms480qc.o cfbimgblt.o cfbcopyarea.o cfbfillrect.o
 obj-$(CONFIG_FB_PNX4008_DUM)	  += pnx4008/
 obj-$(CONFIG_FB_PNX4008_DUM_RGB)  += pnx4008/

@@ -1,0 +1,17 @@
+#
+# UCC Modules configuration
+#
+
+menu "UDC Common Control Driver"
+
+config UCC
+	tristate "UCC support"
+	default y
+	---help---
+	This is the remocon module driver. This module provides kernel API
+	for the remocon.
+	It controls also the IrDA interface.
+	If you want Remocon support, you should say Y here
+
+endmenu
+

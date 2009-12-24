@@ -152,7 +152,8 @@ config FB_S3C
 choice
 depends on FB_S3C
 prompt "Select LCD Type"
-default FB_LTE480WV
+#default FB_LTE480WV
+default FB_ILI9225QC
 config FB_LTD222OV
        bool "LTD222OV"
        ---help---
@@ -173,10 +174,15 @@ config FB_LTV350QV
        ---help---
          TBA
 
-config FB_LTE480WV
-       bool "LTE480WV/LTP700WV"
+config FB_ILI9225QC
+       bool "FB_ILI9225QC"
        ---help---
          TBA
+
+#config FB_LTE480WV
+#       bool "LTE480WV/LTP700WV"
+#       ---help---
+#         TBA
          
 config FB_LMS480QC
        bool "LMS480QC0"

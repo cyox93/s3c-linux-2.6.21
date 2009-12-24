@@ -228,6 +228,255 @@ static struct platform_device __initdata *smdk_devs[] = {
 	&smdk_led7,
 };
 
+//#define WPU7800_EVM_GPIO
+#define WPU7800_WS_GPIO
+
+#ifdef WPU7800_WS_GPIO
+#include <asm/arch/regs-lcd.h>
+#include <linux/delay.h>
+
+void key_led(bool flag)
+{
+	if (flag) { 
+		s3c2410_gpio_setpin(S3C2410_GPA12, 1);
+	} else {
+		s3c2410_gpio_setpin(S3C2410_GPA12, 0);
+	}
+}
+
+void Key_gpio_init(void)
+{
+	s3c2410_gpio_cfgpin(S3C2410_GPG0, S3C2410_GPG0_OUTP);
+	s3c2410_gpio_cfgpin(S3C2410_GPG1, S3C2410_GPG1_OUTP);
+	s3c2410_gpio_cfgpin(S3C2410_GPG2, S3C2410_GPG2_OUTP);	
+	s3c2410_gpio_cfgpin(S3C2410_GPG3, S3C2410_GPG3_OUTP);
+
+	s3c2410_gpio_cfgpin(S3C2410_GPF1, S3C2410_GPF1_INP);
+	s3c2410_gpio_cfgpin(S3C2410_GPF2, S3C2410_GPF2_INP);
+	s3c2410_gpio_cfgpin(S3C2410_GPF3, S3C2410_GPF3_INP);	
+	s3c2410_gpio_cfgpin(S3C2410_GPF5, S3C2410_GPF5_INP);
+	s3c2410_gpio_cfgpin(S3C2410_GPF6, S3C2410_GPF6_INP);	
+	s3c2410_gpio_cfgpin(S3C2410_GPF7, S3C2410_GPF7_INP);	
+
+	__raw_writel(0xaaaa, S3C2410_GPFUP);
+
+	s3c2410_gpio_setpin(S3C2410_GPG0, 0);
+	s3c2410_gpio_setpin(S3C2410_GPG1, 0);
+	s3c2410_gpio_setpin(S3C2410_GPG2, 0);
+	s3c2410_gpio_setpin(S3C2410_GPG3, 0);	
+
+	//printk("S3C2410_GPFCON[0x%x]\n",__raw_readl(S3C2410_GPFCON));
+	//printk("S3C2410_GPFDAT[0x%x]\n",__raw_readl(S3C2410_GPFDAT));	
+
+	mdelay(100);
+}
+
+void gpio_wifi_power(bool flag)
+{
+	if (flag) { 
+		s3c2410_gpio_setpin(S3C2410_GPH12, 1);
+	} else {
+		s3c2410_gpio_setpin(S3C2410_GPH12, 0);
+	}
+}
+
+void gpio_wifi_reset(bool flag)
+{
+	if (flag) { 
+		s3c2410_gpio_setpin(S3C2410_GPH6, 0);
+	} else {
+		s3c2410_gpio_setpin(S3C2410_GPH6, 1);
+	}
+}
+
+void gpio_wifi_power_down(bool flag)
+{
+	if (flag) { 
+		s3c2410_gpio_setpin(S3C2410_GPH7, 1);
+	} else {
+		s3c2410_gpio_setpin(S3C2410_GPH7, 0);
+	}
+}
+
+void wifi_gpio_init (void)
+{
+	s3c2410_gpio_cfgpin(S3C2410_GPH6, S3C2410_GPH6_OUTP);
+	s3c2410_gpio_cfgpin(S3C2410_GPH12, S3C2410_GPH12_OUTP);
+	s3c2410_gpio_cfgpin(S3C2410_GPH7, S3C2410_GPH7_OUTP);
+
+	s3c2410_gpio_pullup(S3C2410_GPH6, 1); /* pull-down enable */
+
+	s3c2410_gpio_setpin(S3C2410_GPH6, 1);
+	s3c2410_gpio_setpin(S3C2410_GPH12, 1);
+	s3c2410_gpio_setpin(S3C2410_GPH7, 1);
+
+	mdelay(30);
+	s3c2410_gpio_setpin(S3C2410_GPH6, 0);
+	mdelay(50);
+	s3c2410_gpio_setpin(S3C2410_GPH6, 1);
+}
+
+void lcd_power(int flag)
+{
+	if (flag) { 
+		s3c2410_gpio_setpin(S3C2410_GPB0, 1);
+	} else {
+		s3c2410_gpio_setpin(S3C2410_GPB0, 0);
+	}
+}
+
+void lcd_reset(void)
+{
+	printk("_lcd_reset\n");
+	mdelay(10);
+	s3c2410_gpio_setpin(S3C2410_GPB1, 0);
+	mdelay(10);
+	s3c2410_gpio_setpin(S3C2410_GPB1, 1);
+	mdelay(50);
+}
+
+void lcd_backlight(int control)
+{
+	int i;
+
+	printk("lcd backlight : %d\n", control);	
+
+	if (!control) {
+		s3c2410_gpio_setpin(S3C2410_GPB2, 0);
+	}
+	else {	
+		s3c2410_gpio_setpin(S3C2410_GPB2, 1);
+		udelay(500);
+			
+		for (i=0;i < control;i++) {
+			s3c2410_gpio_setpin(S3C2410_GPB2, 0);
+			udelay(50);
+			s3c2410_gpio_setpin(S3C2410_GPB2, 1);
+			udelay(50);
+		}
+	}
+}
+
+void vd_bus_inout_set(int flag)
+{
+	if(flag) {
+		__raw_writel(0x5555, S3C2410_GPCCON);
+		__raw_writel(0x00000000, S3C2410_GPDCON);
+	}
+	else {
+		__raw_writel(0x55555555, S3C2410_GPCCON);
+		__raw_writel(0x55555555, S3C2410_GPDCON);
+	}
+}
+
+void lcd_gpio_init(void)
+{
+	s3c2410_gpio_cfgpin(S3C2410_GPB0, S3C2410_GPB0_OUTP);
+	s3c2410_gpio_cfgpin(S3C2410_GPB1, S3C2410_GPB1_OUTP);
+	s3c2410_gpio_cfgpin(S3C2410_GPB2, S3C2410_GPB2_OUTP);	
+
+	s3c2410_gpio_cfgpin(S3C2410_GPC0, S3C2410_GPC0_OUTP); // read
+	s3c2410_gpio_cfgpin(S3C2410_GPC1, S3C2410_GPC1_OUTP); // wirte
+	s3c2410_gpio_cfgpin(S3C2410_GPC2, S3C2410_GPC2_OUTP); // cs
+	s3c2410_gpio_cfgpin(S3C2410_GPC4, S3C2410_GPC4_OUTP); // RS
+
+	vd_bus_inout_set(0);
+
+	s3c2410_gpio_setpin(S3C2410_GPC0, 1);
+	s3c2410_gpio_setpin(S3C2410_GPC1, 1);
+	s3c2410_gpio_setpin(S3C2410_GPC2, 1);
+	s3c2410_gpio_setpin(S3C2410_GPC4, 1);
+
+	s3c2410_gpio_setpin(S3C2410_GPB0, 1);
+	s3c2410_gpio_setpin(S3C2410_GPB1, 1);
+	s3c2410_gpio_setpin(S3C2410_GPB2, 1);
+
+	udelay(100);
+}
+
+void audio_ext_clock(bool flag)
+{
+	if (flag) { 
+		s3c2410_gpio_setpin(S3C2410_GPE2, 1);
+	} else {
+		s3c2410_gpio_setpin(S3C2410_GPE2, 0);
+	}
+}
+
+void speaker_amp(bool flag)
+{
+	if (flag) { 
+		s3c2410_gpio_setpin(S3C2410_GPH2, 1);
+	} else {
+		s3c2410_gpio_setpin(S3C2410_GPH2, 0);
+	}
+}
+
+void vibrator_control(bool flag)
+{
+	if (flag) { 
+		s3c2410_gpio_setpin(S3C2410_GPH5, 1);
+	} else {
+		s3c2410_gpio_setpin(S3C2410_GPH5, 0);
+	}
+}
+
+void charger_green_led(bool flag)
+{
+	if (flag) { 
+		s3c2410_gpio_setpin(S3C2410_GPB3, 1);
+	} else {
+		s3c2410_gpio_setpin(S3C2410_GPB3, 0);
+	}
+}
+
+void charger_red_led(bool flag)
+{
+	if (flag) { 
+		s3c2410_gpio_setpin(S3C2410_GPB4, 1);
+	} else {
+		s3c2410_gpio_setpin(S3C2410_GPB4, 0);
+	}
+}
+
+void wpu7800_gpio_init(void)
+{
+	printk("wpu7800_gpio_init\n");
+
+	// Speaker AMP
+	s3c2410_gpio_cfgpin(S3C2410_GPH2, S3C2410_GPH2_OUTP);
+	s3c2410_gpio_setpin(S3C2410_GPH2, 0);
+
+	// key LED
+	s3c2410_gpio_cfgpin(S3C2410_GPA12, S3C2410_GPA12_OUT);
+	s3c2410_gpio_setpin(S3C2410_GPA12, 0);
+
+	// Audio Ext Clock
+	s3c2410_gpio_cfgpin(S3C2410_GPE2, S3C2410_GPE2_CDCLK);
+	s3c2410_gpio_setpin(S3C2410_GPE2, 0);
+
+	// Vibrator
+	s3c2410_gpio_cfgpin(S3C2410_GPH5, S3C2410_GPH5_OUTP);
+	s3c2410_gpio_setpin(S3C2410_GPH5, 0);
+
+	// Charger LED
+	s3c2410_gpio_cfgpin(S3C2410_GPB3, S3C2410_GPB3_OUTP); // Green
+	s3c2410_gpio_cfgpin(S3C2410_GPB4, S3C2410_GPB4_OUTP); // Red
+	s3c2410_gpio_setpin(S3C2410_GPB3, 0);
+	s3c2410_gpio_setpin(S3C2410_GPB4, 0);
+
+   	 // Wi-Fi
+	wifi_gpio_init();
+
+	// LCD
+	lcd_gpio_init();
+
+	// KeyPAD 	
+	Key_gpio_init();
+	
+}
+#endif 
+
 void __init smdk_machine_init(void)
 {
 	/* Configure the LEDs (even if we have no LED support)*/
@@ -242,6 +491,7 @@ void __init smdk_machine_init(void)
 	s3c2410_gpio_setpin(S3C2410_GPF6, 1);
 	s3c2410_gpio_setpin(S3C2410_GPF7, 1);
 
+	wpu7800_gpio_init();
 	
 	s3c_device_nand.dev.platform_data = &smdk_nand_info;
 	
@@ -252,3 +502,18 @@ void __init smdk_machine_init(void)
 
 	s3c2410_pm_init();
 }
+
+EXPORT_SYMBOL(gpio_wifi_power);
+EXPORT_SYMBOL(gpio_wifi_power_down);
+EXPORT_SYMBOL(gpio_wifi_reset);
+EXPORT_SYMBOL(lcd_power);
+EXPORT_SYMBOL(lcd_reset);
+EXPORT_SYMBOL(lcd_backlight);
+EXPORT_SYMBOL(vd_bus_inout_set);
+EXPORT_SYMBOL(key_led);
+EXPORT_SYMBOL(audio_ext_clock);
+EXPORT_SYMBOL(speaker_amp);
+EXPORT_SYMBOL(vibrator_control);
+EXPORT_SYMBOL(charger_green_led);
+EXPORT_SYMBOL(charger_red_led);
+

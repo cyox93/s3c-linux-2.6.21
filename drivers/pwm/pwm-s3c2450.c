@@ -379,3 +379,4 @@ static int __init s3c2450_init_pwm(void)
 	return ret;
 }
 __initcall(s3c2450_init_pwm);
+EXPORT_SYMBOL(s3c2450_timer_setup);

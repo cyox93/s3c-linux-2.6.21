@@ -217,6 +217,7 @@ config KEYBOARD_AAED2000
 config KEYBOARD_GPIO
 	tristate "GPIO Buttons"
 	depends on GENERIC_GPIO
+	default n
 	help
 	  This driver implements support for buttons connected
 	  to GPIO pins of various CPUs (and some other chips).
@@ -231,8 +232,8 @@ config KEYBOARD_GPIO
 
 config KEYPAD_S3C
         tristate "S3C keypad support"
-	depends on (CPU_S3C6400 || CPU_S3C6410)
-	default n
+#	depends on (CPU_S3C6400 || CPU_S3C6410)
+	default y
 	help
 	  Say Y here if you want to use the S3C SMDK keypad.
 

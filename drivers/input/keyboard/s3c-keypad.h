@@ -8,12 +8,24 @@
 
 static void __iomem *key_base;
 
-#if defined(CONFIG_CPU_S3C6400) || defined (CONFIG_CPU_S3C6410)
+#if 1 //defined(CONFIG_CPU_S3C6400) || defined (CONFIG_CPU_S3C6410)
+#if 1
+#define KEYPAD_COLUMNS	4
+#else
 #define KEYPAD_COLUMNS	8
+#endif
 #define KEYPAD_ROWS	8
 #define MAX_KEYPAD_NR	64	/* 8*8 */
 #define MAX_KEYMASK_NR	32
 
+#if 1
+int keypad_keycode[] = {
+		KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6,
+		KEY_7, KEY_8, KEY_9, KEY_F10, KEY_0, KEY_F11,
+		KEY_RESERVED, KEY_SEND, KEY_OK, KEY_LEFT, KEY_RIGHT, KEY_UP, 
+		KEY_CLEAR, KEY_F1, KEY_F2, KEY_F3, KEY_F4, KEY_UP
+	};
+#else
 int keypad_keycode[] = {
 		1, 2, KEY_1, KEY_Q, KEY_A, 6, 7, KEY_LEFT,
 		9, 10, KEY_2, KEY_W, KEY_S, KEY_Z, KEY_RIGHT, 16,
@@ -24,7 +36,7 @@ int keypad_keycode[] = {
 		KEY_M, KEY_L, KEY_7, KEY_U, KEY_J, KEY_N, 55, KEY_ENTER,
 		KEY_LEFTSHIFT, KEY_9, KEY_8, KEY_I, KEY_K, KEY_B, 63, KEY_COMMA
 	};
-
+#endif
 
 #define KEYPAD_DELAY		(50)
 #define KEYPAD_ROW_GPIOCON	S3C_GPK1CON

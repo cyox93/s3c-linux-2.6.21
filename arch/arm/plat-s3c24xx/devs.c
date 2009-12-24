@@ -964,7 +964,6 @@ struct platform_device s3c_device_hsmmc0 = {
 	}
 };
 
-
 struct platform_device s3c_device_hsmmc1 = {
 	.name		  = "s3c-hsmmc",
 	.id		  = 1,
@@ -1380,18 +1379,34 @@ struct platform_device s3c_device_ide = {
 
 EXPORT_SYMBOL(s3c_device_ide);
 
+#endif // CONFIG_CPU_S3C6400
+
+#if defined (CONFIG_CPU_S3C6410) || defined (CONFIG_CPU_S3C2450) || defined (CONFIG_CPU_S3C2416)
+
 /* Keypad Interface */
 
 static struct resource s3c_keypad_resource[] = {
 	[0] = {
+#if 1
+		.start = S3C24XX_PA_GPIO,
+		.end   = S3C24XX_PA_GPIO+ S3C24XX_SZ_GPIO - 1,
+		.flags = IORESOURCE_MEM,		
+#else
 		.start = S3C24XX_PA_KEYPAD,
 		.end   = S3C24XX_PA_KEYPAD+ S3C24XX_SZ_KEYPAD - 1,
 		.flags = IORESOURCE_MEM,
+#endif
 	},
 	[1] = {
+#if 0
+		.start = IRQ_EINT1, 
+		.end   = IRQ_EINT1,  
+		.flags = IORESOURCE_IRQ,
+//#else
 		.start = IRQ_KEYPAD,
 		.end   = IRQ_KEYPAD,
 		.flags = IORESOURCE_IRQ,
+#endif
 	}
 };
 
@@ -1404,9 +1419,27 @@ struct platform_device s3c_device_keypad = {
 
 EXPORT_SYMBOL(s3c_device_keypad);
 
-#endif // CONFIG_CPU_S3C6400
+static struct resource s3c_ucc_resource[] = {
+	[0] = {
+		.start = S3C24XX_PA_GPIO,
+		.end   = S3C24XX_PA_GPIO+ S3C24XX_SZ_GPIO - 1,
+		.flags = IORESOURCE_MEM,		
+	},
+	[1] = {
+		.start = IRQ_EINT1, //IRQ_KEYPAD,
+		.end   = IRQ_EINT1,  //IRQ_KEYPAD,
+		.flags = IORESOURCE_IRQ,
+	}
+};
 
-#if defined (CONFIG_CPU_S3C6410) || defined (CONFIG_CPU_S3C2450) || defined (CONFIG_CPU_S3C2416)
+struct platform_device s3c_device_ucc = {
+	.name		  = "ucc_dev",
+	.id		  = -1,
+	.num_resources	  = ARRAY_SIZE(s3c_ucc_resource),
+	.resource	  = s3c_ucc_resource,
+};
+EXPORT_SYMBOL(s3c_device_ucc);
+
 static struct resource s3c_smc911x_resources[] = {
       [0] = {
               .start  = S3C_PA_SMC9115,

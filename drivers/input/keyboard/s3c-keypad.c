@@ -23,7 +23,9 @@
 #include <asm/irq.h>
 
 #include <asm/arch/regs-gpio.h>
+#if 0
 #include <asm/arch/regs-keypad.h>
+#endif
 #include "s3c-keypad.h"
 
 #undef S3C_KEYPAD_DEBUG 
@@ -41,14 +43,80 @@
 #define FALSE 0
 
 static struct timer_list keypad_timer;
+static struct timer_list keypad_scan_timer;
+static struct timer_list keypad_led_timer;
 static int is_timer_on = FALSE;
 
+u32 rval_old = 0x3f;
+u32 key_press = 0;
+u32 old_key = 0;
+u16 real_value=0;
+
+extern void key_led(bool flag);
+static int _keypad_scan(unsigned long data)
+{
+	int i,j = 0;
+	u32 cval,rval, rval_sum = 0;	
+
+	struct s3c_keypad *pdata = (struct s3c_keypad *)data;
+	struct input_dev *dev = pdata->dev;
+
+	for (i=0; i<KEYPAD_COLUMNS; i++) {
+		__raw_writel(~(0x01<<i), S3C2410_GPGDAT);
+		
+		udelay(KEYPAD_DELAY);
+
+		rval = __raw_readl(S3C2410_GPFDAT);
+		rval = ((rval>>1)&0x07)|((rval>>2)&0x38);		
+
+		rval_sum += rval;
+
+		if (!key_press && (rval != 0x3f) && (rval_old != rval)) {
+
+			key_led(1);
+
+			del_timer(&keypad_led_timer);	
+			keypad_led_timer.expires = jiffies +msecs_to_jiffies(2000);	
+			add_timer(&keypad_led_timer);
+			
+			for (j=0;j < 7;j++) {
+				if ((~(rval|0xffc0)>>j )& 0x01) 
+					break;				
+			}	
+
+			real_value = (i*6)+j;
+			
+			rval_old = rval;
+			key_press = 1;
+			input_report_key(dev,pdata->keycodes[real_value],1);
+			DPRINTK("Pressed  : %d\n",i);
+			printk("key Pressed  : %d\n", pdata->keycodes[real_value]);
+			__raw_writel(0xff, S3C2410_GPGDAT);
+			return ((i * 6) + j);
+		}		
+	}
+
+	if (((rval_sum/4) == 0x3f)&&key_press) {
+		input_report_key(dev,pdata->keycodes[real_value],0);
+		DPRINTK("Released : %d\n",pdata->keycodes[real_value]);
+		printk("key Released : %d\n",pdata->keycodes[real_value]);
+		key_press = 0;
+		real_value = 0;	
+	}
+
+	rval_old = rval;
+
+	__raw_writel(0xff, S3C2410_GPGDAT);
+
+	return 0;
+}
 
 static int keypad_scan(u32 *keymask_low, u32 *keymask_high)
 {
 	int i,j = 0;
 	u32 cval,rval;
 
+#if 0
 	for (i=0; i<KEYPAD_COLUMNS; i++) {
 		cval = readl(key_base+S3C_KEYIFCOL) | KEYCOL_DMASK;
 		cval &= ~(1 << i);
@@ -67,7 +135,7 @@ static int keypad_scan(u32 *keymask_low, u32 *keymask_high)
 	}
 
 	writel(KEYIFCOL_CLEAR, key_base+S3C_KEYIFCOL);
-
+#endif
 	return 0;
 }
 
@@ -143,17 +211,36 @@ static void keypad_timer_handler(unsigned long data)
 	if (keymask_low | keymask_high) {
 		mod_timer(&keypad_timer,jiffies + HZ/10);
 	} else {
+#if 0	
 		writel(KEYIFCON_INIT, key_base+S3C_KEYIFCON);
+#endif
 		is_timer_on = FALSE;
 	}	
 }
 
+int keypad_scan_timer_handler(unsigned long data)
+{	
+	struct s3c_keypad *pdata = (struct s3c_keypad *)data;
+	struct input_dev *dev = pdata->dev;
+
+	_keypad_scan(pdata);
+
+	mod_timer(&keypad_scan_timer,jiffies +msecs_to_jiffies(100));
+
+	return 1;
+}
+
+void keypad_led_timer_handler(unsigned long data)
+{		
+	key_led(0);
+}
+
 static irqreturn_t s3c_keypad_isr(int irq, void *dev_id)
 {
-
+#if 0
 	/* disable keypad interrupt and schedule for keypad timer handler */
 	writel(readl(key_base+S3C_KEYIFCON) & ~(INT_F_EN|INT_R_EN), key_base+S3C_KEYIFCON);
-
+#endif
 	keypad_timer.expires = jiffies + (HZ/100);
 	if ( is_timer_on == FALSE) {
 		add_timer(&keypad_timer);
@@ -161,9 +248,11 @@ static irqreturn_t s3c_keypad_isr(int irq, void *dev_id)
 	} else {
 		mod_timer(&keypad_timer,keypad_timer.expires);
 	}
+
+#if 0	
 	/*Clear the keypad interrupt status*/
 	writel(KEYIFSTSCLR_CLEAR, key_base+S3C_KEYIFSTSCLR);
-
+#endif	
 	return IRQ_HANDLED;
 }
 
@@ -175,14 +264,14 @@ static int __init s3c_keypad_probe(struct platform_device *pdev)
 	struct input_dev *input_dev;
 	int key, code;
 	struct s3c_keypad *s3c_keypad;
-
+#if 0
 	key_base = ioremap(S3C24XX_PA_KEYPAD, S3C24XX_SZ_KEYPAD);
 
 	if (key_base == NULL) {
 		printk(KERN_ERR "Failed to remap register block\n");
 		return -ENOMEM;
 	}
-	
+#endif	
 	s3c_keypad = kzalloc(sizeof(struct s3c_keypad), GFP_KERNEL);
 	input_dev = input_allocate_device();
 
@@ -194,7 +283,7 @@ static int __init s3c_keypad_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, s3c_keypad);
 	s3c_keypad->dev = input_dev;
-	
+#if 0	
 	writel(KEYIFCON_INIT, key_base+S3C_KEYIFCON);
 	writel(KEYIFFC_DIV, key_base+S3C_KEYIFFC);
 
@@ -206,7 +295,7 @@ static int __init s3c_keypad_probe(struct platform_device *pdev)
 	writel(KEYPAD_COL_GPIOPUD_DIS, KEYPAD_COL_GPIOPUD);
 
 	writel(KEYIFCOL_CLEAR, key_base+S3C_KEYIFCOL);
-
+#endif
 	/* create and register the input driver */
 	set_bit(EV_KEY, input_dev->evbit);
 	set_bit(EV_REP, input_dev->evbit);
@@ -235,27 +324,43 @@ static int __init s3c_keypad_probe(struct platform_device *pdev)
 	
 	input_register_device(input_dev);
 
-
+#if 0
 	/* Scan timer init */
 	init_timer(&keypad_timer);
 	keypad_timer.function = keypad_timer_handler;
 	keypad_timer.data = (unsigned long)s3c_keypad;
-	
-	ret = request_irq(IRQ_KEYPAD, s3c_keypad_isr, SA_SAMPLE_RANDOM,
-		DEVICE_NAME, (void *) pdev);
-	if (ret) {
-		printk("request_irq failed (IRQ_KEYPAD) !!!\n");
-		goto out;
-	}
 
 	keypad_timer.expires = jiffies + (HZ/10);
 
 	if (is_timer_on == FALSE) {
 		add_timer(&keypad_timer);
 		is_timer_on = TRUE;
-	} else {
+	} else {		
 		mod_timer(&keypad_timer,keypad_timer.expires);
 	}
+#endif
+	/* Scan timer init */
+	init_timer(&keypad_scan_timer);
+	keypad_scan_timer.function = keypad_scan_timer_handler;
+	keypad_scan_timer.data = (unsigned long)s3c_keypad;
+
+	/* Scan timer init */
+	init_timer(&keypad_led_timer);
+	keypad_led_timer.function = keypad_led_timer_handler;
+	keypad_led_timer.data = (unsigned long)s3c_keypad;	
+	
+#if 0
+	ret = request_irq(IRQ_EINT1, s3c_keypad_isr0, 0, DEVICE_NAME, (void *) pdev);	
+	printk("IRQ_EINT1 (%d)\n", ret);
+	if (ret != 0) {
+		printk("request_irq failed (IRQ_KEYPAD) !!!\n");
+		goto out;
+	}
+#endif	
+
+	//timer.expires = jiffies + msecs_to_jiffies(CMD_TIMEOUT);
+	keypad_scan_timer.expires = jiffies +msecs_to_jiffies(1000);
+	add_timer(&keypad_scan_timer);
 
 	printk( DEVICE_NAME " Initialized\n");
 	return 0;
@@ -269,13 +374,17 @@ out:
 static int s3c_keypad_remove(struct platform_device *pdev)
 {
 	struct input_dev *input_dev = platform_get_drvdata(pdev);
+#if 0	
 	writel(KEYIFCON_CLEAR, key_base+S3C_KEYIFCON);
-
+#endif
 	input_unregister_device(input_dev);
 	kfree(pdev->dev.platform_data);
-	free_irq(IRQ_KEYPAD, (void *) pdev);
+#if 0	
+	free_irq(IRQ_EINT1/*IRQ_KEYPAD*/, (void *) pdev);
+#endif
 
 	del_timer(&keypad_timer);	
+	del_timer(&keypad_scan_timer);	
 	printk(DEVICE_NAME " Removed.\n");
 	return 0;
 }
