@@ -69,8 +69,7 @@ const struct linux_logo *fb_find_logo(int depth)
 #endif
 #ifdef CONFIG_LOGO_LINUX_LANDSCAPED_CLUT224
 		/* Generic Linux logo */
-		logo = &logo_sun_clut224; 
-		//logo = &logo_linux_landscaped_clut224;
+		logo = &logo_linux_landscaped_clut224;
 #endif
 #ifdef CONFIG_LOGO_DEC_CLUT224
 		/* DEC Linux logo on MIPS/MIPS64 or ALPHA */

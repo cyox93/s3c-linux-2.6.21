@@ -122,7 +122,7 @@ static int ucc_ioctl(struct inode *inode, struct file *file,
 
 		case IOCTLUCC_BACKLIGHT:		
 			//printk("IOCTLUCC_BACKLIGHT [0x%x]\n", arg);	
-#if 1 // PWM Control			
+#if 0 // PWM Control			
 			if (arg >= 16) {		
 				temp = (arg/16)-1;
 				if (temp)
