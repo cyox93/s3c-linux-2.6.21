@@ -183,9 +183,7 @@ SUBARCH := $(shell uname -m | sed -e s/i.86/i386/ -e s/sun4u/sparc64/ \
 # Note: Some architectures assign CROSS_COMPILE in their arch/*/Makefile
 
 ARCH            := arm
-CROSS_COMPILE   := $(shell if [ -f .cross_compile ]; then \
-                                cat .cross_compile; \
-				fi)
+CROSS_COMPILE   ?= 
 
 # Architecture as present in compile.h
 UTS_MACHINE := $(ARCH)

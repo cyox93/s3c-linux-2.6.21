@@ -243,7 +243,7 @@ int pnp_add_id(struct pnp_id *id, struct pnp_dev *dev)
 
 EXPORT_SYMBOL(pnp_register_driver);
 EXPORT_SYMBOL(pnp_unregister_driver);
-#if 0
+#if 1 
 EXPORT_SYMBOL(pnp_add_id);
 #endif
 EXPORT_SYMBOL(pnp_device_attach);
