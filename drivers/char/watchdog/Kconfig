@@ -58,6 +58,12 @@ config SOFT_WATCHDOG
 	  To compile this driver as a module, choose M here: the
 	  module will be called softdog.
 
+config WM8350_WATCHDOG
+	tristate "WM8350 Watchdog"
+	depends on WATCHDOG && REGULATOR_WM8350
+	help
+	  Watchdog support for the watchdog module on wm8350 PMIC
+
 # ARM Architecture
 
 config AT91RM9200_WATCHDOG

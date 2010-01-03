@@ -121,6 +121,7 @@
 #define I2C_DRIVERID_WM8753	91	/* Wolfson WM8753 audio codec */
 #define I2C_DRIVERID_LM4857 	92 	/* LM4857 Audio Amplifier */
 #define I2C_DRIVERID_WM8580	93	/* Wolfson WM8580 audio codec */
+#define I2C_DRIVERID_WM8350	94	/* Wolfson WM8350 PWM */
 
 #define I2C_DRIVERID_I2CDEV	900
 #define I2C_DRIVERID_ARP        902    /* SMBus ARP Client              */

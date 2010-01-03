@@ -37,7 +37,6 @@
 
 u32 s3c_i2s_get_clockrate(void);
 
-extern struct snd_soc_cpu_dai s3c_i2s_dai;
 #ifdef CONFIG_CPU_S3C6410
 extern struct snd_soc_cpu_dai s3c_i2s_v40_dai;
 #endif

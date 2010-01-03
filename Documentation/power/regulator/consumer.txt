@@ -1,0 +1,169 @@
+Regulator Consumer Driver Interface
+===================================
+
+This text describes the regulator interface for consumer device drivers and
+supports both types of consumer device driver (i.e. static and dynamic).
+
+It's been broken into the following sections:-
+
+  1. Regulator access.
+  2. Regulator enable & disable
+  3. Regulator voltage control & status
+  4. Regulator current sink control & status
+  5. Regulator operating mode control & status
+  6. Experimental features
+  7. Regulator events
+  8. Example static consumer driver
+  9. Example dynamic consumer driver
+
+
+1. Consumer Regulator Access (static & dynamic drivers)
+=======================================================
+
+A consumer driver can gain access to it's supply regulator by calling :-
+
+regulator = regulator_get(dev, "Vcc");
+
+The consumer passes in it's struct device pointer and power supply ID. The core
+then finds the correct regulator by consulting a machine specific lookup table.
+This will return a pointer to struct regulator and this can then be used to
+access the other consumer functions in the regulator framework to control
+power.
+
+To release the regulator the consumer driver should call :-
+
+regulator_put(regulator);
+
+Consumers can be supplied by more than one regulator e.g. codec consumer with
+analog and digital supplies :-
+
+digital = regulator_get(dev, "Vcc");  /* digital core */
+analog = regulator_get(dev, "Avdd");  /* analog */
+
+The regulator access functions regulator_get() and regulator_put() should
+usually be called in your device drivers probe() and remove() respectively.
+
+
+2. Consumer Supply Enable & Disable (static & dynamic drivers)
+==============================================================
+
+After the consumer has it's regulator it can then enable it's supply by
+calling:-
+
+int regulator_enable(regulator);
+
+NOTE: The supply may already be enabled before regulator_enabled() is called.
+This may happen if the consumer shares the regulator or the regulator has been
+previously enabled by bootloader or kernel board init code.
+
+
+A consumer if can determine if a regulator is already enabled by calling :-
+
+int regulator_is_enabled(regulator);
+
+This will return > zero when the regulator is enabled.
+
+
+A consumer can disable it's supply when no longer needed by calling :-
+
+int regulator_disable(regulator);
+
+NOTE: This may not disable the supply if it's shared with other consumers.
+
+Finally, a regulator can be forcefully disabled in the case of an emergency :-
+
+int regulator_force_disable(regulator);
+
+NOTE: this will shutdown the regulator output. All it's consumers will be
+powered off.
+
+
+3. Consumer Voltage Control & Status (dynamic drivers)
+======================================================
+
+Some consumer drivers need to be able to dynamically change their supply
+voltage to match system operating points. e.g. CPUfreq drivers can scale
+voltage along with frequency to save power, SD drivers may need to select the
+correct card voltage, etc.
+
+Consumers can control their supply voltage by calling :-
+
+int regulator_set_voltage(regulator, min_uV, max_uV);
+
+Where min_uV and max_uV are the minimum and maximum acceptable voltages in
+microvolts.
+
+NOTE: this can be called when the regulator is enabled or disabled. If called
+when enabled, then the voltage changes instantly, otherwise the voltage
+configuration changes and the voltage is physically setwhen the regulator is
+next enabled.
+
+The voltage a regulator is configured to output can be found by calling :-
+
+int regulator_get_voltage(regulator);
+
+NOTE: get_voltage() will return the output voltage whether the regulator is
+enabled or disabled and should not be used to determine regulator state.
+However this can be used in conjunction with is_enabled() to determind the
+regulator output voltage.
+
+
+4. Consumer Current Sink Control & Status (dynamic drivers)
+===========================================================
+
+Some consumer drivers need to be able to dynamically change their supply
+current limit to match system operating points. e.g. LCD backlight driver can
+change the current limit to vary the backlight brightness, USB drivers may want
+to set the limit to 500mA when supplying power.
+
+Consumers can control their supply current limit by calling :-
+
+int regulator_set_current_sink(regulator, min_uV, max_uV);
+
+Where min_uA and max_uA are the minimum and maximum acceptable current limit in
+microamps.
+
+NOTE: this can be called when the regulator is enabled or disabled. If called
+when enabled, then the current limit changes instantly, otherwise the current
+limit configuration changes and the current limit is physically set when the
+regulator is next enabled.
+
+The current limit a regulator is configured to output can be found by
+calling :-
+
+int regulator_get_current(regulator);
+
+NOTE: get_voltage() will return the output voltage whether the regulator is
+enabled or disabled and should not be used to determine regulator state.
+However this can be used in conjunction with is_enabled() to determind the
+regulator output voltage.
+
+
+5. Consumer Operating Mode Control & Status (dynamic drivers)
+=============================================================
+
+Some consumers can further save system power by changing the operating mode of
+their supply regulator to be more efficient when their operation state
+changes. e.g. consumer driver is idle
+
+Consumers can control their supply current limit by calling :-
+
+int regulator_set_current_sink(regulator, min_uV, max_uV);
+
+Where min_uA and max_uA are the minimum and maximum acceptable current in
+microamps.
+
+NOTE: this can be called when the regulator is enabled or disabled. If called
+when enabled, then the current limit changes instantly otherwise the current
+limit configuration changes. (iow current limit is physically set when the
+regulator is next enabled.)
+
+The current limit a regulator is configured to output can be found by
+calling :-
+
+int regulator_get_current(regulator);
+
+NOTE: get_voltage() will return the output voltage whether the regulator is
+enabled or disabled and should not be used to determine regulator state.
+However this can be used in conjunction with is_enabled() to determind the
+regulator output voltage.

@@ -156,7 +156,9 @@ static int s3c24xx_pcm_hw_params(struct snd_pcm_substream *substream,
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct s3c24xx_runtime_data *prtd = runtime->private_data;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct s3c24xx_pcm_dma_params *dma = rtd->dai->cpu_dai->dma_data;
+	struct snd_soc_dai *cpu_rdai = rtd->cpu_dai;
+	struct s3c24xx_pcm_dma_params *dma = cpu_rdai->dma_data;
+//	struct s3c24xx_pcm_dma_params *dma = rtd->dai->cpu_dai->dma_data;
 	unsigned long totbytes = params_buffer_bytes(params);
 	int ret=0;
 
@@ -481,8 +483,9 @@ static void s3c24xx_pcm_free_dma_buffers(struct snd_pcm *pcm)
 
 static u64 s3c24xx_pcm_dmamask = DMA_32BIT_MASK;
 
-static int s3c24xx_pcm_new(struct snd_card *card, 
-	struct snd_soc_codec_dai *dai, struct snd_pcm *pcm)
+static int s3c24xx_pcm_new(struct snd_soc_platform *platform,
+			struct snd_card *card, int playback, int capture,
+			struct snd_pcm *pcm)
 {
 	int ret = 0;
 
@@ -493,31 +496,83 @@ static int s3c24xx_pcm_new(struct snd_card *card,
 	if (!card->dev->coherent_dma_mask)
 		card->dev->coherent_dma_mask = 0xffffffff;
 
-	if (dai->playback.channels_min) {
+	if (playback) {
 		ret = s3c24xx_pcm_preallocate_dma_buffer(pcm,
 			SNDRV_PCM_STREAM_PLAYBACK);
 		if (ret)
 			goto out;
 	}
 
-	if (dai->capture.channels_min) {
+	if (capture) {
 		ret = s3c24xx_pcm_preallocate_dma_buffer(pcm,
 			SNDRV_PCM_STREAM_CAPTURE);
 		if (ret)
 			goto out;
 	}
+
  out:
 	return ret;
 }
 
-struct snd_soc_platform s3c24xx_soc_platform = {
-	.name		= "s3c24xx-audio",
+/* for modprobe */
+const char s3c24xx_platform_id[] = "s3c24xx-pcm";
+EXPORT_SYMBOL_GPL(s3c24xx_platform_id);
+
+struct snd_soc_platform_new s3c24xx_soc_platform = {
+	.name		= s3c24xx_platform_id,
 	.pcm_ops 	= &s3c24xx_pcm_ops,
 	.pcm_new	= s3c24xx_pcm_new,
 	.pcm_free	= s3c24xx_pcm_free_dma_buffers,
 };
 
-EXPORT_SYMBOL_GPL(s3c24xx_soc_platform);
+static int __init s3c24xx_pcm_probe(struct platform_device *pdev)
+{
+	struct snd_soc_platform *platform;
+	int ret;
+
+	platform = snd_soc_new_platform(&s3c24xx_soc_platform);
+	if (platform == NULL) {
+		dev_err(&pdev->dev, "Unable to allocate ASoC platform\n");
+		return -ENOMEM;
+	}
+
+	platform_set_drvdata(pdev, platform);
+	ret = snd_soc_register_platform(platform, &pdev->dev);
+	if (ret < 0)
+		snd_soc_free_platform(platform);
+
+	return ret;
+}
+
+static int s3c24xx_pcm_remove(struct platform_device *pdev)
+{
+	struct snd_soc_platform *platform = platform_get_drvdata(pdev);
+
+	snd_soc_free_platform(platform);
+	return 0;
+}
+
+static struct platform_driver s3c24xx_pcm_driver = {
+	.probe		= s3c24xx_pcm_probe,
+	.remove		= __devexit_p(s3c24xx_pcm_remove),
+	.driver		= {
+		.name	= s3c24xx_platform_id,
+		.owner	= THIS_MODULE,
+	},
+};
+
+static __init int s3c24xx_pcm_init(void)
+{
+	return  platform_driver_register(&s3c24xx_pcm_driver);
+}
+
+static __exit void s3c24xx_pcm_exit(void)
+{
+	platform_driver_unregister(&s3c24xx_pcm_driver);
+}
+
+module_init(s3c24xx_pcm_init);
+module_exit(s3c24xx_pcm_exit);
 
 MODULE_AUTHOR("Ben Dooks, <ben@simtec.co.uk>");
 MODULE_DESCRIPTION("Samsung S3C24XX PCM DMA module");

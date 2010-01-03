@@ -28,7 +28,11 @@ struct pxa2xx_gpio {
 	u32 frm;
 };
 
-/* platform data */
-extern struct snd_soc_platform pxa2xx_soc_platform;
+/* PXA audio platform IDs */
+extern const char pxa_platform_id[];
+extern const char pxa2xx_i2s_dai_id[];
+extern const char pxa_ac97_hifi_dai_id[];
+extern const char pxa_ac97_aux_dai_id[];
+extern const char pxa_ac97_mic_dai_id[];
 
 #endif

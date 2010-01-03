@@ -148,7 +148,7 @@ config SND_S3C24XX_SOC_SMDK2416_WM8753
 	help
 	  Say Y if you want to add support for SoC audio on smdk2416
 	  with the WM8753.
-  
+
 config SND_S3C64XX_SOC_SMDK6400_WM8990
 	tristate "SoC I2S Audio support for SMDK6400 - WM8990"
 	depends on SND_S3C_SOC && MACH_SMDK6400
@@ -193,6 +193,16 @@ config SOUND_WM8753_INPUT_STREAM_LINE_IN
 	help
 	  Say Y here to make input stream as LINE-IN.
 endchoice
+
+config SND_S3C24XX_SOC_SMDK2416_WM8350
+	tristate "SoC I2S Audio support for SMDK2416 - WM8350"
+	depends on SND_S3C_SOC && S3C24XX_WM8350_PMU && CPU_S3C2416
+	select SND_S3C2416_SOC_I2S
+	select SND_SOC_WM8350
+	select SND_SOC_I2S_V32
+	help
+	  Say Y if you want to add support for SoC audio on smdk2416
+	  with the WM8350.
 
 config SND_S3C64XX_SOC_SMDK6410_WM8580
 	tristate "SoC I2S Audio support for SMDK6410 - WM8580"

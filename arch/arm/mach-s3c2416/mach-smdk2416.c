@@ -23,6 +23,14 @@
 #include <linux/serial_core.h>
 #include <linux/platform_device.h>
 
+#if defined (CONFIG_S3C24XX_WM8350_PMU)
+#include <linux/mfd/wm8350/core.h>
+#include <linux/mfd/wm8350/pmic.h>
+#include <linux/mfd/wm8350/gpio.h>
+#include <linux/fb.h>
+#include <linux/regulator/machine.h>
+#endif
+
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
 #include <asm/mach/irq.h>
@@ -237,6 +245,418 @@ static void smdk2416_smc911x_set(void)
 
 }
 
+#if defined (CONFIG_S3C24XX_WM8350_PMU)
+static void s3c_nop_release(struct device *dev)
+{
+	/* Nothing */
+}
+
+static struct platform_device s3c_wm8350_codec_device = {
+	.name = "wm8350-codec",
+	.id = 1,
+	.dev = {
+		.release = s3c_nop_release,
+	},
+};
+
+static struct platform_device s3c_wm8350_pcm_device = {
+	.name = "s3c24xx-pcm",
+	.id = 1,
+	.dev = {
+		.release = s3c_nop_release,
+	},
+};
+
+static struct platform_device s3c_wm8350_iis_device = {
+	.name = "s3c-i2s",
+	.id = 1,
+	.dev = {
+		.release = s3c_nop_release,
+	},
+};
+
+static struct platform_device s3c_audio_device = {
+	.name = "smdk2416-audio",
+	.dev = {
+		.release = s3c_nop_release,
+	},
+};
+
+
+static struct regulator_consumer_supply dcdc1_consumers[] = {
+{
+	.dev	= NULL,
+	.supply	= "cpu_vcc",
+},};
+
+/* CPU */
+static struct regulator_init_data dcdc1_data = {
+	.constraints = {
+		.min_uV = 1275000,
+		.max_uV = 1600000,
+		.valid_ops_mask = REGULATOR_CHANGE_VOLTAGE |
+			REGULATOR_CHANGE_MODE,
+		.valid_modes_mask = REGULATOR_MODE_NORMAL |
+			REGULATOR_MODE_FAST,
+		.state_mem = {
+			.uV = 1300000,
+			.mode = REGULATOR_MODE_NORMAL,
+			.enabled = 1,
+		},
+		.initial_state = PM_SUSPEND_MEM,
+		.always_on = 1,
+		.boot_on = 1,
+	},
+	.num_consumer_supplies = ARRAY_SIZE(dcdc1_consumers),
+	.consumer_supplies = dcdc1_consumers,
+};
+
+/* Example Backlight */
+static struct regulator_init_data dcdc2_data = {
+	.constraints = {
+		.valid_modes_mask = REGULATOR_MODE_NORMAL,
+		.state_mem = {
+			.mode = REGULATOR_MODE_NORMAL,
+			.enabled = 0,
+		},
+		.initial_state = PM_SUSPEND_MEM,
+	},
+};
+
+/* System IO - Low */
+static struct regulator_init_data dcdc3_data = {
+	.constraints = {
+		.min_uV = 1800000,
+		.max_uV = 1800000,
+		.state_mem = {
+			.uV = 1800000,
+			.mode = REGULATOR_MODE_NORMAL,
+			.enabled = 1,
+		},
+		.initial_state = PM_SUSPEND_MEM,
+		.always_on = 1,
+		.boot_on = 1,
+	},
+};
+
+/* System IO - High */
+static struct regulator_init_data dcdc4_data = {
+	.constraints = {
+		.min_uV = 3300000,
+		.max_uV = 3300000,
+		.state_mem = {
+			.uV = 3300000,
+			.mode = REGULATOR_MODE_NORMAL,
+			.enabled = 1,
+		},
+		.initial_state = PM_SUSPEND_MEM,
+		.always_on = 1,
+		.boot_on = 1,
+	},
+};
+
+static struct regulator_init_data ldo1_data = {
+	.constraints = {
+		.min_uV = 1200000,
+		.max_uV = 1200000,
+		.valid_modes_mask = REGULATOR_MODE_NORMAL,
+		.apply_uV = 1,
+	},
+//	.num_consumer_supplies = ARRAY_SIZE(ldo2_consumers),
+//	.consumer_supplies = ldo2_consumers,
+};
+
+static struct regulator_init_data ldo2_data = {
+	.constraints = {
+		.min_uV = 1800000,
+		.max_uV = 1800000,
+		.valid_modes_mask = REGULATOR_MODE_NORMAL,
+		.apply_uV = 1,
+	},
+//	.num_consumer_supplies = ARRAY_SIZE(ldo2_consumers),
+//	.consumer_supplies = ldo2_consumers,
+};
+
+static struct regulator_consumer_supply ldo3_consumers[] = {
+{
+	.dev	= &s3c_audio_device.dev,
+	.supply	= "codec_avdd",
+},};
+
+/* Codec */
+static struct regulator_init_data ldo3_data = {
+	.constraints = {
+		.min_uV = 3300000,
+		.max_uV = 3300000,
+		.valid_modes_mask = REGULATOR_MODE_NORMAL,
+		.apply_uV = 1,
+		.always_on = 1,
+		.boot_on = 1,
+	},
+	.num_consumer_supplies = ARRAY_SIZE(ldo3_consumers),
+	.consumer_supplies = ldo3_consumers,
+};
+
+/* tranceivers */
+static struct regulator_init_data ldo4_data = {
+	.constraints = {
+		.min_uV = 1200000,
+		.max_uV = 1200000,
+		.valid_modes_mask = REGULATOR_MODE_NORMAL,
+		.apply_uV = 1,
+		.always_on = 1,
+		.boot_on = 1,
+	},
+//	.num_consumer_supplies = ARRAY_SIZE(ldo2_consumers),
+//	.consumer_supplies = ldo2_consumers,
+};
+
+static struct platform_device wm8350_regulator_devices[] = {
+{
+	.name = "wm8350-regulator",
+	.id = WM8350_DCDC_1,
+	.dev = {
+		.platform_data = &dcdc1_data,
+	},
+},
+{
+	.name = "wm8350-regulator",
+	.id = WM8350_DCDC_2,
+	.dev = {
+		.platform_data = &dcdc2_data,
+	},
+},
+{
+	.name = "wm8350-regulator",
+	.id = WM8350_DCDC_3,
+	.dev = {
+		.platform_data = &dcdc3_data,
+	},
+},
+{
+	.name = "wm8350-regulator",
+	.id = WM8350_DCDC_4,
+	.dev = {
+		.platform_data = &dcdc4_data,
+	},
+},
+{
+	.name = "wm8350-regulator",
+	.id = WM8350_LDO_1,
+	.dev = {
+		.platform_data = &ldo1_data,
+	},
+},
+{
+	.name = "wm8350-regulator",
+	.id = WM8350_LDO_2,
+	.dev = {
+		.platform_data = &ldo2_data,
+	},
+},
+{
+	.name = "wm8350-regulator",
+	.id = WM8350_LDO_3,
+	.dev = {
+		.platform_data = &ldo3_data,
+	},
+},
+{
+	.name = "wm8350-regulator",
+	.id = WM8350_LDO_4,
+	.dev = {
+		.platform_data = &ldo4_data,
+	},
+},
+};
+
+static void init_wm8350_audio(void)
+{
+	int err;
+
+	err = platform_device_register(&s3c_wm8350_codec_device);
+	if (err < 0) {
+		dev_err(&s3c_wm8350_codec_device.dev,
+				"Unable to register WM8350 codec device\n");
+		return;
+	}
+
+	err = platform_device_register(&s3c_wm8350_pcm_device);
+	if (err < 0) {
+		dev_err(&s3c_wm8350_pcm_device.dev,
+				"Unable to register WM8350 pcm device\n");
+		return;
+	}
+
+	err = platform_device_register(&s3c_wm8350_iis_device);
+	if (err < 0) {
+		dev_err(&s3c_wm8350_iis_device.dev,
+				"Unable to register WM8350 i2s device\n");
+		return;
+	}
+}
+
+static inline void s3c_init_wm8350(void)
+{
+	init_wm8350_audio();
+}
+
+int s3c_wm8350_device_register(struct wm8350 *wm8350)
+{
+	int err;
+
+	platform_set_drvdata(&s3c_audio_device, wm8350);
+	err = platform_device_register(&s3c_audio_device);
+	if (err < 0) {
+		dev_err(&s3c_audio_device.dev,
+				"Unable to register WM8350 Audio device\n");
+		return err;
+	}
+
+	return err;
+}
+
+#define WM8350_I2C_ADDR			(0x34 >> 1)
+
+static int config_s3c_wm8350_gpio(struct wm8350 *wm8350)
+{
+#if 0
+	/* power on */
+	wm8350_gpio_config(wm8350, 0, WM8350_GPIO_DIR_IN,
+			   WM8350_GPIO0_PWR_ON_IN, WM8350_GPIO_ACTIVE_LOW,
+			   WM8350_GPIO_PULL_UP, WM8350_GPIO_INVERT_OFF,
+			   WM8350_GPIO_DEBOUNCE_ON);
+
+	/* Sw3 --> PWR_OFF_GPIO3 */
+	/* lg - TODO: GPIO1_0 to be pulled down */
+	wm8350_gpio_config(wm8350, 3, WM8350_GPIO_DIR_IN,
+			   WM8350_GPIO3_PWR_OFF_IN, WM8350_GPIO_ACTIVE_HIGH,
+			   WM8350_GPIO_PULL_DOWN, WM8350_GPIO_INVERT_OFF,
+			   WM8350_GPIO_DEBOUNCE_ON);
+
+	/* MR or MEMRST ????? */
+	wm8350_gpio_config(wm8350, 4, WM8350_GPIO_DIR_IN,
+			   WM8350_GPIO4_MR_IN, WM8350_GPIO_ACTIVE_HIGH,
+			   WM8350_GPIO_PULL_DOWN, WM8350_GPIO_INVERT_OFF,
+			   WM8350_GPIO_DEBOUNCE_OFF);
+
+	/* Hibernate -- GPIO 7 */
+	wm8350_gpio_config(wm8350, 7, WM8350_GPIO_DIR_IN,
+			   WM8350_GPIO7_HIBERNATE_IN, WM8350_GPIO_ACTIVE_HIGH,
+			   WM8350_GPIO_PULL_DOWN, WM8350_GPIO_INVERT_OFF,
+			   WM8350_GPIO_DEBOUNCE_OFF);
+
+	/* SDOUT */
+	wm8350_gpio_config(wm8350, 6, WM8350_GPIO_DIR_OUT,
+			   WM8350_GPIO6_SDOUT_OUT, WM8350_GPIO_ACTIVE_HIGH,
+			   WM8350_GPIO_PULL_NONE, WM8350_GPIO_INVERT_OFF,
+			   WM8350_GPIO_DEBOUNCE_OFF);
+#if 0
+	/* GPIO switch SW2 */
+	wm8350_gpio_config(wm8350, 7, WM8350_GPIO_DIR_IN, WM8350_GPIO7_GPIO_IN,
+			   WM8350_GPIO_ACTIVE_HIGH, WM8350_GPIO_PULL_DOWN,
+			   WM8350_GPIO_INVERT_OFF, WM8350_GPIO_DEBOUNCE_ON);
+	wm8350_register_irq(wm8350, WM8350_IRQ_GPIO(7),
+			    imx32ads_switch_handler, NULL);
+	wm8350_unmask_irq(wm8350, WM8350_IRQ_GPIO(7));
+#endif
+
+	/* PWR_FAIL */
+	wm8350_gpio_config(wm8350, 8, WM8350_GPIO_DIR_OUT,
+			   WM8350_GPIO8_VCC_FAULT_OUT, WM8350_GPIO_ACTIVE_LOW,
+			   WM8350_GPIO_PULL_NONE, WM8350_GPIO_INVERT_OFF,
+			   WM8350_GPIO_DEBOUNCE_OFF);
+
+	/* BATT Fault */
+	wm8350_gpio_config(wm8350, 9, WM8350_GPIO_DIR_OUT,
+			   WM8350_GPIO9_BATT_FAULT_OUT, WM8350_GPIO_ACTIVE_LOW,
+			   WM8350_GPIO_PULL_NONE, WM8350_GPIO_INVERT_OFF,
+			   WM8350_GPIO_DEBOUNCE_OFF);
+#endif
+
+	wm8350_gpio_config(wm8350, 10, WM8350_GPIO_DIR_OUT,
+			   WM8350_GPIO10_GPIO_OUT, WM8350_GPIO_ACTIVE_LOW,
+			   WM8350_GPIO_PULL_NONE, WM8350_GPIO_INVERT_OFF,
+			   WM8350_GPIO_DEBOUNCE_OFF);
+
+	wm8350_gpio_config(wm8350, 11, WM8350_GPIO_DIR_OUT,
+			   WM8350_GPIO11_GPIO_OUT, WM8350_GPIO_ACTIVE_LOW,
+			   WM8350_GPIO_PULL_NONE, WM8350_GPIO_INVERT_OFF,
+			   WM8350_GPIO_DEBOUNCE_OFF);
+
+	wm8350_gpio_config(wm8350, 12, WM8350_GPIO_DIR_OUT,
+			   WM8350_GPIO12_32KHZ_OUT, WM8350_GPIO_ACTIVE_LOW,
+			   WM8350_GPIO_PULL_NONE, WM8350_GPIO_INVERT_OFF,
+			   WM8350_GPIO_DEBOUNCE_OFF);
+
+	return 0;
+}
+
+//static int wm8350_init(struct wm8350 *wm8350)
+int wm8350_dev_init(struct wm8350 *wm8350)
+{
+	int i, ret;
+
+#if 0
+	/* dont assert RTS when hibernating */
+	wm8350_set_bits(wm8350, WM8350_SYSTEM_HIBERNATE, WM8350_RST_HIB_MODE);
+#endif
+
+	wm8350_reg_unlock(wm8350);
+	wm8350_set_bits(wm8350, WM8350_SYSTEM_CONTROL_1, WM8350_IRQ_POL);
+	wm8350_reg_lock(wm8350);
+
+	set_irq_type(IRQ_EINT12, IRQT_RISING);
+
+	config_s3c_wm8350_gpio(wm8350);
+
+#if 0
+	/* Sw1 --> PWR_ON */
+	wm8350_register_irq(wm8350, WM8350_IRQ_WKUP_ONKEY,
+			    imx32ads_switch_handler, NULL);
+	wm8350_unmask_irq(wm8350, WM8350_IRQ_WKUP_ONKEY);
+#endif
+
+	for (i = 0; i < ARRAY_SIZE(wm8350_regulator_devices); i++) {
+		platform_set_drvdata(&wm8350_regulator_devices[i], wm8350);
+		ret = platform_device_register(&wm8350_regulator_devices[i]);
+		if (ret < 0)
+			goto unwind;
+	}
+
+	/* now register other clients */
+	return s3c_wm8350_device_register(wm8350);
+unwind:
+	for (i--; i >= 0; i--)
+		platform_device_unregister(&wm8350_regulator_devices[i]);
+
+	return ret;
+}
+EXPORT_SYMBOL(wm8350_dev_init);
+
+#if 0
+static struct wm8350_platform_data wm8350_data = {
+	.board_pmic_init = wm8350_dev_init,
+};
+
+
+static const struct i2c_board_info s3c_i2c_info[] = {
+{
+	.driver_name	= "wm8350-i2c",
+	.type		= "wm8350-i2c",
+	.addr		= WM8350_I2C_ADDR,
+	.platform_data	= &wm8350_data,
+	.irq		= IRQ_EINT12,},
+};
+
+static int s3c_register_wm8350(void)
+{
+	return i2c_register_board_info(0, s3c_i2c_info,
+		ARRAY_SIZE(s3c_i2c_info));
+}
+#endif
+#endif
+
 static void __init smdk2416_machine_init(void)
 {
 	/* SROM init for NFS */
@@ -244,6 +664,11 @@ static void __init smdk2416_machine_init(void)
 	smdk2416_smc911x_set();
 
 	smdk_machine_init();
+
+#if defined (CONFIG_S3C24XX_WM8350_PMU) 
+//	s3c_register_wm8350();
+	s3c_init_wm8350();
+#endif
 }
 
 static void __init smdk2416_fixup (struct machine_desc *desc, struct tag *tags,

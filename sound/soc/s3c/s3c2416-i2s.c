@@ -22,6 +22,7 @@
 
 #include <linux/init.h>
 #include <linux/module.h>
+#include <linux/platform_device.h>
 #include <linux/device.h>
 #include <linux/delay.h>
 #include <linux/clk.h>
@@ -86,6 +87,24 @@ struct s3c24xx_i2s_info {
 	int master;
 };
 static struct s3c24xx_i2s_info s3c24xx_i2s;
+
+
+int get_iis_clk(struct device *dev)
+{
+	s3c24xx_i2s.iis_clk = clk_get(dev, "iis");
+	if (IS_ERR(s3c24xx_i2s.iis_clk))
+		return PTR_ERR(s3c24xx_i2s.iis_clk);
+
+	return 0;
+}
+EXPORT_SYMBOL(get_iis_clk);
+
+void put_iis_clk(void)
+{
+	clk_put(s3c24xx_i2s.iis_clk);
+	s3c24xx_i2s.iis_clk = NULL;
+}
+EXPORT_SYMBOL(put_iis_clk);
 
 static void s3c24xx_snd_txctrl(int on)
 {
@@ -174,8 +193,7 @@ static inline int s3c24xx_snd_is_clkmaster(void)
 /*
  * Set S3C24xx I2S DAI format
  */
-static int s3c_i2s_set_fmt(struct snd_soc_cpu_dai *cpu_dai,
-		unsigned int fmt)
+static int s3c_i2s_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int fmt)
 {
 	u32 iismod;
 
@@ -192,9 +210,11 @@ static int s3c_i2s_set_fmt(struct snd_soc_cpu_dai *cpu_dai,
 }
 
 static int s3c_i2s_hw_params(struct snd_pcm_substream *substream,
-				struct snd_pcm_hw_params *params)
+				struct snd_pcm_hw_params *params,
+				struct snd_soc_dai *cpu_dai)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_dai *cpu_rdai = rtd->cpu_dai;
 
 	unsigned long iiscon;
 	unsigned long iismod;
@@ -231,9 +251,11 @@ static int s3c_i2s_hw_params(struct snd_pcm_substream *substream,
 	writel(readl(S3C2410_GPBUP)|(0xF<<18), S3C2410_GPBUP);
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-		rtd->dai->cpu_dai->dma_data = &s3c24xx_i2s_pcm_stereo_out;
+//		rtd->dai->cpu_dai->dma_data = &s3c24xx_i2s_pcm_stereo_out;
+		cpu_rdai->dma_data = &s3c24xx_i2s_pcm_stereo_out;
 	} else {
-		rtd->dai->cpu_dai->dma_data = &s3c24xx_i2s_pcm_stereo_in;
+//		rtd->dai->cpu_dai->dma_data = &s3c24xx_i2s_pcm_stereo_in;
+		cpu_rdai->dma_data = &s3c24xx_i2s_pcm_stereo_in;
 	}
 
 	/* Working copies of registers */
@@ -267,7 +289,8 @@ static int s3c_i2s_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-static int s3c_i2s_trigger(struct snd_pcm_substream *substream, int cmd)
+static int s3c_i2s_trigger(struct snd_pcm_substream *substream, int cmd,
+					struct snd_soc_dai *cpu_dai)
 {
 	int ret = 0;
 
@@ -305,7 +328,8 @@ exit_err:
 	return ret;
 }
 
-static void s3c64xx_i2s_shutdown(struct snd_pcm_substream *substream)
+static void s3c64xx_i2s_shutdown(struct snd_pcm_substream *substream,
+						struct snd_soc_dai *cpu_dai)
 {
 	unsigned long iiscon;
 
@@ -319,8 +343,8 @@ static void s3c64xx_i2s_shutdown(struct snd_pcm_substream *substream)
 /*
  * Set S3C24xx Clock source
  */
-static int s3c_i2s_set_sysclk(struct snd_soc_cpu_dai *cpu_dai,
-	int clk_id, unsigned int freq, int dir)
+static int s3c_i2s_set_sysclk(struct snd_soc_dai *cpu_dai,
+				int clk_id, unsigned int freq, int dir)
 {
 	u32 iismod = readl(s3c24xx_i2s.regs + S3C2410_IISMOD);
 
@@ -340,8 +364,8 @@ static int s3c_i2s_set_sysclk(struct snd_soc_cpu_dai *cpu_dai,
 /*
  * Set S3C24xx Clock dividers
  */
-static int s3c_i2s_set_clkdiv(struct snd_soc_cpu_dai *cpu_dai,
-	int div_id, int div)
+static int s3c_i2s_set_clkdiv(struct snd_soc_dai *cpu_dai,
+				int div_id, int div)
 {
 	u32 reg;
 
@@ -380,24 +404,6 @@ u32 s3c_i2s_get_clockrate(void)
 }
 EXPORT_SYMBOL_GPL(s3c_i2s_get_clockrate);
 
-static int s3c_i2s_probe(struct platform_device *pdev)
-{
-	s3cdbg("Entered %s\n", __FUNCTION__);
-
-	s3c24xx_i2s.regs = ioremap(S3C2410_PA_IIS, 0x100);
-	if (s3c24xx_i2s.regs == NULL)
-		return -ENXIO;
-
-	s3c24xx_i2s.iis_clk=clk_get(&pdev->dev, "iis");
-	if (s3c24xx_i2s.iis_clk == NULL) {
-		s3cdbg("failed to get iis_clock\n");
-		return -ENODEV;
-	}
-	clk_enable(s3c24xx_i2s.iis_clk);
-
-	return 0;
-}
-
 #ifdef CONFIG_PM
 static int s3c_i2s_suspend(struct platform_device *dev,
 	struct snd_soc_cpu_dai *dai)
@@ -418,40 +424,128 @@ static int s3c_i2s_resume(struct platform_device *pdev,
 #define s3c_i2s_resume	NULL
 #endif
 
-
 #define S3C24XX_I2S_RATES \
 	(SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_11025 | SNDRV_PCM_RATE_16000 | \
 	SNDRV_PCM_RATE_22050 | SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_44100 | \
 	SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_88200 | SNDRV_PCM_RATE_96000)
 
-struct snd_soc_cpu_dai s3c_i2s_dai = {
-	.name = "s3c-i2s",
-	.id = 0,
-	.type = SND_SOC_DAI_I2S,
-	.probe = s3c_i2s_probe,
-	.suspend = s3c_i2s_suspend,
-	.resume = s3c_i2s_resume,
-	.playback = {
-		.channels_min = 2,
-		.channels_max = 2,
-		.rates = S3C24XX_I2S_RATES,
-		.formats = SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_LE,},
-	.capture = {
-		.channels_min = 2,
-		.channels_max = 2,
-		.rates = S3C24XX_I2S_RATES,
-		.formats = SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_LE,},
-	.ops = {
-		.shutdown = s3c64xx_i2s_shutdown,
-		.trigger = s3c_i2s_trigger,
-		.hw_params = s3c_i2s_hw_params,},
-	.dai_ops = {
-		.set_fmt = s3c_i2s_set_fmt,
-		.set_clkdiv = s3c_i2s_set_clkdiv,
-		.set_sysclk = s3c_i2s_set_sysclk,
+static struct snd_soc_dai_caps i2s_playback = {
+	.channels_min = 2,
+	.channels_max = 2,
+	.rates = S3C24XX_I2S_RATES,
+	.formats = SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_LE,
+};
+
+static struct snd_soc_dai_caps i2s_capture = {
+	.channels_min = 2,
+	.channels_max = 2,
+	.rates = S3C24XX_I2S_RATES,
+	.formats = SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_LE,
+};
+
+static struct snd_soc_dai_ops s3c_i2s_ops = {
+	/* alsa ops */
+	.shutdown = s3c64xx_i2s_shutdown,
+	.trigger = s3c_i2s_trigger,
+	.hw_params = s3c_i2s_hw_params,
+
+	/* dai ops */
+	.set_fmt = s3c_i2s_set_fmt,
+	.set_clkdiv = s3c_i2s_set_clkdiv,
+	.set_sysclk = s3c_i2s_set_sysclk,
+};
+
+/* for modprobe */
+const char s3c_i2s_id[] = "s3c-i2s";
+EXPORT_SYMBOL_GPL(s3c_i2s_id);
+
+struct snd_soc_dai_new s3c_i2s_dai = {
+	.name     = s3c_i2s_id,
+	.playback = &i2s_playback,
+	.capture  = &i2s_capture,
+	.ops	  = &s3c_i2s_ops,
+};
+
+static int __init s3c_i2s_probe(struct platform_device *pdev)
+{
+	struct snd_soc_dai *i2s;
+	int ret = 0;
+
+	s3cdbg("Entered %s\n", __FUNCTION__);
+
+	i2s = kzalloc(sizeof(struct snd_soc_dai), GFP_KERNEL);
+	if (i2s == NULL)
+		return -ENOMEM;
+
+	platform_set_drvdata(pdev, i2s);
+
+	i2s = snd_soc_register_platform_dai(&s3c_i2s_dai, &pdev->dev);
+
+#if 0
+	ret = device_create_file(&pdev->dev, &dev_attr_errors);
+	if (ret <0) {
+		printk(KERN_WARNING "%s: failed to add sysfs entry\n", __func__);
+		goto unwind_reg;
+	}
+#endif
+
+	s3c24xx_i2s.regs = ioremap(S3C2410_PA_IIS, 0x100);
+	if (s3c24xx_i2s.regs == NULL) {
+		ret = -ENXIO;
+		goto unwind_reg;
+	}
+
+	s3c24xx_i2s.iis_clk=clk_get(&pdev->dev, "iis");
+	if (s3c24xx_i2s.iis_clk == NULL) {
+		s3cdbg("failed to get iis_clock\n");
+		ret = -ENODEV;
+		goto unwind_reg;
+	}
+	clk_enable(s3c24xx_i2s.iis_clk);
+
+	return ret;
+
+unwind_reg:
+	snd_soc_unregister_platform_dai(i2s);
+	kfree(i2s);
+	return ret;
+}
+
+static int s3c_i2s_remove(struct platform_device *pdev)
+{
+	struct snd_soc_dai *i2s = platform_get_drvdata(pdev);
+
+//	device_remove_file(&pdev->dev. &dev_attr_errors);
+	snd_soc_unregister_platform_dai(i2s);
+
+	kfree(i2s);
+	
+	return 0;
+}
+
+static struct platform_driver s3c_i2s_driver = {
+	.probe		= s3c_i2s_probe,
+	.remove		= __devexit_p(s3c_i2s_remove),
+	.suspend	= s3c_i2s_suspend,
+	.resume		= s3c_i2s_resume,
+	.driver		= {
+		.name	= "s3c-i2s",
+		.owner	= THIS_MODULE,
 	},
 };
-EXPORT_SYMBOL_GPL(s3c_i2s_dai);
+
+static __init int s3c_i2s_init(void)
+{
+	return platform_driver_register(&s3c_i2s_driver);
+}
+
+static __exit void s3c_i2s_exit(void)
+{
+	platform_driver_unregister(&s3c_i2s_driver);
+}
+
+module_init(s3c_i2s_init);
+module_exit(s3c_i2s_exit);
 
 /* Module information */
 MODULE_AUTHOR("Ryu, <ryu.real@gmail.com>");

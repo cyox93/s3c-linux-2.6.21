@@ -35,6 +35,7 @@
 #include <linux/completion.h>
 #include <asm/uaccess.h>
 
+#include "i2c-core.h"
 
 static LIST_HEAD(adapters);
 static LIST_HEAD(drivers);

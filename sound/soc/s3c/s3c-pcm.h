@@ -28,7 +28,11 @@ struct s3c24xx_pcm_dma_params {
 #define S3C24XX_DAI_I2S			0
 
 /* platform data */
-extern struct snd_soc_platform s3c24xx_soc_platform;
 extern struct snd_ac97_bus_ops s3c24xx_ac97_ops;
 
+int get_iis_clk(struct device *dev);
+void put_iis_clk(void);
+
+extern const char s3c24xx_platform_id[];
+extern const char s3c_i2s_id[];
 #endif
