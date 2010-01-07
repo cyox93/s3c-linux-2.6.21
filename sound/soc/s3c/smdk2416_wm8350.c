@@ -81,43 +81,44 @@ struct _wm8350_audio {
 	unsigned int bclkdiv;
 	unsigned int clkdiv;
 	unsigned int lr_rate;
+	unsigned int prescaler;
 };
 
 /* in order of power consumption per rate (lowest first) */
 static const struct _wm8350_audio wm8350_audio[] = {
 	/* 16bit mono modes */
 	{1, SNDRV_PCM_FORMAT_S16_LE, 8000, 12288000 >> 1,
-	 WM8350_BCLK_DIV_48, WM8350_DACDIV_3, 16,},
+	 WM8350_BCLK_DIV_48, WM8350_DACDIV_3, 16, 24,},
 
 	/* 16 bit stereo modes */
 	{2, SNDRV_PCM_FORMAT_S16_LE, 8000, 12288000,
-	 WM8350_BCLK_DIV_48, WM8350_DACDIV_6, 32,},
+	 WM8350_BCLK_DIV_48, WM8350_DACDIV_6, 32, 24,},
 	{2, SNDRV_PCM_FORMAT_S16_LE, 16000, 12288000,
-	 WM8350_BCLK_DIV_24, WM8350_DACDIV_3, 32,},
+	 WM8350_BCLK_DIV_24, WM8350_DACDIV_3, 32, 12,},
 	{2, SNDRV_PCM_FORMAT_S16_LE, 32000, 12288000,
-	 WM8350_BCLK_DIV_12, WM8350_DACDIV_1_5, 32,},
+	 WM8350_BCLK_DIV_12, WM8350_DACDIV_1_5, 32, 6,},
 	{2, SNDRV_PCM_FORMAT_S16_LE, 48000, 12288000,
-	 WM8350_BCLK_DIV_8, WM8350_DACDIV_1, 32,},
+	 WM8350_BCLK_DIV_8, WM8350_DACDIV_1, 32, 4,},
 	{2, SNDRV_PCM_FORMAT_S16_LE, 96000, 24576000,
-	 WM8350_BCLK_DIV_8, WM8350_DACDIV_1, 32,},
+	 WM8350_BCLK_DIV_8, WM8350_DACDIV_1, 32, 2,},
 	{2, SNDRV_PCM_FORMAT_S16_LE, 11025, 11289600,
-	 WM8350_BCLK_DIV_32, WM8350_DACDIV_4, 32,},
+	 WM8350_BCLK_DIV_32, WM8350_DACDIV_4, 32, 32,},
 	{2, SNDRV_PCM_FORMAT_S16_LE, 22050, 11289600,
-	 WM8350_BCLK_DIV_16, WM8350_DACDIV_2, 32,},
+	 WM8350_BCLK_DIV_16, WM8350_DACDIV_2, 32, 16,},
 	{2, SNDRV_PCM_FORMAT_S16_LE, 44100, 11289600,
-	 WM8350_BCLK_DIV_8, WM8350_DACDIV_1, 32,},
+	 WM8350_BCLK_DIV_8, WM8350_DACDIV_1, 32, 8,},
 	{2, SNDRV_PCM_FORMAT_S16_LE, 88200, 22579200,
-	 WM8350_BCLK_DIV_8, WM8350_DACDIV_1, 32,},
+	 WM8350_BCLK_DIV_8, WM8350_DACDIV_1, 32, 4,},
 
 	/* 24bit stereo modes */
 	{2, SNDRV_PCM_FORMAT_S24_LE, 48000, 12288000,
-	 WM8350_BCLK_DIV_4, WM8350_DACDIV_1, 64,},
+	 WM8350_BCLK_DIV_4, WM8350_DACDIV_1, 64, 4,},
 	{2, SNDRV_PCM_FORMAT_S24_LE, 96000, 24576000,
-	 WM8350_BCLK_DIV_4, WM8350_DACDIV_1, 64,},
+	 WM8350_BCLK_DIV_4, WM8350_DACDIV_1, 64, 2,},
 	{2, SNDRV_PCM_FORMAT_S24_LE, 44100, 11289600,
-	 WM8350_BCLK_DIV_4, WM8350_DACDIV_1, 64,},
+	 WM8350_BCLK_DIV_4, WM8350_DACDIV_1, 64, 8,},
 	{2, SNDRV_PCM_FORMAT_S24_LE, 88200, 22579200,
-	 WM8350_BCLK_DIV_4, WM8350_DACDIV_1, 64,},
+	 WM8350_BCLK_DIV_4, WM8350_DACDIV_1, 64, 4,},
 };
 
 static int smdk2416_hifi_hw_params(struct snd_pcm_substream *substream,
@@ -134,8 +135,7 @@ static int smdk2416_hifi_hw_params(struct snd_pcm_substream *substream,
 	unsigned int rate = params_rate(params);
 	unsigned int channels = params_channels(params);
 
-	//s3cdbg("Entered %s, rate = %d\n", __FUNCTION__, params_rate(params));
-	printk("Entered %s, rate = %d\n", __FUNCTION__, params_rate(params));
+	s3cdbg("Entered %s, rate = %d\n", __FUNCTION__, params_rate(params));
 
 	/* only need to do this once as capture and playback are sync */
 	if (state->lr_clk_active > 1)
@@ -156,8 +156,7 @@ static int smdk2416_hifi_hw_params(struct snd_pcm_substream *substream,
 	regs |= S3C2443_SCLKCON_I2SCLK_1;
 	writel(regs, S3C2443_SCLKCON);
 
-	//s3cdbg("%s: %d , params = %d \n", __FUNCTION__, __LINE__, params_rate(params));
-	printk("%s: %d , params = %d \n", __FUNCTION__, __LINE__, params_rate(params));
+	s3cdbg("%s: %d , params = %d \n", __FUNCTION__, __LINE__, params_rate(params));
 
 	switch (params_rate(params)) {
 	case 8000:
@@ -192,17 +191,20 @@ static int smdk2416_hifi_hw_params(struct snd_pcm_substream *substream,
 	if (!found)
 		return -EINVAL;
 
+	/* codec FLL input is rate from DAC LRC */
+	snd_soc_dai_set_pll(codec_dai, 0, rate, wm8350_audio[i].sysclk);
+
 	/* set codec DAI configuration */
 	ret = snd_soc_dai_set_fmt(codec_dai, 
 		SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
-		SND_SOC_DAIFMT_CBS_CFS ); 
+		SND_SOC_DAIFMT_CBS_CFS | SND_SOC_DAIFMT_SYNC); 
 	if (ret < 0)
 		return ret;
 
 	/* set cpu DAI configuration */
 	ret = snd_soc_dai_set_fmt(cpu_dai,
 		SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
-		SND_SOC_DAIFMT_CBS_CFS ); 
+		SND_SOC_DAIFMT_CBS_CFS | SND_SOC_DAIFMT_SYNC); 
 	if (ret < 0)
 		return ret;
 
@@ -223,6 +225,10 @@ static int smdk2416_hifi_hw_params(struct snd_pcm_substream *substream,
 						wm8350_audio[i].bclkdiv);
 	if (ret < 0)
 		return ret;
+
+	/* set prescaler division for sample rate */
+	ret = snd_soc_dai_set_clkdiv(cpu_dai, S3C24XX_DIV_PRESCALER,
+		((wm8350_audio[i].prescaler/2 -1) << 0x8));
 
 	/* DAI is synchronous and clocked with DAC LRCLK & ADC LRC */
 	ret = snd_soc_dai_set_clkdiv(codec_dai,
@@ -245,14 +251,6 @@ static int smdk2416_hifi_hw_params(struct snd_pcm_substream *substream,
 			       WM8350_ADC_CLKDIV, wm8350_audio[i].clkdiv);
 	if (ret < 0)
 		return ret;
-
-#if 0
-	/* set prescaler division for sample rate */
-	ret = cpu_dai->dai_ops.set_clkdiv(cpu_dai, S3C24XX_DIV_PRESCALER,
-		((prescaler/2 - 1) << 0x8));
-	if (ret < 0)
-		return ret;
-#endif
 
 #if 0
 	/* set the codec register set for capture and play */
@@ -348,7 +346,6 @@ static const struct snd_soc_dapm_widget smdk2416_dapm_widgets[] = {
 
 /* imx32ads soc_card audio map */
 static const struct snd_soc_dapm_route audio_map[] = {
-
 	/* SiMIC --> IN1LN (with automatic bias) via SP1 */
 	{"IN1LN", NULL, "Mic Bias"},
 	{"Mic Bias", NULL, "SiMIC"},
@@ -367,13 +364,13 @@ static const struct snd_soc_dapm_route audio_map[] = {
 	{"IN3R", NULL, "Line In Jack"},
 	{"IN3L", NULL, "Line In Jack"},
 
-	/* Out1 --> Headphone Jack */
-	{"Headphone Jack", NULL, "OUT1R"},
-	{"Headphone Jack", NULL, "OUT1L"},
+	/* Out2 --> Headphone Jack */
+	{"Headphone Jack", NULL, "OUT2R"},
+	{"Headphone Jack", NULL, "OUT2L"},
 
 	/* Out1 --> Line Out Jack */
-	{"Line Out Jack", NULL, "OUT2R"},
-	{"Line Out Jack", NULL, "OUT2L"},
+	{"Line Out Jack", NULL, "OUT1R"},
+	{"Line Out Jack", NULL, "OUT1L"},
 };
 
 #ifdef CONFIG_PM
@@ -473,8 +470,8 @@ int smdk2416_audio_init(struct snd_soc_card *soc_card)
 	snd_soc_dapm_disable_pin(soc_card, "OUT4");
 	snd_soc_dapm_disable_pin(soc_card, "IN2R");
 	snd_soc_dapm_disable_pin(soc_card, "IN2L");
-	snd_soc_dapm_disable_pin(soc_card, "OUT2L");
-	snd_soc_dapm_disable_pin(soc_card, "OUT2R");
+//	snd_soc_dapm_disable_pin(soc_card, "OUT2L");
+//	snd_soc_dapm_disable_pin(soc_card, "OUT2R");
 
 	/* connect and enable all imx32ads WM8350 jacks (for now) */
 	snd_soc_dapm_enable_pin(soc_card, "SiMIC");
