@@ -532,7 +532,6 @@ static int __init smdk2416_wm8350_audio_probe(struct platform_device *pdev)
 		goto ssi_err;
 	}
 
-#if 0
 	audio_data->analog_supply = regulator_get(&pdev->dev, "codec_avdd");
 	if (IS_ERR(audio_data->analog_supply)) {
 		printk(KERN_ERR "%s: cant get regulator\n", __func__);
@@ -544,7 +543,6 @@ static int __init smdk2416_wm8350_audio_probe(struct platform_device *pdev)
 		printk(KERN_ERR "%s: cant enable regulator\n", __func__);
 		goto reg_err;
 	}
-#endif 
 
 	soc_card = snd_soc_card_create("smdk2416", &pdev->dev,
 					 SNDRV_DEFAULT_IDX1,

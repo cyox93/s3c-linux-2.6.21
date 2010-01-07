@@ -166,7 +166,6 @@ static int snd_open(struct inode *inode, struct file *file)
 	}
 	fops_put(old_fops);
 
-	printk("[SOUND] snd_open [%d]\n", err);
 	return err;
 }
 
