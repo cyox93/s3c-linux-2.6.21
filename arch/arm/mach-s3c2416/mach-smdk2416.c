@@ -72,6 +72,8 @@ static struct map_desc smdk2416_iodesc[] __initdata = {
 #define ULCON S3C2410_LCON_CS8 | S3C2410_LCON_PNONE | S3C2410_LCON_STOPB
 #define UFCON S3C2410_UFCON_RXTRIG8 | S3C2410_UFCON_FIFOMODE
 
+#define FORCE_REGULATER_SET
+
 static struct s3c24xx_uart_clksrc smdk2416_serial_clocks[] = {
 	[0] = {
 		.name		= "pclk",
@@ -572,6 +574,36 @@ static int config_s3c_wm8350_gpio(struct wm8350 *wm8350)
 			   WM8350_GPIO9_BATT_FAULT_OUT, WM8350_GPIO_ACTIVE_LOW,
 			   WM8350_GPIO_PULL_NONE, WM8350_GPIO_INVERT_OFF,
 			   WM8350_GPIO_DEBOUNCE_OFF);
+#endif
+
+#ifdef FORCE_REGULATER_SET
+	// DC1 (ENSLOT(3) VSEL(1.3V)
+	wm8350_reg_write(wm8350, 0x00b5, 0x0c00);
+	wm8350_reg_write(wm8350, 0x00b4, 0x0012);
+
+	// DC3 (ENSLOT(1) VSEL(1.8V)
+	wm8350_reg_write(wm8350, 0x00bb, 0x0400);
+	wm8350_reg_write(wm8350, 0x00ba, 0x0026);
+
+	// DC4 (ENSLOT(2) VSEL(3.3V)
+	wm8350_reg_write(wm8350, 0x00be, 0x0800);
+	wm8350_reg_write(wm8350, 0x00bd, 0x0062);
+
+	// LDO1 (ENSLOT(0) VSEL(1.2V)
+	wm8350_reg_write(wm8350, 0x00c9, 0x0000);
+	wm8350_reg_write(wm8350, 0x00c8, 0x0006);
+
+	// LDO2 (ENSLOT(3) VSEL(1.8V)
+	wm8350_reg_write(wm8350, 0x00cb, 0x0c00);
+	wm8350_reg_write(wm8350, 0x00ca, 0x0010);
+
+	// LDO3 (ENSLOT(2) VSEL(3.3V)
+	wm8350_reg_write(wm8350, 0x00cf, 0x0800);
+	wm8350_reg_write(wm8350, 0x00ce, 0x001f);
+
+	// LDO4 (ENSLOT(2) VSEL(1.4V)
+	wm8350_reg_write(wm8350, 0x00d2, 0x0800);
+	wm8350_reg_write(wm8350, 0x00d1, 0x0006);
 #endif
 
 	wm8350_gpio_config(wm8350, 10, WM8350_GPIO_DIR_OUT,
