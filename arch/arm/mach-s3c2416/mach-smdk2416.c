@@ -132,7 +132,7 @@ static struct platform_device *smdk2416_devices[] __initdata = {
 	&s3c_device_iis,
 	&s3c_device_usbgadget,
 	&s3c_device_usb,
-	&s3c_device_hsmmc0,
+	//&s3c_device_hsmmc0,
 	&s3c_device_hsmmc1,
 	&s3c_device_smc911x,
 	&s3c_device_keypad,
@@ -765,6 +765,7 @@ void hsmmc_set_gpio (uint channel, uint width)
 	}
 }
 
+EXPORT_SYMBOL(hsmmc_set_gpio);
 
 #define HOST_CAPS (MMC_CAP_4_BIT_DATA | MMC_CAP_MULTIWRITE | \
 			MMC_CAP_MMC_HIGHSPEED | MMC_CAP_SD_HIGHSPEED)

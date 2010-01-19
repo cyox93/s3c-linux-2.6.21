@@ -55,6 +55,9 @@
 #define WM8350_RAMP_UP		1
 #define WM8350_RAMP_DOWN	2
 
+/* wm8350 handle copy */
+struct wm8350_data *_wm8350;
+
 struct wm8350_output {
 	u16 left_vol;
 	u16 right_vol;
@@ -1331,6 +1334,8 @@ static int wm8350_codec_init(struct snd_soc_codec *codec,
 	
 	snd_assert(wm8350 != NULL, return -EINVAL);
 
+	_wm8350 = wm8350;
+
 	/* reset codec */
 	wm8350_clear_bits(wm8350, WM8350_POWER_MGMT_5, WM8350_CODEC_ENA);
 	wm8350_set_bits(wm8350, WM8350_POWER_MGMT_5, WM8350_CODEC_ENA);
@@ -1468,6 +1473,7 @@ static int __init wm8350_codec_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	wm8350 = kzalloc(sizeof(struct wm8350_data), GFP_KERNEL);
+	
 	if (wm8350 == NULL)
 		goto prv_err;
 
@@ -1491,6 +1497,41 @@ prv_err:
 	snd_soc_free_codec(codec);
 	return ret;
 }
+
+#if 1
+u16 ucc_wm8350_reg_read(int reg)
+{
+	u16 data;
+	struct wm8350 *wm8350;
+
+	wm8350 = kzalloc(sizeof(struct wm8350_data), GFP_KERNEL);
+	wm8350 = _wm8350;
+	
+	data = wm8350_reg_read(wm8350, reg);
+
+	//kfree(wm8350);
+
+	return data;
+}
+EXPORT_SYMBOL(ucc_wm8350_reg_read);
+
+int ucc_wm8350_reg_write(int reg, u16 val)
+{
+	int ret = 0;	
+	struct wm8350 *wm8350;
+
+	wm8350 = kzalloc(sizeof(struct wm8350_data), GFP_KERNEL);
+
+	wm8350 = _wm8350;
+	
+	wm8350_reg_write(wm8350, reg, val);
+
+	//kfree(wm8350);
+
+	return ret;
+}
+EXPORT_SYMBOL(ucc_wm8350_reg_write);
+#endif
 
 static int wm8350_codec_remove(struct platform_device *pdev)
 {

@@ -271,26 +271,57 @@ void Key_gpio_init(void)
 	mdelay(100);
 }
 
+void gpio_wifi_power_down(bool flag);
+extern int ucc_wm8350_reg_write(int reg, u16 val);
 void gpio_wifi_power(bool flag)
 {
 	if (flag) { 
-		s3c2410_gpio_setpin(S3C2410_GPH12, 1);
+		//s3c2410_gpio_setpin(S3C2410_GPH12, 1);
+		printk("S3C2410_GPH12 0x%x, 0x%x\n",S3C2410_GPHDAT, S3C2410_GPH12);
+		val = __raw_readl(S3C2410_GPHDAT);	/* 3.3V */
+		__raw_writel((val |= 0x1000), S3C2410_GPHDAT);
+
+		mdelay(10);
+
+		ucc_wm8350_reg_write(0xd1, 0x0a); /* LDO4 1.2V */
+		ucc_wm8350_reg_write(0xcb, 0x10);  /* LDO2 1.8V */
 	} else {
-		s3c2410_gpio_setpin(S3C2410_GPH12, 0);
+		//s3c2410_gpio_setpin(S3C2410_GPH12, 0);
+		val = __raw_readl(S3C2410_GPHDAT);		
+		__raw_writel((val&0xefff), S3C2410_GPHDAT);
+
+		mdelay(1);
+
+		ucc_wm8350_reg_write(0xd1, 0);
+		ucc_wm8350_reg_write(0xcb, 0);
 	}
 }
 
 void gpio_wifi_reset(bool flag)
 {
+#if 0
+ 	s3c2410_gpio_setpin(S3C2410_GPH6, 1);
+	mdelay(20);
+	s3c2410_gpio_setpin(S3C2410_GPH6, 0);
+	mdelay(20);
+	s3c2410_gpio_setpin(S3C2410_GPH6, 1);
+#else
 	if (flag) { 
+		printk("gpio_wifi_reset [0]\n");
 		s3c2410_gpio_setpin(S3C2410_GPH6, 0);
+		gpio_wifi_power_down(0);
 	} else {
+		printk("gpio_wifi_reset [1]\n");
 		s3c2410_gpio_setpin(S3C2410_GPH6, 1);
+		gpio_wifi_power_down(1);
 	}
+#endif	
 }
 
 void gpio_wifi_power_down(bool flag)
 {
+	printk("gpio_wifi_power_down flag %d \n", flag);
+
 	if (flag) { 
 		s3c2410_gpio_setpin(S3C2410_GPH7, 1);
 	} else {
@@ -300,20 +331,24 @@ void gpio_wifi_power_down(bool flag)
 
 void wifi_gpio_init (void)
 {
+	unsigned long val;
+
 	s3c2410_gpio_cfgpin(S3C2410_GPH6, S3C2410_GPH6_OUTP);
 	s3c2410_gpio_cfgpin(S3C2410_GPH12, S3C2410_GPH12_OUTP);
 	s3c2410_gpio_cfgpin(S3C2410_GPH7, S3C2410_GPH7_OUTP);
 
 	s3c2410_gpio_pullup(S3C2410_GPH6, 1); /* pull-down enable */
 
+	s3c2410_gpio_pullup(S3C2410_GPL0, 2); /* pull-up enable */
+	s3c2410_gpio_pullup(S3C2410_GPL1, 2); /* pull-up enable */
+	s3c2410_gpio_pullup(S3C2410_GPL2, 2); /* pull-up enable */
+	s3c2410_gpio_pullup(S3C2410_GPL3, 2); /* pull-up enable */
+	s3c2410_gpio_pullup(S3C2410_GPL8, 2); /* pull-up enable */
+
 	s3c2410_gpio_setpin(S3C2410_GPH6, 1);
-	s3c2410_gpio_setpin(S3C2410_GPH12, 1);
+	s3c2410_gpio_setpin(S3C2410_GPH12, 0);
 	s3c2410_gpio_setpin(S3C2410_GPH7, 1);
 
-	mdelay(30);
-	s3c2410_gpio_setpin(S3C2410_GPH6, 0);
-	mdelay(50);
-	s3c2410_gpio_setpin(S3C2410_GPH6, 1);
 }
 
 void lcd_power(int flag)
