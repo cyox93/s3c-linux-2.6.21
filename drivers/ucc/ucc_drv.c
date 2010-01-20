@@ -93,7 +93,7 @@ static int ucc_ioctl(struct inode *inode, struct file *file,
 {	
 	_t_ucc_data ucc_data;	
 	unsigned long flags;
-	int temp;
+	int temp, i = 0;
 
 	switch (cmd) {
 		case IOCTLUCC_INIT:
@@ -109,7 +109,7 @@ static int ucc_ioctl(struct inode *inode, struct file *file,
 			break;			
 
 		case IOCTLUCC_POWER:	
-			printk("IOCTLUCC_POWER [0x%x] ... 'kernel Not Support' \n", arg);
+			printk("IOCTLUCC_POWER [0x%x] ... 'kernel Not Support' \n", arg);			
 			break;	
 
 		case IOCTLUCC_LCD:		
@@ -118,31 +118,39 @@ static int ucc_ioctl(struct inode *inode, struct file *file,
 			if (arg == 1) lcd_power(1);
 			if (arg == 0x10) lcd_reset();
 			if (arg == 0x11) lcd_module_init();
+			if (arg == 0x20) lcd_fill_color(0xffff); /* White */
+			if (arg == 0x21) lcd_fill_color(0xf800); /* Red */
+			if (arg == 0x22) lcd_fill_color(0x07e0); /* Green */
+			if (arg == 0x23) lcd_fill_color(0x001f); /* Blue */
+			if (arg == 0x24) lcd_fill_color(0); /* Black */			
 			break;
 
 		case IOCTLUCC_BACKLIGHT:		
-			//printk("IOCTLUCC_BACKLIGHT [0x%x]\n", arg);	
-#if 0 // PWM Control			
+			//printk("IOCTLUCC_BACKLIGHT [0x%x]\n", arg);			
 			if (arg >= 16) {		
 				temp = (arg/16)-1;
-				if (temp)
-					temp = temp *2;
-				s3c2450_timer_setup(3,10,1000,(temp*50));
+				if (temp == 10) {
+					temp = 18;
+					i = 15;
+				} 
+				else {
+					if (temp)
+						temp = temp *2;
+				}
+				//s3c2450_timer_setup(3,10,1000,(temp*50+i));
 			}
 			else {
 			 	lcd_backlight(arg);
 			}	
-#else
-			lcd_backlight(arg);
-#endif
 			break;
 
 		case IOCTLUCC_WLAN:		
 			//printk("IOCTLUCC_WLAN [0x%x]\n", arg);
 			if (arg == 0) gpio_wifi_power(0);
 			if (arg == 1) gpio_wifi_power(1);
-			if (arg == 0x10) gpio_wifi_reset(0);
-			if (arg == 0x11) gpio_wifi_reset(1);
+			if (arg == 2) gpio_wifi_core_power(0);
+			if (arg == 3) gpio_wifi_core_power(1);
+			if (arg == 0x10) gpio_wifi_reset();
 			if (arg == 0x20) gpio_wifi_power_down(0);
 			if (arg == 0x21) gpio_wifi_power_down(1);
 			break;					
@@ -186,8 +194,13 @@ static int ucc_ioctl(struct inode *inode, struct file *file,
 						sizeof(ucc_data))) {
 				return -EFAULT;
 			}			
-			ucc_data.reg_addr = (ucc_data.reg_addr & 0x000fffff)|0xf6400000;
-			//printk("cpu reg[0x%x], value[0x%x]\n", ucc_data.reg_addr, ucc_data.reg_value);	
+			/* GPIO Register */
+			if ((ucc_data.reg_addr & 0xfff00000) == 0x56000000) 
+				ucc_data.reg_addr = (ucc_data.reg_addr & 0x000fffff)|0xf6400000;
+			/* LCD Register */
+			if ((ucc_data.reg_addr & 0xfff00000) == 0x4c800000) 
+				ucc_data.reg_addr = (ucc_data.reg_addr & 0x000fffff)|0xf0300000;
+			
 			local_irq_save(flags);
 			__raw_writel(ucc_data.reg_value, ucc_data.reg_addr);
 			local_irq_restore(flags);
@@ -200,8 +213,12 @@ static int ucc_ioctl(struct inode *inode, struct file *file,
 						sizeof(ucc_data))) {
 				return -EFAULT;
 			}
-			ucc_data.reg_addr = (ucc_data.reg_addr & 0x000fffff)|0xf6400000;
-			//printk("cpu reg[0x%x]\n", ucc_data.reg_addr);
+			/* GPIO Register */
+			if ((ucc_data.reg_addr & 0xfff00000) == 0x56000000)
+				ucc_data.reg_addr = (ucc_data.reg_addr & 0x000fffff)|0xf6400000;
+			/* LCD Register */
+			if ((ucc_data.reg_addr & 0xfff00000) == 0x4c800000)
+				ucc_data.reg_addr = (ucc_data.reg_addr & 0x000fffff)|0xf0300000;
 			local_irq_save(flags);
 			ucc_data.reg_value = __raw_readl(ucc_data.reg_addr);
 			local_irq_restore(flags);
@@ -209,24 +226,23 @@ static int ucc_ioctl(struct inode *inode, struct file *file,
 			break;		
 
 		case IOCTLUCC_PMIC_REG_WRITE :			
-			printk("IOCTLUCC_PMIC_REG_WRITE ... 'kernel Not Support' \n");
+			//printk("IOCTLUCC_PMIC_REG_WRITE\n");
 			if (copy_from_user((void *) &ucc_data, 
 						(const void *) arg,  
 						sizeof(ucc_data))) {
 				return -EFAULT;
 			}
-			//printk("pmic reg[0x%x], value[0x%x]\n", ucc_data.reg_addr, ucc_data.reg_value);
+			ucc_wm8350_reg_write(ucc_data.reg_addr, ucc_data.reg_value);
 			break;		
 
 		case IOCTLUCC_PMIC_REG_READ :			
-			printk("IOCTLUCC_PMIC_REG_READ ... 'kernel Not Support' \n");
+			//printk("IOCTLUCC_PMIC_REG_READ\n");
 			if (copy_from_user((void *) &ucc_data, 
 						(const void *) arg,  
 						sizeof(ucc_data))) {
 				return -EFAULT;
-			}
-			//printk("pmic reg[0x%x]\n", ucc_data.reg_addr);
-			ucc_data.reg_value = 0xff00;
+			}			
+			ucc_data.reg_value = ucc_wm8350_reg_read(ucc_data.reg_addr);
 			copy_to_user((void *)arg,&ucc_data,sizeof(ucc_data));
 			break;			
 

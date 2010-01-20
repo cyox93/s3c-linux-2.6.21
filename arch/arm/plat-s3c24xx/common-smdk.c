@@ -265,63 +265,25 @@ void Key_gpio_init(void)
 	s3c2410_gpio_setpin(S3C2410_GPG2, 0);
 	s3c2410_gpio_setpin(S3C2410_GPG3, 0);	
 
-	//printk("S3C2410_GPFCON[0x%x]\n",__raw_readl(S3C2410_GPFCON));
-	//printk("S3C2410_GPFDAT[0x%x]\n",__raw_readl(S3C2410_GPFDAT));	
-
 	mdelay(100);
 }
 
-void gpio_wifi_power_down(bool flag);
-extern int ucc_wm8350_reg_write(int reg, u16 val);
+/* 3.3V LDO  */
 void gpio_wifi_power(bool flag)
 {
-	if (flag) { 
-		//s3c2410_gpio_setpin(S3C2410_GPH12, 1);
-		printk("S3C2410_GPH12 0x%x, 0x%x\n",S3C2410_GPHDAT, S3C2410_GPH12);
-		val = __raw_readl(S3C2410_GPHDAT);	/* 3.3V */
+	unsigned long val;
+	
+	if (flag) { 		
+		val = __raw_readl(S3C2410_GPHDAT);
 		__raw_writel((val |= 0x1000), S3C2410_GPHDAT);
-
-		mdelay(10);
-
-		ucc_wm8350_reg_write(0xd1, 0x0a); /* LDO4 1.2V */
-		ucc_wm8350_reg_write(0xcb, 0x10);  /* LDO2 1.8V */
 	} else {
-		//s3c2410_gpio_setpin(S3C2410_GPH12, 0);
 		val = __raw_readl(S3C2410_GPHDAT);		
-		__raw_writel((val&0xefff), S3C2410_GPHDAT);
-
-		mdelay(1);
-
-		ucc_wm8350_reg_write(0xd1, 0);
-		ucc_wm8350_reg_write(0xcb, 0);
+		__raw_writel((val&0xefff), S3C2410_GPHDAT);		
 	}
-}
-
-void gpio_wifi_reset(bool flag)
-{
-#if 0
- 	s3c2410_gpio_setpin(S3C2410_GPH6, 1);
-	mdelay(20);
-	s3c2410_gpio_setpin(S3C2410_GPH6, 0);
-	mdelay(20);
-	s3c2410_gpio_setpin(S3C2410_GPH6, 1);
-#else
-	if (flag) { 
-		printk("gpio_wifi_reset [0]\n");
-		s3c2410_gpio_setpin(S3C2410_GPH6, 0);
-		gpio_wifi_power_down(0);
-	} else {
-		printk("gpio_wifi_reset [1]\n");
-		s3c2410_gpio_setpin(S3C2410_GPH6, 1);
-		gpio_wifi_power_down(1);
-	}
-#endif	
 }
 
 void gpio_wifi_power_down(bool flag)
 {
-	printk("gpio_wifi_power_down flag %d \n", flag);
-
 	if (flag) { 
 		s3c2410_gpio_setpin(S3C2410_GPH7, 1);
 	} else {
@@ -329,29 +291,37 @@ void gpio_wifi_power_down(bool flag)
 	}
 }
 
-void wifi_gpio_init (void)
+void gpio_wifi_reset(void)
 {
-	unsigned long val;
+	mdelay(10);
+	s3c2410_gpio_setpin(S3C2410_GPH6, 0);
+	gpio_wifi_power_down(0);
+	mdelay(10);
+	s3c2410_gpio_setpin(S3C2410_GPH6, 1);
+	gpio_wifi_power_down(1);
+}
 
+void wifi_gpio_init (void)
+{	
 	s3c2410_gpio_cfgpin(S3C2410_GPH6, S3C2410_GPH6_OUTP);
 	s3c2410_gpio_cfgpin(S3C2410_GPH12, S3C2410_GPH12_OUTP);
 	s3c2410_gpio_cfgpin(S3C2410_GPH7, S3C2410_GPH7_OUTP);
 
-	s3c2410_gpio_pullup(S3C2410_GPH6, 1); /* pull-down enable */
+	s3c2410_gpio_pullup(S3C2410_GPH6, 2); /* WiFi Reset pull-up enable */
 
-	s3c2410_gpio_pullup(S3C2410_GPL0, 2); /* pull-up enable */
-	s3c2410_gpio_pullup(S3C2410_GPL1, 2); /* pull-up enable */
-	s3c2410_gpio_pullup(S3C2410_GPL2, 2); /* pull-up enable */
-	s3c2410_gpio_pullup(S3C2410_GPL3, 2); /* pull-up enable */
-	s3c2410_gpio_pullup(S3C2410_GPL8, 2); /* pull-up enable */
+	s3c2410_gpio_pullup(S3C2410_GPL0, 2); /* SD DAT0 pull-up enable */
+	s3c2410_gpio_pullup(S3C2410_GPL1, 2); /* SD DAT1 pull-up enable */
+	s3c2410_gpio_pullup(S3C2410_GPL2, 2); /* SD DAT2 pull-up enable */
+	s3c2410_gpio_pullup(S3C2410_GPL3, 2); /* SD DAT3 pull-up enable */
+	s3c2410_gpio_pullup(S3C2410_GPL8, 2); /* SD CMD pull-up enable */
 
-	s3c2410_gpio_setpin(S3C2410_GPH6, 1);
-	s3c2410_gpio_setpin(S3C2410_GPH12, 0);
+	s3c2410_gpio_setpin(S3C2410_GPH6, 1);	
 	s3c2410_gpio_setpin(S3C2410_GPH7, 1);
-
+	
+	gpio_wifi_power(0); 
 }
 
-void lcd_power(int flag)
+void lcd_power(bool flag)
 {
 	if (flag) { 
 		s3c2410_gpio_setpin(S3C2410_GPB0, 1);
@@ -362,7 +332,6 @@ void lcd_power(int flag)
 
 void lcd_reset(void)
 {
-	printk("_lcd_reset\n");
 	mdelay(10);
 	s3c2410_gpio_setpin(S3C2410_GPB1, 0);
 	mdelay(10);
@@ -373,8 +342,6 @@ void lcd_reset(void)
 void lcd_backlight(int control)
 {
 	int i;
-
-	printk("lcd backlight : %d\n", control);	
 
 	if (!control) {
 		s3c2410_gpio_setpin(S3C2410_GPB2, 0);

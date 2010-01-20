@@ -55,9 +55,6 @@
 #define WM8350_RAMP_UP		1
 #define WM8350_RAMP_DOWN	2
 
-/* wm8350 handle copy */
-struct wm8350_data *_wm8350;
-
 struct wm8350_output {
 	u16 left_vol;
 	u16 right_vol;
@@ -70,6 +67,12 @@ struct wm8350_data {
 	struct wm8350_output out1;
 	struct wm8350_output out2;
 };
+
+#define WPU7800_UCC_I2C_CONTROL
+#ifdef WPU7800_UCC_I2C_CONTROL
+/* wm8350 handle copy */
+struct wm8350_data *_wm8350;
+#endif
 
 static unsigned int wm8350_codec_cache_read(struct snd_soc_codec *codec,
 					    unsigned int reg)
@@ -1334,7 +1337,9 @@ static int wm8350_codec_init(struct snd_soc_codec *codec,
 	
 	snd_assert(wm8350 != NULL, return -EINVAL);
 
+#ifdef WPU7800_UCC_I2C_CONTROL
 	_wm8350 = wm8350;
+#endif
 
 	/* reset codec */
 	wm8350_clear_bits(wm8350, WM8350_POWER_MGMT_5, WM8350_CODEC_ENA);
@@ -1498,7 +1503,7 @@ prv_err:
 	return ret;
 }
 
-#if 1
+#ifdef WPU7800_UCC_I2C_CONTROL
 u16 ucc_wm8350_reg_read(int reg)
 {
 	u16 data;
@@ -1508,8 +1513,6 @@ u16 ucc_wm8350_reg_read(int reg)
 	wm8350 = _wm8350;
 	
 	data = wm8350_reg_read(wm8350, reg);
-
-	//kfree(wm8350);
 
 	return data;
 }
@@ -1526,11 +1529,25 @@ int ucc_wm8350_reg_write(int reg, u16 val)
 	
 	wm8350_reg_write(wm8350, reg, val);
 
-	//kfree(wm8350);
-
 	return ret;
 }
 EXPORT_SYMBOL(ucc_wm8350_reg_write);
+
+void gpio_wifi_core_power(bool flag)
+{
+	if (flag) { 		
+		/* LDO4 1.2V On */	
+		ucc_wm8350_reg_write(0xd1, 0x0a); 
+		/* LDO2 1.8V On */
+		ucc_wm8350_reg_write(0xcb, 0x10);  
+	} else {		
+		/* LDO2 1.8V Off */
+		ucc_wm8350_reg_write(0xcb, 0);
+		/* LDO4 1.2V Off */	
+		ucc_wm8350_reg_write(0xd1, 0);		
+	}
+}
+EXPORT_SYMBOL(gpio_wifi_core_power);
 #endif
 
 static int wm8350_codec_remove(struct platform_device *pdev)

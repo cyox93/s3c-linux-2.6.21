@@ -22,8 +22,8 @@ static void __iomem *key_base;
 int keypad_keycode[] = {
 		KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6,
 		KEY_7, KEY_8, KEY_9, KEY_F10, KEY_0, KEY_F11,
-		KEY_RESERVED, KEY_SEND, KEY_OK, KEY_LEFT, KEY_RIGHT, KEY_UP, 
-		KEY_CLEAR, KEY_F1, KEY_F2, KEY_F3, KEY_F4, KEY_UP
+		KEY_RESERVED, KEY_SEND, KEY_ENTER, KEY_LEFT, KEY_RIGHT, KEY_UP, 
+		KEY_ESC, KEY_F1, KEY_F2, KEY_F3, KEY_F4, KEY_DOWN
 	};
 #else
 int keypad_keycode[] = {

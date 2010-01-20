@@ -1580,6 +1580,17 @@ void lcd_write_command(int xs, int xe, int ys, int ye)
 	lcd_ili9225b_reg(0x22);
 }
 
+void lcd_fill_color(int color)
+{
+	int i, x=176, y=220;	
+
+	lcd_write_command(0, 176-1, 0, 220-1);
+
+	for (i=0;i<(x*y);i++) {
+		lcd_ili9225b_data(color);
+	}
+}
+
 void lcd_module_init (void)
 {
 	//printk("+++ lcd_module_init\n");
@@ -1647,3 +1658,4 @@ void Init_LDI(void)
 EXPORT_SYMBOL(lcd_write_fixel);
 EXPORT_SYMBOL(lcd_write_command);
 EXPORT_SYMBOL(lcd_module_init);
+EXPORT_SYMBOL(lcd_fill_color);
