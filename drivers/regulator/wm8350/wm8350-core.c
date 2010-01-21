@@ -1577,9 +1577,9 @@ int wm8350_device_init(struct wm8350 *wm8350)
 			printk(KERN_INFO "wm8350: found Rev G device\n");
 			wm8350->rev = WM8350_REV_G;
 			break;
-		case 0x01:
-			printk(KERN_INFO "wm8350: found Rev V device\n");
-			wm8350->rev = 0x01;
+		case WM8351_REV_M:
+			printk(KERN_INFO "wm8350: found Rev M device\n");
+			wm8350->rev = WM8351_REV_M;
 			break;
 		default:
 			printk(KERN_ERR "wm8350: found unknown rev\n");

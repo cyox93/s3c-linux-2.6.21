@@ -28,9 +28,11 @@
 
 static inline int wm8350_charge_time_min(struct wm8350 *wm8350, int min)
 {
-	if (wm8350->rev < WM8350_REV_G)
+	if (wm8350->rev == WM8351_REV_M)
+		return (((min - 60) / 30) & 0xf) << 8;
+	else if (wm8350->rev < WM8350_REV_G) 
 		return (((min - 30) / 15) & 0xf) << 8;
-	else
+	else 
 		return (((min - 30) / 30) & 0xf) << 8;
 }
 
@@ -45,7 +47,7 @@ static int wm8350_charger_config(struct wm8350 *wm8350,
 		return -EINVAL;
 	}
 
-	eoc_mA = WM8350_CHG_EOC_mA(policy->eoc_mA);
+	eoc_mA = WM8351_CHG_EOC_mA(policy->eoc_mA);
 
 	wm8350_reg_unlock(wm8350);
 	reg = wm8350_reg_read(wm8350, WM8350_BATTERY_CHARGER_CONTROL_1)
@@ -89,6 +91,24 @@ static int wm8350_charger_enable(struct wm8350 *wm8350, int enable)
 		wm8350_reg_lock(wm8350);
 	}
 	return 0;
+}
+
+static int wm8350_fast_charger_mode(struct wm8350 *wm8350)
+{
+	u16 status;
+
+	status = wm8350_reg_read(wm8350, WM8350_INT_STATUS_1)
+	    & ~wm8350_reg_read(wm8350, WM8350_INT_STATUS_1_MASK);
+
+	if (status & WM8350_CHG_FAST_RDY_EINT) {
+		printk(KERN_INFO "wm8350-power: fast charger ready\n");
+		wm8350_reg_unlock(wm8350);
+		wm8350_set_bits(wm8350, WM8350_BATTERY_CHARGER_CONTROL_1,
+			WM8350_CHG_FAST);
+		wm8350_reg_lock(wm8350);
+	}
+
+	return 0;	
 }
 
 static int wm8350_get_supplies(struct wm8350 *wm8350)
@@ -295,6 +315,10 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 		printk(KERN_INFO "wm8350-power: Battery is now supply\n");
 		power->is_usb_supply = 0;
 		break;
+	case WM8350_IRQ_SYS_HYST_COMP_FAIL:
+		printk(KERN_INFO "wm8350-power : shut down system\n");
+		wm8350_set_bits(wm8350, WM8350_POWER_CHECK_COMPARATOR, WM8350_PCCMP_ERRACT);
+		break;
 	default:
 		printk(KERN_ERR "wm8350-power: irq %d don't care\n", irq);
 	}
@@ -445,6 +469,11 @@ static void wm8350_init_charger(struct wm8350 *wm8350)
 	wm8350_register_irq(wm8350, WM8350_EXT_BAT_FB_EINT,
 			    wm8350_charger_handler, NULL);
 	wm8350_unmask_irq(wm8350, WM8350_EXT_BAT_FB_EINT);
+
+	/* system monitoring */
+	wm8350_register_irq(wm8350, WM8350_IRQ_SYS_HYST_COMP_FAIL,
+				wm8350_charger_handler, NULL);
+	wm8350_unmask_irq(wm8350, WM8350_IRQ_SYS_HYST_COMP_FAIL);
 }
 
 static void free_charger_irq(struct wm8350 *wm8350)
@@ -473,9 +502,12 @@ static void free_charger_irq(struct wm8350 *wm8350)
 	wm8350_free_irq(wm8350, WM8350_EXT_WALL_FB_EINT);
 	wm8350_mask_irq(wm8350, WM8350_EXT_BAT_FB_EINT);
 	wm8350_free_irq(wm8350, WM8350_EXT_BAT_FB_EINT);
+
+	wm8350_mask_irq(wm8350, WM8350_IRQ_SYS_HYST_COMP_FAIL);
+	wm8350_free_irq(wm8350, WM8350_IRQ_SYS_HYST_COMP_FAIL);
 }
 
-static int wm8350_power_probe(struct platform_device *pdev)
+static int __init wm8350_power_probe(struct platform_device *pdev)
 {
 	struct wm8350 *wm8350 = platform_get_drvdata(pdev);
 	struct wm8350_power *power = &wm8350->power;
@@ -541,6 +573,7 @@ success:
 		wm8350_init_charger(wm8350);
 		power->charger_enabled =
 			wm8350_charger_config(wm8350, policy);
+			wm8350_fast_charger_mode(wm8350);
 			wm8350_charger_enable(wm8350, 1);
 		if (power->charger_enabled < 0) {
 			printk(KERN_ERR "%s: failed to enable charger\n",
@@ -552,7 +585,7 @@ success:
 	return ret;
 }
 
-static int __exit wm8350_power_remove(struct platform_device *pdev)
+static int __devexit wm8350_power_remove(struct platform_device *pdev)
 {
 	struct wm8350 *wm8350 = platform_get_drvdata(pdev);
 	struct wm8350_power *power = &wm8350->power;
@@ -572,7 +605,7 @@ static int __exit wm8350_power_remove(struct platform_device *pdev)
 
 struct platform_driver wm8350_power_driver = {
 	.probe = wm8350_power_probe,
-	.remove = wm8350_power_remove,
+	.remove = __devexit(wm8350_power_remove),
 	.driver = {
 		.name = "wm8350-power",
 	},

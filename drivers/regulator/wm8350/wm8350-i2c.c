@@ -31,6 +31,9 @@
 #include <linux/mfd/wm8350/pmic.h>
 #include <linux/mfd/wm8350/gpio.h>
 #include <linux/mfd/wm8350/core.h>
+#include <linux/interrupt.h>
+#include <linux/irq.h>
+#include <linux/fb.h>
 
 #define WM8350_I2C_VERSION "0.7"
 
@@ -40,6 +43,19 @@ I2C_CLIENT_INSMOD;
 
 static struct i2c_driver wm8350_i2c_driver;
 static struct i2c_client client_template;
+
+static void wm8350_irq_work(struct work_struct *work)
+{
+	wm8350_irq_worker(work);
+}
+
+static irqreturn_t wm8350_irq_handler(int irq, void *data)
+{
+	struct wm8350 *wm8350 = (struct wm8350 *)data;
+
+	schedule_work(&wm8350->work);
+	return IRQ_HANDLED;
+}
 
 static int wm8350_i2c_probe(struct i2c_adapter *adapter, int addr, int kind)
 {
@@ -87,6 +103,14 @@ static int wm8350_i2c_probe(struct i2c_adapter *adapter, int addr, int kind)
 		goto err;
 	}
 
+	INIT_WORK(&wm8350->work, wm8350_irq_work);
+	ret = request_irq(IRQ_EINT12, wm8350_irq_handler,
+			IRQF_DISABLED, "wm8350", wm8350);
+
+	/* unmask all & clear sticky */
+	wm8350_reg_write(wm8350, WM8350_SYSTEM_INTERRUPTS_MASK, 0x0);
+	schedule_work(&wm8350->work);
+
 	return ret;
 
 err:
@@ -106,6 +130,7 @@ static int wm8350_i2c_detach(struct i2c_client *client)
 		return err;
 	}
 
+	free_irq(IRQ_EINT12, wm8350);
 	wm8350_device_exit(wm8350);
 	kfree(client);
 	kfree(wm8350);

@@ -488,9 +488,11 @@ int smdk2416_audio_init(struct snd_soc_card *soc_card)
 	/* enable jack detect */
 	reg = wm8350_reg_read(wm8350, WM8350_JACK_DETECT);
 	wm8350_reg_write(wm8350, WM8350_JACK_DETECT, reg | WM8350_JDR_ENA);
+#if 0
 	wm8350_register_irq(wm8350, WM8350_IRQ_CODEC_JCK_DET_R,
 			    smdk2416_jack_handler, soc_card);
 	wm8350_unmask_irq(wm8350, WM8350_IRQ_CODEC_JCK_DET_R);
+#endif
 
 	return 0;
 }
@@ -565,32 +567,6 @@ static int __init smdk2416_wm8350_audio_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto err;
 
-#if 0
-	/* WM8350 uses SSI1 via AUDMUX port 5 for audio */
-
-	/* reset port 1 & 5 */
-	DAM_PTCR1 = 0;
-	DAM_PDCR1 = 0;
-	DAM_PTCR5 = 0;
-	DAM_PDCR5 = 0;
-
-	/* set to synchronous */
-	DAM_PTCR1 |= AUDMUX_PTCR_SYN;
-	DAM_PTCR5 |= AUDMUX_PTCR_SYN;
-
-	/* set Rx sources 1 <--> 5 */
-	DAM_PDCR1 |= AUDMUX_PDCR_RXDSEL(5);
-	DAM_PDCR5 |= AUDMUX_PDCR_RXDSEL(1);
-
-	/* set Tx frame direction and source  1 --> 5 output */
-	DAM_PTCR5 |= AUDMUX_PTCR_TFSDIR;
-	DAM_PTCR5 |= AUDMUX_PTCR_TFSSEL(AUDMUX_FROM_TXFS, 1);
-
-	/* set Tx Clock direction and source 1--> 5 output */
-	DAM_PTCR5 |= AUDMUX_PTCR_TCLKDIR;
-	DAM_PTCR5 |= AUDMUX_PTCR_TCSEL(AUDMUX_FROM_TXFS, 1);
-#endif
-
 	ret = snd_soc_card_register(soc_card);
 
 	return ret;
@@ -611,8 +587,10 @@ static int __devexit smdk2416_wm8350_audio_remove(struct platform_device *pdev)
 	struct snd_soc_card *soc_card = wm8350->audio;
 	struct smdk2416_data *audio_data = soc_card->private_data;
 
+#if 0
 	wm8350_mask_irq(wm8350, WM8350_IRQ_CODEC_JCK_DET_R);
 	wm8350_free_irq(wm8350, WM8350_IRQ_CODEC_JCK_DET_R);
+#endif
 	snd_soc_card_free(soc_card);
 
 	regulator_disable(audio_data->analog_supply);
