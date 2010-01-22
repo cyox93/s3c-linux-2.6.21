@@ -75,10 +75,6 @@ static const u32 cfb_tab32[] = {
 #define FB_WRITEL fb_writel
 #define FB_READL  fb_readl
 
-#include <linux/delay.h>
-extern void lcd_write_fixel(int color);
-extern void lcd_write_command(int xs, int xe, int ys, int ye);
-
 static inline void color_imageblit(const struct fb_image *image, 
 				   struct fb_info *p, u8 __iomem *dst1, 
 				   u32 start_index,
@@ -90,11 +86,7 @@ static inline void color_imageblit(const struct fb_image *image,
 	int i, n, bpp = p->var.bits_per_pixel;
 	u32 null_bits = 32 - bpp;
 	u32 *palette = (u32 *) p->pseudo_palette;
-	const u8 *src = image->data;	
-
-	printk ("color_imageblit[%d][%d] [%d]\n", bpp,image->width, image->height);
-
-	lcd_write_command(0,(image->width-1),0,(image->height-1));
+	const u8 *src = image->data;
 
 	dst2 = (u32 __iomem *) dst1;
 	for (i = image->height; i--; ) {
@@ -117,9 +109,8 @@ static inline void color_imageblit(const struct fb_image *image,
 			color <<= FB_LEFT_POS(bpp);
 			val |= FB_SHIFT_HIGH(color, shift);
 			if (shift >= null_bits) {
-				lcd_write_fixel(val&0x0000ffff);
-				lcd_write_fixel(val>>16);	
-				FB_WRITEL(val, dst++);	
+				FB_WRITEL(val, dst++);
+	
 				val = (shift == null_bits) ? 0 : 
 					FB_SHIFT_LOW(color, 32 - shift);
 			}
@@ -128,9 +119,8 @@ static inline void color_imageblit(const struct fb_image *image,
 			src++;
 		}
 		if (shift) {
-			u32 end_mask = FB_SHIFT_HIGH(~(u32)0, shift);			
-			lcd_write_fixel(val&0x0000ffff);
-			lcd_write_fixel(val>>16);	
+			u32 end_mask = FB_SHIFT_HIGH(~(u32)0, shift);
+
 			FB_WRITEL((FB_READL(dst) & end_mask) | val, dst);
 		}
 		dst1 += p->fix.line_length;
@@ -157,10 +147,6 @@ static inline void slow_imageblit(const struct fb_image *image, struct fb_info *
 	u32 spitch = (image->width+7)/8;
 	const u8 *src = image->data, *s;
 	u32 i, j, l;
-
-	//printk ("slow_imageblit[%d][%d] [%d]\n", bpp,image->width, image->height);
-
-	lcd_write_command(0,image->width-1,0,image->height-1 );
 	
 	dst2 = (u32 __iomem *) dst1;
 	fgcolor <<= FB_LEFT_POS(bpp);
@@ -187,8 +173,6 @@ static inline void slow_imageblit(const struct fb_image *image, struct fb_info *
 			
 			/* Did the bitshift spill bits to the next long? */
 			if (shift >= null_bits) {
-				lcd_write_fixel(val&0x0000ffff);
-				lcd_write_fixel(val>>16);
 				FB_WRITEL(val, dst++);
 				val = (shift == null_bits) ? 0 :
 					FB_SHIFT_LOW(color,32 - shift);
@@ -201,8 +185,7 @@ static inline void slow_imageblit(const struct fb_image *image, struct fb_info *
 		/* write trailing bits */
  		if (shift) {
 			u32 end_mask = FB_SHIFT_HIGH(~(u32)0, shift);
-			lcd_write_fixel(val&0x0000ffff);
-			lcd_write_fixel(val>>16);
+
 			FB_WRITEL((FB_READL(dst) & end_mask) | val, dst);
 		}
 		
@@ -218,7 +201,6 @@ static inline void slow_imageblit(const struct fb_image *image, struct fb_info *
 	}
 }
 
-int lcd_cnt = 0;
 /*
  * fast_imageblit - optimized monochrome color expansion
  *
@@ -237,9 +219,7 @@ static inline void fast_imageblit(const struct fb_image *image, struct fb_info *
 	const char *s = image->data, *src;
 	u32 __iomem *dst;
 	const u32 *tab = NULL;
-	int i, j, k;	
-	
-	//printk ("fast_imageblit[%d][%d]\n",image->width,image->height);
+	int i, j, k;
 		
 	switch (bpp) {
 	case 8:
@@ -265,27 +245,18 @@ static inline void fast_imageblit(const struct fb_image *image, struct fb_info *
 	eorx = fgx ^ bgx;
 	k = image->width/ppw;
 
-	if ( lcd_cnt > 50) 
-		lcd_write_command(0,image->width-1,120,image->height-1 );
-	
 	for (i = image->height; i--; ) {
 		dst = (u32 __iomem *) dst1, shift = 8; src = s;
 		
 		for (j = k; j--; ) {
 			shift -= ppw;
 			end_mask = tab[(*src >> shift) & bit_mask];
-			if ( lcd_cnt > 50) { 
-				lcd_write_fixel(((end_mask & eorx)^bgx)&0x0000ffff);
-				lcd_write_fixel(((end_mask & eorx)^bgx)>>16);
-			}
 			FB_WRITEL((end_mask & eorx)^bgx, dst++);
 			if (!shift) { shift = 8; src++; }		
 		}
 		dst1 += p->fix.line_length;
 		s += spitch;
 	}
-
-	lcd_cnt++;
 }	
 	
 void cfb_imageblit(struct fb_info *p, const struct fb_image *image)

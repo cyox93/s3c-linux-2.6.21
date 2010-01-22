@@ -450,7 +450,51 @@ static DEVICE_ATTR(backlight_power, 0644,
 		   s3c_fb_backlight_power_show,
 		   s3c_fb_backlight_power_store);
 
+#define __FIX_ME__
+#ifdef __FIX_ME__
+extern void lcd_write_fixel(int color);
+extern void lcd_write_command(int xs, int xe, int ys, int ye);
 
+static void s3c_cfb_fillrect(struct fb_info *p, const struct fb_fillrect *rect)
+{
+	int i; 
+	u16 __iomem *dst1;
+	dst1 = (u16 __iomem *)p->screen_base;
+
+	cfb_fillrect(p, rect);
+#if 0
+	lcd_write_command(0, 176-1, 0, 220-1);
+	for (i = 0; i < 176 * 220; i++) 
+		lcd_write_fixel(*dst1++);
+#endif 
+}
+
+static void s3c_cfb_copyarea(struct fb_info *p, const struct fb_copyarea *area)
+{
+	int i; 
+	u16 __iomem *dst1;
+	dst1 = (u16 __iomem *)p->screen_base;
+
+	cfb_copyarea(p, area);
+#if 0
+	lcd_write_command(0, 176-1, 0, 220-1);
+	for (i = 0; i < 176 * 220; i++) 
+		lcd_write_fixel(*dst1++);
+#endif
+}
+
+static void s3c_cfb_imageblit(struct fb_info *p, const struct fb_image *image)
+{
+	int i;
+	u16 __iomem *dst1;
+	dst1 = (u16 __iomem *)p->screen_base;
+
+	cfb_imageblit(p, image);
+	for (i = 0; i < 176 * 220; i++) { 
+		lcd_write_fixel(dst1[i]);
+	}
+}
+#endif
 
 struct fb_ops s3c_fb_ops = {
 	.owner		= THIS_MODULE,
@@ -459,9 +503,9 @@ struct fb_ops s3c_fb_ops = {
 	.fb_blank	= s3c_fb_blank,
 	.fb_pan_display	= s3c_fb_pan_display,
 	.fb_setcolreg	= s3c_fb_setcolreg,
-	.fb_fillrect	= cfb_fillrect,
-	.fb_copyarea	= cfb_copyarea,
-	.fb_imageblit	= cfb_imageblit,
+	.fb_fillrect	= s3c_cfb_fillrect,
+	.fb_copyarea	= s3c_cfb_copyarea,
+	.fb_imageblit	= s3c_cfb_imageblit,
 	.fb_cursor	= soft_cursor,
 	.fb_ioctl	= s3c_fb_ioctl,
 };
