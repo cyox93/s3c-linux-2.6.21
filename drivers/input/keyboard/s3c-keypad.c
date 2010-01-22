@@ -97,6 +97,7 @@ static int _keypad_scan(unsigned long data)
 	}
 
 	if (((rval_sum/4) == 0x3f)&&key_press) {
+		input_report_key(dev,pdata->keycodes[real_value],1);
 		input_report_key(dev,pdata->keycodes[real_value],0);
 		DPRINTK("Released : %d\n",pdata->keycodes[real_value]);
 		printk("key Released : %d\n",pdata->keycodes[real_value]);
