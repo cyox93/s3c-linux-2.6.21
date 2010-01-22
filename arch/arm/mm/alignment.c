@@ -755,6 +755,7 @@ do_alignment(unsigned long addr, unsigned int fsr, struct pt_regs *regs)
  user:
 	ai_user += 1;
 
+#if 0
 	if (ai_usermode & 1)
 		printk("Alignment trap: %s (%d) PC=0x%08lx Instr=0x%0*lx "
 		       "Address=0x%08lx FSR 0x%03x\n", current->comm,
@@ -762,6 +763,7 @@ do_alignment(unsigned long addr, unsigned int fsr, struct pt_regs *regs)
 		        thumb_mode(regs) ? 4 : 8,
 		        thumb_mode(regs) ? tinstr : instr,
 		        addr, fsr);
+#endif
 
 	if (ai_usermode & 2)
 		goto fixup;
