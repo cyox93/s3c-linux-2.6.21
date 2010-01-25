@@ -93,24 +93,6 @@ static int wm8350_charger_enable(struct wm8350 *wm8350, int enable)
 	return 0;
 }
 
-static int wm8350_fast_charger_mode(struct wm8350 *wm8350)
-{
-	u16 status;
-
-	status = wm8350_reg_read(wm8350, WM8350_INT_STATUS_1)
-	    & ~wm8350_reg_read(wm8350, WM8350_INT_STATUS_1_MASK);
-
-	if (status & WM8350_CHG_FAST_RDY_EINT) {
-		printk(KERN_INFO "wm8350-power: fast charger ready\n");
-		wm8350_reg_unlock(wm8350);
-		wm8350_set_bits(wm8350, WM8350_BATTERY_CHARGER_CONTROL_1,
-			WM8350_CHG_FAST);
-		wm8350_reg_lock(wm8350);
-	}
-
-	return 0;	
-}
-
 static int wm8350_get_supplies(struct wm8350 *wm8350)
 {
 	u16 sm, ov, co, chrg;
@@ -471,9 +453,9 @@ static void wm8350_init_charger(struct wm8350 *wm8350)
 	wm8350_unmask_irq(wm8350, WM8350_EXT_BAT_FB_EINT);
 
 	/* system monitoring */
+	wm8350_unmask_irq(wm8350, WM8350_IRQ_SYS_HYST_COMP_FAIL);
 	wm8350_register_irq(wm8350, WM8350_IRQ_SYS_HYST_COMP_FAIL,
 				wm8350_charger_handler, NULL);
-	wm8350_unmask_irq(wm8350, WM8350_IRQ_SYS_HYST_COMP_FAIL);
 }
 
 static void free_charger_irq(struct wm8350 *wm8350)
@@ -505,6 +487,24 @@ static void free_charger_irq(struct wm8350 *wm8350)
 
 	wm8350_mask_irq(wm8350, WM8350_IRQ_SYS_HYST_COMP_FAIL);
 	wm8350_free_irq(wm8350, WM8350_IRQ_SYS_HYST_COMP_FAIL);
+}
+
+static int wm8350_fast_charger_mode(struct wm8350 *wm8350)
+{
+	int state, uvolts;
+
+	state = wm8350_batt_status(wm8350);
+	uvolts = wm8350_read_battery_uvolts(wm8350);
+
+	if ((state == 1) && (uvolts > 3100000)) {
+		printk(KERN_INFO "Fast Charger Mode [%d uV]....\n", uvolts);
+		wm8350_reg_unlock(wm8350);
+		wm8350_set_bits(wm8350, WM8350_BATTERY_CHARGER_CONTROL_1,
+			WM8350_CHG_FAST);
+		wm8350_reg_lock(wm8350);
+	}
+
+	return 0;	
 }
 
 static int __init wm8350_power_probe(struct platform_device *pdev)

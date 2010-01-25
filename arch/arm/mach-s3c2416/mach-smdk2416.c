@@ -494,7 +494,7 @@ static inline void s3c_init_wm8350(void)
 
 struct wm8350_charger_policy wm8350_charger = {
 	.eoc_mA			= 50,/* end of charge current (mA)  */
-	.charge_mV		= WM8350_CHG_4_05V, /* charge voltage */
+	.charge_mV		= WM8350_CHG_4_15V, /* charge voltage */
 	.fast_limit_mA		= 500,/* fast charge current limit */
 	.fast_limit_USB_mA	= 400,/* USB fast charge current limit */
 	.charge_timeout		= 60,	/* charge timeout (mins) */
@@ -606,6 +606,7 @@ static int config_s3c_wm8350_gpio(struct wm8350 *wm8350)
 int wm8350_dev_init(struct wm8350 *wm8350)
 {
 	int i, ret;
+	u32 reg;
 
 #if 0
 	/* dont assert RTS when hibernating */
@@ -615,6 +616,9 @@ int wm8350_dev_init(struct wm8350 *wm8350)
 	wm8350_reg_unlock(wm8350);
 	wm8350_set_bits(wm8350, WM8350_SYSTEM_CONTROL_1, WM8350_IRQ_POL);
 	wm8350_reg_lock(wm8350);
+
+	reg = readl(S3C2410_EXTINT1) & ~(0x70000);
+	writel((reg | (S3C2410_EXTINT_RISEEDGE << 16)), S3C2410_EXTINT1);
 
 	s3c2410_gpio_pullup(S3C2410_GPG4, 0);
 	s3c2410_gpio_cfgpin(S3C2410_GPG4, S3C2410_GPG4_EINT12);

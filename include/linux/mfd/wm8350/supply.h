@@ -151,7 +151,7 @@ struct wm8350_power {
 	(wm8350_read_auxadc(wm8350, WM8350_AUXADC_BATT, 0, 0)\
 	 * WM8350_AUX_COEFF)
 #define wm8350_read_battery_mvolts(wm8350) \
-	(wm8350_read_battery_uvolts(wm8350 / 1000)
+	(wm8350_read_battery_uvolts(wm8350) / 1000)
 
 #define wm8350_read_line_uvolts(wm8350) \
 	(wm8350_read_auxadc(wm8350, WM8350_AUXADC_LINE, 0, 0)\
