@@ -338,7 +338,6 @@ static struct wm8350_audio_platform_data smdk2416_wm8350_setup = {
 static const struct snd_soc_dapm_widget smdk2416_dapm_widgets[] = {
 	SND_SOC_DAPM_MIC("SiMIC", NULL),
 	SND_SOC_DAPM_MIC("Mic1 Jack", NULL),
-	SND_SOC_DAPM_MIC("Mic2 Jack", NULL),
 	SND_SOC_DAPM_LINE("Line In Jack", NULL),
 	SND_SOC_DAPM_LINE("Line Out Jack", NULL),
 	SND_SOC_DAPM_HP("Headphone Jack", NULL),
@@ -349,13 +348,8 @@ static const struct snd_soc_dapm_route audio_map[] = {
 	/* SiMIC --> IN1LN (with automatic bias) via SP1 */
 	{"IN1LN", NULL, "Mic Bias"},
 	{"Mic Bias", NULL, "SiMIC"},
-
-	/* Mic 1 Jack --> IN1LN and IN1LP (with automatic bias) */
-	{"IN1LN", NULL, "Mic Bias"},
-	{"IN1LP", NULL, "Mic1 Jack"},
-	{"Mic Bias", NULL, "Mic1 Jack"},
-
-	/* Mic 2 Jack --> IN1RN and IN1RP (with automatic bias) */
+	
+	/* Mic 1 Jack --> IN1RN and IN1RP (with automatic bias) */
 	{"IN1RN", NULL, "Mic Bias"},
 	{"IN1RP", NULL, "Mic1 Jack"},
 	{"Mic Bias", NULL, "Mic1 Jack"},
@@ -474,10 +468,10 @@ int smdk2416_audio_init(struct snd_soc_card *soc_card)
 //	snd_soc_dapm_disable_pin(soc_card, "OUT2R");
 
 	/* connect and enable all imx32ads WM8350 jacks (for now) */
-	snd_soc_dapm_enable_pin(soc_card, "SiMIC");
+//	snd_soc_dapm_enable_pin(soc_card, "SiMIC");
 	snd_soc_dapm_enable_pin(soc_card, "Mic1 Jack");
-	snd_soc_dapm_enable_pin(soc_card, "Mic2 Jack");
-	snd_soc_dapm_enable_pin(soc_card, "Line In Jack");
+//	snd_soc_dapm_enable_pin(soc_card, "Mic2 Jack");
+//	snd_soc_dapm_enable_pin(soc_card, "Line In Jack");
 	snd_soc_dapm_set_policy(soc_card, SND_SOC_DAPM_POLICY_AUTOMATIC);
 	snd_soc_dapm_sync(soc_card);
 
@@ -622,204 +616,6 @@ static void __exit smdk2416_wm8350_audio_exit(void)
 
 module_init(smdk2416_wm8350_audio_init);
 module_exit(smdk2416_wm8350_audio_exit);
-
-
-#if 0
-static int smdk6400_scenario = 0;
-
-static int smdk6400_get_scenario(struct snd_kcontrol *kcontrol,
-	struct snd_ctl_elem_value *ucontrol)
-{
-	ucontrol->value.integer.value[0] = smdk6400_scenario;
-	return 0;
-}
-
-static int set_scenario_endpoints(struct snd_soc_codec *codec, int scenario)
-{
-	switch(smdk6400_scenario) {
-	case SMDK6400_AUDIO_OFF:
-		snd_soc_dapm_set_endpoint(codec, "Headphone Jack",    0);
-		snd_soc_dapm_set_endpoint(codec, "Mic1 Jack",  0);
-		snd_soc_dapm_set_endpoint(codec, "Line In Jack",  0);
-		break;
-	case SMDK6400_STEREO_TO_HEADPHONES:
-		snd_soc_dapm_set_endpoint(codec, "Headphone Jack",    1);
-		snd_soc_dapm_set_endpoint(codec, "Mic1 Jack",  0);
-		snd_soc_dapm_set_endpoint(codec, "Line In Jack",  0);
-		break;
-	case SMDK6400_CAPTURE_MIC1:
-		snd_soc_dapm_set_endpoint(codec, "Headphone Jack",    0);
-		snd_soc_dapm_set_endpoint(codec, "Mic1 Jack",  1);
-		snd_soc_dapm_set_endpoint(codec, "Line In Jack",  0);
-		break;
-	case SMDK6400_CAPTURE_LINE_IN:
-		snd_soc_dapm_set_endpoint(codec, "Headphone Jack",    0);
-		snd_soc_dapm_set_endpoint(codec, "Mic1 Jack",  0);
-		snd_soc_dapm_set_endpoint(codec, "Line In Jack",  1);
-		break;
-	default:
-		snd_soc_dapm_set_endpoint(codec, "Headphone Jack",    1);
-		snd_soc_dapm_set_endpoint(codec, "Mic1 Jack",  1);
-		snd_soc_dapm_set_endpoint(codec, "Line In Jack",  1);
-		break;
-	}
-
-	snd_soc_dapm_sync_endpoints(codec);
-
-	return 0;
-}
-
-static int smdk6400_set_scenario(struct snd_kcontrol *kcontrol,
-	struct snd_ctl_elem_value *ucontrol)
-{
-	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
-
-	if (smdk6400_scenario == ucontrol->value.integer.value[0])
-		return 0;
-
-	smdk6400_scenario = ucontrol->value.integer.value[0];
-	set_scenario_endpoints(codec, smdk6400_scenario);
-	return 1;
-}
-
-static const struct snd_soc_dapm_widget wm8753_dapm_widgets[] = {
-	SND_SOC_DAPM_HP("Headphone Jack", NULL),
-	SND_SOC_DAPM_MIC("Mic1 Jack", NULL),
-	SND_SOC_DAPM_LINE("Line In Jack", NULL),
-};
-
-
-/* example machine audio_mapnections */
-static const char* audio_map[][3] = {
-
-	{"Headphone Jack", NULL, "LOUT1"},
-	{"Headphone Jack", NULL, "ROUT1"},
-
-	/* mic is connected to mic1 - with bias */
-	/* mic is connected to mic1 - with bias */
-	{"MIC1", NULL, "Mic1 Jack"},
-
-	{"LINE1", NULL, "Line In Jack"},
-	{"LINE2", NULL, "Line In Jack"},
-
-	/* Connect the ALC pins */
-	{"ACIN", NULL, "ACOP"},
-		
-	{NULL, NULL, NULL},
-};
-
-static const char *smdk_scenarios[] = {
-	"Off",
-	"Capture Line In",
-	"Headphones",
-	"Capture Mic1",
-};
-
-static const struct soc_enum smdk_scenario_enum[] = {
-	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(smdk_scenarios),smdk_scenarios),
-};
-
-static const struct snd_kcontrol_new wm8753_smdk6400_controls[] = {
-	SOC_ENUM_EXT("SMDK Mode", smdk_scenario_enum[0],
-		smdk6400_get_scenario, smdk6400_set_scenario),
-};
-
-/*
- * This is an example machine initialisation for a wm8753 connected to a
- * smdk6400. It is missing logic to detect hp/mic insertions and logic
- * to re-route the audio in such an event.
- */
-static int smdk6400_wm8753_init(struct snd_soc_codec *codec)
-{
-	int i, err;
-
-	/* set endpoints to default mode */
-	set_scenario_endpoints(codec, SMDK6400_AUDIO_OFF);
-
-	/* Add smdk6400 specific widgets */
-	for (i = 0; i < ARRAY_SIZE(wm8753_dapm_widgets); i++)
-		snd_soc_dapm_new_control(codec, &wm8753_dapm_widgets[i]);
-
-	/* add smdk6400 specific controls */
-	for (i = 0; i < ARRAY_SIZE(wm8753_smdk6400_controls); i++) {
-		err = snd_ctl_add(codec->card,
-				snd_soc_cnew(&wm8753_smdk6400_controls[i],
-				codec, NULL));
-		if (err < 0)
-			return err;
-	}
-
-	/* set up smdk6400 specific audio path audio_mapnects */
-	for (i = 0; audio_map[i][0] != NULL; i++) {
-		snd_soc_dapm_connect_input(codec, audio_map[i][0],
-			audio_map[i][1], audio_map[i][2]);
-	}
-
-	/* always connected */
-	snd_soc_dapm_set_endpoint(codec, "Mic1 Jack", 1);
-	snd_soc_dapm_set_endpoint(codec, "Headphone Jack", 1);
-	snd_soc_dapm_set_endpoint(codec, "Line In Jack", 1);
-
-	snd_soc_dapm_sync_endpoints(codec);
-	return 0;
-}
-
-static struct snd_soc_dai_link smdk6400_dai[] = {
-{ /* Hifi Playback - for similatious use with voice below */
-	.name = "WM8753",
-	.stream_name = "WM8753 HiFi",
-	.cpu_dai = &s3c_i2s_dai,
-	.codec_dai = &wm8753_dai[WM8753_DAI_HIFI],
-	.init = smdk6400_wm8753_init,
-	.ops = &smdk6400_hifi_ops,
-},
-};
-
-static struct snd_soc_machine smdk6400 = {
-	.name = "smdk2416",
-	.dai_link = smdk6400_dai,
-	.num_links = ARRAY_SIZE(smdk6400_dai),
-};
-
-static struct wm8753_setup_data smdk6400_wm8753_setup = {
-	.i2c_address = 0x1a,
-};
-
-static struct snd_soc_device smdk6400_snd_devdata = {
-	.machine = &smdk6400,
-	.platform = &s3c24xx_soc_platform,
-	.codec_dev = &soc_codec_dev_wm8753,
-	.codec_data = &smdk6400_wm8753_setup,
-};
-
-static struct platform_device *smdk6400_snd_device;
-
-static int __init smdk6400_init(void)
-{
-	int ret;
-
-	smdk6400_snd_device = platform_device_alloc("soc-audio", -1);
-	if (!smdk6400_snd_device)
-		return -ENOMEM;
-
-	platform_set_drvdata(smdk6400_snd_device, &smdk6400_snd_devdata);
-	smdk6400_snd_devdata.dev = &smdk6400_snd_device->dev;
-	ret = platform_device_add(smdk6400_snd_device);
-
-	if (ret)
-		platform_device_put(smdk6400_snd_device);
-	
-	return ret;
-}
-
-static void __exit smdk6400_exit(void)
-{
-	platform_device_unregister(smdk6400_snd_device);
-}
-
-module_init(smdk6400_init);
-module_exit(smdk6400_exit);
-#endif
 
 /* Module information */
 MODULE_AUTHOR("Ryu Euiyoul");

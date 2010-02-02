@@ -510,7 +510,7 @@ static int s3c24xx_pcm_new(struct snd_soc_platform *platform,
 			goto out;
 	}
 
- out:
+out:
 	return ret;
 }
 

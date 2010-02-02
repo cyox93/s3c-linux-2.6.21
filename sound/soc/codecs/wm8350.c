@@ -583,7 +583,7 @@ static const struct snd_kcontrol_new wm8350_left_capt_mixer_controls[] = {
 	SOC_DAPM_SINGLE_TLV("L3 Capture Volume",
 			    WM8350_INPUT_MIXER_VOLUME_L, 9, 7, 0, out_mix_tlv),
 	SOC_DAPM_SINGLE("PGA Capture Switch",
-			WM8350_LEFT_INPUT_VOLUME, 14, 1, 0),
+			WM8350_LEFT_INPUT_VOLUME, 15, 1, 0),
 };
 
 /* Right Input Mixer */
@@ -593,7 +593,7 @@ static const struct snd_kcontrol_new wm8350_right_capt_mixer_controls[] = {
 	SOC_DAPM_SINGLE_TLV("L3 Capture Volume",
 			    WM8350_INPUT_MIXER_VOLUME_R, 13, 7, 0, out_mix_tlv),
 	SOC_DAPM_SINGLE("PGA Capture Switch",
-			WM8350_RIGHT_INPUT_VOLUME, 14, 1, 0),
+			WM8350_RIGHT_INPUT_VOLUME, 15, 1, 0),
 };
 
 /* Left Mic Mixer */
@@ -1237,7 +1237,6 @@ static int wm8350_set_bias_level(struct snd_soc_codec *codec,
 					 pm1 | WM8350_VMID_500K |
 					 (platform->
 					  codec_current_standby << 14));
-
 			/* disable bias */
 			pm1 = wm8350_reg_read(wm8350, WM8350_POWER_MGMT_1) &
 			    ~WM8350_BIASEN;
@@ -1246,7 +1245,6 @@ static int wm8350_set_bias_level(struct snd_soc_codec *codec,
 
 		break;
 	case SND_SOC_BIAS_OFF:	/* Off, without power */
-
 		/* mute DAC & enable outputs */
 		wm8350_set_bits(wm8350, WM8350_DAC_MUTE, WM8350_DAC_MUTE_ENA);
 
@@ -1319,7 +1317,10 @@ static int wm8350_resume(struct platform_device *pdev)
 {
 	struct snd_soc_codec *codec = platform_get_drvdata(pdev);
 
-	wm8350_set_bias_level(codec, SND_SOC_BIAS_STANDBY); /* charge wm8350 caps */ if (codec->suspend_bias_level == SND_SOC_BIAS_ON) {
+	wm8350_set_bias_level(codec, SND_SOC_BIAS_STANDBY); 
+	
+	/* charge wm8350 caps */
+	if (codec->suspend_bias_level == SND_SOC_BIAS_ON) {
 		wm8350_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 		codec->bias_level = SND_SOC_BIAS_ON;
 	}
@@ -1412,7 +1413,7 @@ static void wm8350_codec_exit(struct snd_soc_codec *codec,
 
 static struct snd_soc_dai_caps wm8350_playback = {
 	.stream_name = "Playback",
-	.channels_min = 1,
+	.channels_min = 2,
 	.channels_max = 2,
 	.rates = WM8350_RATES,
 	.formats = WM8350_FORMATS,
@@ -1420,7 +1421,7 @@ static struct snd_soc_dai_caps wm8350_playback = {
 
 static struct snd_soc_dai_caps wm8350_capture = {
 	.stream_name = "Capture",
-	.channels_min = 1,
+	.channels_min = 2,
 	.channels_max = 2,
 	.rates = WM8350_RATES,
 	.formats = WM8350_FORMATS,
