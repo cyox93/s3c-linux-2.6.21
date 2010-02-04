@@ -4,6 +4,7 @@ config WANT_EXTRA_DEBUG_INFORMATION
 	select DEBUG_INFO
 	select UNWIND_INFO
 	select FRAME_POINTER if X86 || SUPERH
+	select KGDB_CONSOLE if ARCH_S3C2410
 	default n
 
 config UNWIND_INFO
@@ -40,6 +41,7 @@ config KGDB_CONSOLE
 choice
 	prompt "Method for KGDB communication"
 	depends on KGDB
+	depends on !ARCH_S3C2410
 	default KGDB_MPSC if SERIAL_MPSC
 	default KGDB_CPM_UART if (CPM2 || 8xx)
 	default KGDB_SIBYTE if SIBYTE_SB1xxx_SOC
@@ -174,6 +176,7 @@ endchoice
 config KGDBOE
 	tristate "KGDB: On ethernet" if !KGDBOE_NOMODULE
 	depends on m && KGDB
+	depends on !ARCH_S3C2410
 	select NETPOLL
 	select NETPOLL_TRAP
 	help

@@ -91,6 +91,39 @@ void sleeping_thread_to_gdb_regs(unsigned long *gdb_regs,
 				 struct task_struct *task)
 {
 	int regno;
+#if 1
+	struct thread_info* info;
+	struct cpu_context_save	*cpu_context;
+
+	/* Just making sure... */
+	if (task == NULL)
+		return;
+
+	/* Initialize to zero */
+	for (regno = 0; regno < GDB_MAX_REGS; regno++)
+		gdb_regs[regno] = 0;
+
+	info = task_thread_info(task);
+	cpu_context = &info->cpu_context;
+
+	gdb_regs[_R0] = 0;
+	gdb_regs[_R1] = 0;
+	gdb_regs[_R2] = 0;
+	gdb_regs[_R3] = 0;
+	gdb_regs[_R4] = cpu_context->r4;
+	gdb_regs[_R5] = cpu_context->r5;
+	gdb_regs[_R6] = cpu_context->r6;
+	gdb_regs[_R7] = cpu_context->r7;
+	gdb_regs[_R8] = cpu_context->r8;
+	gdb_regs[_R9] = cpu_context->r9;
+	gdb_regs[_R10] = cpu_context->sl;
+	gdb_regs[_FP] = cpu_context->fp;
+	gdb_regs[_IP] = 0;
+	gdb_regs[_SP] = cpu_context->sp;
+	gdb_regs[_LR] = cpu_context->pc;
+	gdb_regs[_PC] = cpu_context->pc;
+	gdb_regs[_CPSR] = 0;
+#else
 	struct pt_regs *thread_regs;
 
 	/* Just making sure... */
@@ -120,6 +153,7 @@ void sleeping_thread_to_gdb_regs(unsigned long *gdb_regs,
 	gdb_regs[_LR] = thread_regs->ARM_lr;
 	gdb_regs[_PC] = thread_regs->ARM_pc;
 	gdb_regs[_CPSR] = thread_regs->ARM_cpsr;
+#endif
 }
 
 static int compiled_break;
