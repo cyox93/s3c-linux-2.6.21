@@ -72,7 +72,7 @@
 #include <linux/serial.h>
 #include <linux/delay.h>
 #include <linux/clk.h>
-
+#include <linux/kgdb.h>
 #include <asm/io.h>
 #include <asm/irq.h>
 
@@ -190,6 +190,97 @@ s3c24xx_serial_dbg(const char *fmt, ...)
 
 /* flag to ignore all characters comming in */
 #define RXSTAT_DUMMY_READ (0x10000000)
+
+#ifdef CONFIG_KGDB
+
+static unsigned char __iomem *membase = (void *)(S3C24XX_VA_UART + (S3C2410_PA_UART0 - S3C24XX_PA_UART));
+
+static int
+kgdb_serial_txrdy(unsigned int ufcon)
+{
+	unsigned long ufstat, utrstat;
+
+	if (ufcon & S3C2410_UFCON_FIFOMODE) {
+		/* fifo mode - check ammount of data in fifo registers... */
+
+		ufstat = __raw_readl(membase + S3C2410_UFSTAT);
+		return (ufstat & (1 << 14)) ? 0 : 1;
+	}
+
+	/* in non-fifo mode, we go and use the tx buffer empty */
+
+	utrstat = __raw_readl(membase + S3C2410_UTRSTAT);
+	return (utrstat & S3C2410_UTRSTAT_TXE) ? 1 : 0;
+}
+
+static void
+printascii(char *str)
+{
+	unsigned int ufcon = __raw_readl(membase + S3C2410_UFCON);
+
+	for (; *str != '\0'; str++) {
+		while (!kgdb_serial_txrdy(ufcon))
+			;
+		__raw_writel((int)*str, membase + S3C2410_UTXH);
+	}
+}
+
+static int
+check_break_key(unsigned int ch)
+{
+	if (ch == 0x0b) { /* Ctrl-K */
+		printascii("\r\n======== KGDB Start =======\r\n");
+		breakpoint();
+		return 1;
+	}
+	if (kgdb_connected && ch == 3) { /* Ctrl-C */
+		breakpoint();
+		return 1;
+	}
+	return 0;
+}
+
+static void
+kgdb_serial_putchar(u8 c)
+{
+	unsigned int ufcon = __raw_readl(membase + S3C2410_UFCON);
+	while (!kgdb_serial_txrdy(ufcon))
+		cpu_relax();
+
+	__raw_writel((int)c, membase + S3C2410_UTXH);
+}
+
+static void
+kgdb_serial_flush(void)
+{
+	while (!(__raw_readl(membase + S3C2410_UTRSTAT) & S3C2410_UTRSTAT_TXFE))
+		cpu_relax();
+}
+
+static int
+kgdb_serial_getchar(void)
+{
+	unsigned char c;
+	unsigned int ufcon = __raw_readl(membase + S3C2410_UFCON);
+
+	if (ufcon & S3C2410_UFCON_FIFOMODE) {
+		while (!(__raw_readl(membase + S3C2410_UFSTAT) & S3C2440_UFSTAT_RXMASK))
+			cpu_relax();
+	} else {
+		while (!(__raw_readl(membase + S3C2410_UTRSTAT) & S3C2410_UTRSTAT_RXDR))
+			cpu_relax();
+	}
+
+	c = (unsigned char)(__raw_readl(membase + S3C2410_URXH) & 0xff);
+	return c;
+}
+
+struct kgdb_io kgdb_io_ops = {
+	.write_char = kgdb_serial_putchar,
+	.flush = kgdb_serial_flush,
+	.read_char = kgdb_serial_getchar,
+};
+#endif
 
 static inline struct s3c24xx_uart_port *to_ourport(struct uart_port *port)
 {
@@ -382,6 +473,9 @@ s3c24xx_serial_rx_chars(int irq, void *dev_id)
 		if (uart_handle_sysrq_char(port, ch))
 			goto ignore_char;
 
+#ifdef CONFIG_KGDB
+		check_break_key(ch);
+#endif
 		uart_insert_char(port, uerstat, S3C2410_UERSTAT_OVERRUN, ch, flag);
 
 	ignore_char:
@@ -1750,6 +1844,12 @@ static void
 s3c24xx_serial_console_write(struct console *co, const char *s,
 			     unsigned int count)
 {
+#ifdef CONFIG_KGDB
+	if (kgdb_connected) {
+		kgdb_console_write(co, s, count);
+		return;
+	}
+#endif
 	uart_console_write(cons_uart, s, count, s3c24xx_serial_console_putchar);
 }
 

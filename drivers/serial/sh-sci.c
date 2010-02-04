@@ -112,7 +112,8 @@ static int get_char(struct uart_port *port)
 	do {
 		status = sci_in(port, SCxSR);
 		if (status & SCxSR_ERRORS(port)) {
-			handle_error(port);
+			/* Clear error flags. */
+			sci_out(port, SCxSR, SCxSR_ERROR_CLEAR(port));
 			continue;
 		}
 	} while (!(status & SCxSR_RDxF(port)));
@@ -152,21 +153,14 @@ static void put_string(struct sci_port *sci_port, const char *buffer, int count)
 	const unsigned char *p = buffer;
 	int i;
 
-#if defined(CONFIG_SH_STANDARD_BIOS) || defined(CONFIG_SH_KGDB)
-	int checksum;
-	int usegdb=0;
-
 #ifdef CONFIG_SH_STANDARD_BIOS
+	int checksum;
+	 const char hexchars[] = "0123456789abcdef";
+
 	/* This call only does a trap the first time it is
 	 * called, and so is safe to do here unconditionally
 	 */
-	usegdb |= sh_bios_in_gdb_mode();
-#endif
-#ifdef CONFIG_SH_KGDB
-	usegdb |= (kgdb_in_gdb_mode && (port == kgdb_sci_port));
-#endif
-
-	if (usegdb) {
+	if (sh_bios_in_gdb_mode()) {
 	    /*  $<packet info>#<checksum>. */
 	    do {
 		unsigned char c;
@@ -178,18 +172,18 @@ static void put_string(struct sci_port *sci_port, const char *buffer, int count)
 			int h, l;
 
 			c = *p++;
-			h = highhex(c);
-			l = lowhex(c);
+			h = hexchars[c >> 4];
+			l = hexchars[c % 16];
 			put_char(port, h);
 			put_char(port, l);
 			checksum += h + l;
 		}
 		put_char(port, '#');
-		put_char(port, highhex(checksum));
-		put_char(port, lowhex(checksum));
+		put_char(port, hexchars[checksum >> 4]);
+		put_char(port, hexchars[checksum & 16]);
 	    } while  (get_char(port) != '+');
 	} else
-#endif /* CONFIG_SH_STANDARD_BIOS || CONFIG_SH_KGDB */
+#endif /* CONFIG_SH_STANDARD_BIOS */
 	for (i=0; i<count; i++) {
 		if (*p == 10)
 			put_char(port, '\r');
@@ -527,6 +521,16 @@ static inline void sci_receive_chars(struct uart_port *port)
 					count--; i--;
 					continue;
 				}
+
+#ifdef CONFIG_KGDB_SH_SCI
+				/* We assume that a ^C on the port KGDB
+				 * is using means that KGDB wants to
+				 * interrupt the running system.
+				 */
+				if (port->line == KGDBPORT.port.line &&
+						c == 3)
+					breakpoint();
+#endif
 
 				/* Store data and status */
 				if (status&SCxSR_FER(port)) {
@@ -1261,6 +1265,7 @@ static int __init sci_console_init(void)
 console_initcall(sci_console_init);
 #endif /* CONFIG_SERIAL_SH_SCI_CONSOLE */
 
+#if 0
 #ifdef CONFIG_SH_KGDB
 /*
  * FIXME: Most of this can go away.. at the moment, we rely on
