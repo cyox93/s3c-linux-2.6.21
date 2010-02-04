@@ -3,4 +3,3 @@
 #
 
 obj-y	 		+= irq.o gt-irq.o prom.o reset.o setup.o
-obj-$(CONFIG_KGDB)	+= dbg_io.o

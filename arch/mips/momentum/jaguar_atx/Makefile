@@ -9,4 +9,3 @@
 obj-y += irq.o platform.o prom.o reset.o setup.o
 
 obj-$(CONFIG_SERIAL_8250_CONSOLE) += ja-console.o
-obj-$(CONFIG_REMOTE_DEBUG) += dbg_io.o
