@@ -331,7 +331,7 @@ static void s3c_nand_enable_hwecc(struct mtd_info *mtd, int mode)
 #if defined(CONFIG_CPU_S3C2443) || defined(CONFIG_CPU_S3C2450) || defined(CONFIG_CPU_S3C2416) || defined(CONFIG_CPU_S3C2412) || defined(CONFIG_CPU_S3C6400) || defined(CONFIG_CPU_S3C6410)
 	nfconf = readl(regs + S3C2410_NFCONF);
 
-#if defined(CONFIG_CPU_S3C6410) || defined(CONFIG_CPU_S3C2450)
+#if defined(CONFIG_CPU_S3C6410) || defined(CONFIG_CPU_S3C2450) || defined(CONFIG_CPU_S3C2416)
 	nfconf &= ~(0x3 << 23);
 
 	if (nand_type == S3C_NAND_TYPE_SLC)

@@ -1526,7 +1526,7 @@ static int nand_write_page(struct mtd_info *mtd, struct nand_chip *chip,
 	else
 		chip->ecc.write_page(mtd, chip, buf);
 
-	if (chip->options & NAND_CACHEPRG) {
+	if (!cached || !(chip->options & NAND_CACHEPRG)) {
 
 		chip->cmdfunc(mtd, NAND_CMD_PAGEPROG, -1, -1);
 		status = chip->waitfunc(mtd, chip);

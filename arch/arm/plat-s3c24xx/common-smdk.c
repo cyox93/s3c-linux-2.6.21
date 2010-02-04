@@ -154,13 +154,17 @@ struct mtd_partition s3c_partition_info[] = {
                 .name		= "Bootloader",
                 .offset		= 0,
                 .size		= (256*SZ_1K),
+#if 0
                 .mask_flags	= MTD_CAP_NANDFLASH,
+#endif
         },
         {
                 .name		= "Kernel",
                 .offset		= (256*SZ_1K),    /* Block number is 0x10 */
                 .size		= (2*SZ_1M) - (256*SZ_1K),
+#if 0
                 .mask_flags	= MTD_CAP_NANDFLASH,
+#endif
         },
 #ifdef CONFIG_SPLIT_ROOT_FILESYSTEM
         {
@@ -221,7 +225,9 @@ static struct s3c2410_platform_nand smdk_nand_info = {
 
 static struct platform_device __initdata *smdk_devs[] = {
 	&s3c_device_nand,
+#if 0
 	&s3c_device_onenand,
+#endif
 	&smdk_led4,
 	&smdk_led5,
 	&smdk_led6,
@@ -495,7 +501,9 @@ void __init smdk_machine_init(void)
 
 	wpu7800_gpio_init();
 	
+#if 0
 	s3c_device_nand.dev.platform_data = &smdk_nand_info;
+#endif
 	
 	//For s3c nand partition
 	s3c_device_nand.dev.platform_data = &nand_mtd_info;
