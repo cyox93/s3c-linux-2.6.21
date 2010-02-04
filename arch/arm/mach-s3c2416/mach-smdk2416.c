@@ -289,6 +289,12 @@ static struct platform_device s3c_audio_device = {
 	},
 };
 
+static struct platform_device wm8350_adc_device = {
+	.name = "wm8350-adc",
+	.dev = {
+		.release = s3c_nop_release,
+	},
+};
 
 static struct regulator_consumer_supply dcdc1_consumers[] = {
 {
@@ -512,6 +518,14 @@ int s3c_wm8350_device_register(struct wm8350 *wm8350)
 	if (err < 0) {
 		dev_err(&wm8350_power_device.dev,
 				"Unable to register WM8350 Power device\n");
+		return err;
+	}
+
+	platform_set_drvdata(&wm8350_adc_device, wm8350);
+	err = platform_device_register(&wm8350_adc_device);
+	if (err < 0) {
+		dev_err(&wm8350_adc_device.dev,
+				"Unable to register WM8350 ADC device\n");
 		return err;
 	}
 
