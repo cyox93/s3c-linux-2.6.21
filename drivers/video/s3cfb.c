@@ -489,12 +489,20 @@ static void s3c_cfb_imageblit(struct fb_info *p, const struct fb_image *image)
 	u16 __iomem *dst1;
 	dst1 = (u16 __iomem *)p->screen_base;
 
-	cfb_imageblit(p, image);
+	if (image)
+		cfb_imageblit(p, image);
+
 	for (i = 0; i < 176 * 220; i++) { 
 		lcd_write_fixel(dst1[i]);
 	}
 }
 #endif
+
+static int s3c_fb_cursor(struct fb_info *info, struct fb_cursor *cursor)
+{
+	info->fbops->fb_imageblit(info, NULL);
+	return 0;
+}
 
 struct fb_ops s3c_fb_ops = {
 	.owner		= THIS_MODULE,
@@ -506,7 +514,7 @@ struct fb_ops s3c_fb_ops = {
 	.fb_fillrect	= s3c_cfb_fillrect,
 	.fb_copyarea	= s3c_cfb_copyarea,
 	.fb_imageblit	= s3c_cfb_imageblit,
-	.fb_cursor	= soft_cursor,
+	.fb_cursor	= s3c_fb_cursor,
 	.fb_ioctl	= s3c_fb_ioctl,
 };
 
