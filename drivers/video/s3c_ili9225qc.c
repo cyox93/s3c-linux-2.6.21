@@ -111,8 +111,6 @@ int display_brightness = DEF_DISPLAY_BRIGHTNESS;
 
 void set_brightness(int);
 
-void lcd_ili9225b_rs(int flag); // dmlim 20091202
-
 struct s3c_fb_mach_info mach_info = {
 
 #if defined(CONFIG_CPU_S3C2443) ||  defined(CONFIG_CPU_S3C2450) || defined(CONFIG_CPU_S3C2416)
@@ -297,10 +295,6 @@ struct s3c_fb_mach_info mach_info = {
       	.sync= 		0,
 	.cmap_static=	1,
 };
-
-#if 1 /* WPA-7800 ILI9225B-QCIF LCD */
-
-#endif
 
 #if defined(CONFIG_S3C6400_PWM) || defined(CONFIG_S3C2450_PWM) || defined(CONFIG_S3C2416_PWM)
 void set_brightness(int val)
@@ -528,15 +522,16 @@ int set_virtual_display_register(int vs_cmd)
 #define GET_FB_NUM			_IOWR('F', 306, u_int)
 #endif
 
-#if defined(CONFIG_G3D)
+//#if defined(CONFIG_G3D)
 #define S3C_FBIO_CHANGE_FB		_IOW('F', 81,int)
-#endif
+//#endif
 
 #define GET_FB_INFO			_IOR('F', 307, struct s3c_fb_dma_info)
 #define SET_FB_CHANGE_REQ		_IOW('F', 308, int)
 #define SET_VSYNC_INT			_IOW('F', 309, int)
 #define VIRT_TO_PHYS			_IOWR('F', 310, u_int)
 
+static void s3c_fb_change_fb(struct fb_info *info);
 int s3c_fb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 {
 	struct s3c_fb_info *fbi = container_of(info, struct s3c_fb_info, fb);
@@ -547,21 +542,6 @@ int s3c_fb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 	struct page *tpage;
 	u_int virt_addr, phys_addr, offset;
 	struct mm_struct *mm = current->mm;
-
-#if defined(CONFIG_G3D)
-	int value;
-	int sizeof_fb;
-	unsigned int start1;
-	unsigned int end1;
-	unsigned int start2;
-	unsigned int end2;
-	unsigned int start3;
-	unsigned int end3;
-	unsigned int TargetFBStartReg;
-	unsigned int TargetFBEndReg;
-	unsigned int TargetFBSel;
-	int currentDrawing;
-#endif
 
 	int brightness;
 	s3c_win_info_t win_info_from_app;
@@ -722,61 +702,9 @@ int s3c_fb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 				break;
 #endif
 
-#if defined(CONFIG_G3D)
 		case S3C_FBIO_CHANGE_FB:
-				if (copy_from_user(&value, (__user void *)arg, sizeof(int)))
-					return(-EFAULT);
-
-			        currentDrawing = __raw_readl(S3C_WINCON0);
-			        currentDrawing = currentDrawing & (1<<20);
-
-				sizeof_fb = var->xres_virtual * var->yres_virtual * mach_info.bytes_per_pixel;
-				start1 = (unsigned int)fbi->map_dma_f1;
-				end1 = (start1+(unsigned int)sizeof_fb)&0x00ffffff;
-				start2 = (unsigned int)fbi->map_dma_f1+sizeof_fb;
-				end2 = (start2+(unsigned int)sizeof_fb)&0x00ffffff;
-				start3 = (unsigned int)fbi->map_dma_f1+sizeof_fb+sizeof_fb;
-				end3 = (start3+(unsigned int)sizeof_fb)&0x00ffffff;
-
-			        if(currentDrawing!=0)
-			        {
-			              TargetFBStartReg=S3C_VIDW00ADD0B0;
-			              TargetFBEndReg=S3C_VIDW00ADD1B0;
-			              TargetFBSel =__raw_readl(S3C_WINCON0);
-			              TargetFBSel =  TargetFBSel & ~(1<<20);
-			        }
-
-			        else
-			        {
-			              TargetFBStartReg=S3C_VIDW00ADD0B1;
-			              TargetFBEndReg=S3C_VIDW00ADD1B1;
-			              TargetFBSel =__raw_readl(S3C_WINCON0);
-			              TargetFBSel =  TargetFBSel | (1<<20);
-			        }
-
-				if(value==0)
-				{
-				//	printk("s3c_fb set fb0 Saddr=0x%x Eaddr=0x%x\n",start1,end1);
-					__raw_writel(start1,TargetFBStartReg);
-					__raw_writel(end1,TargetFBEndReg);
-				        __raw_writel(TargetFBSel,S3C_WINCON0);
-				}
-				else if(value==1)
-				{
-				//	printk("s3c_fb set fb1 Saddr=0x%x Eaddr=0x%x\n",start2,end2);
-					__raw_writel(start2,TargetFBStartReg);
-					__raw_writel(end2,TargetFBEndReg);
-				        __raw_writel(TargetFBSel,S3C_WINCON0);
-				}
-				else
-				{
-				//		printk("s3c_fb set fb2 Saddr=0x%x Eaddr=0x%x\n",start3,end3);
-					__raw_writel(start3,TargetFBStartReg);
-					__raw_writel(end3,TargetFBEndReg);
-				        __raw_writel(TargetFBSel,S3C_WINCON0);
-				}
-			break;
-#endif
+				s3c_fb_change_fb(info);
+				break;
 
 		case SET_DISPLAY_BRIGHTNESS:
 				if(copy_from_user(&brightness, (int *) arg, sizeof(int)))
@@ -940,8 +868,6 @@ int s3c_fb_init_registers(struct s3c_fb_info *fbi)
 	unsigned long VideoPhysicalTemp_f1 = fbi->screen_dma_f1;
 	unsigned long VideoPhysicalTemp_f2 = fbi->screen_dma_f2;
 
-	printk ("s3c_fb_init_registers [ili9225qc]\n");
-
 	/* Initialise LCD with values from hare */
 
 	local_irq_save(flags);
@@ -1075,8 +1001,6 @@ void s3c_fb_activate_var(struct s3c_fb_info *fbi,
 
 int s3c_fb_init_win (struct s3c_fb_info *fbi, int Bpp, int LeftTop_x, int LeftTop_y, int Width, int Height, int OnOff)
 {
-	printk("+++s3c_fb_setup_color_key_register\n");
-	
 	s3c_fb_win_onoff(fbi, OFF); // off
 	s3c_fb_set_bpp(fbi, Bpp);
 	s3c_fb_set_position_win(fbi, LeftTop_x, LeftTop_y, Width, Height);
@@ -1200,8 +1124,6 @@ int s3c_fb_setup_color_key_register(struct s3c_fb_info *fbi, s3c_color_key_info_
 	unsigned int compkey = 0;
 
 	int win_num =  fbi->win_id;
-
-	printk("+++s3c_fb_setup_color_key_register\n");
 
 	if(win_num==0){
 		printk("WIN0 do not support color-key.\n");
@@ -1445,6 +1367,16 @@ int s3c_fb_set_out_path(struct s3c_fb_info *fbi, int Path)
 	return 0;
 }
 
+/*
+ * FIXME: (yslee)
+ *
+ * 아래 드라이버 코드는 새로 작성되어야 한다.
+ * S3C2416 LCD controller를 사용치 않고 GPIO를 직접 access하는 이 방식은 속도가 늦은
+ * 문제가 있다. 이를 LCDC의 DMA controller를 이용하여 copy 되도록 하여야 한다.
+ * 
+ */	
+
+
 extern void lcd_reset(void);
 extern void lcd_backlight(int control);
 extern void vd_bus_inout_set(int flag);
@@ -1469,7 +1401,7 @@ void lcd_ili9225b_data(int data)
 	__raw_writel(0x57, S3C2410_GPCDAT);	
 }
 
-void lcd_write_fixel(int color)
+void lcd_write_pixel(int color)
 {	
 	__raw_writel(0x51, S3C2410_GPCDAT);
 	__raw_writel((color<<10)|0x51, S3C2410_GPCDAT);
@@ -1513,7 +1445,7 @@ void lcd_ili9225b_data(int data)
 	__raw_writel(0x57, S3C2410_GPCDAT);	
 }
 
-void lcd_write_fixel(int color)
+void lcd_write_pixel(int color)
 {	
 	__raw_writel(0x51, S3C2410_GPCDAT);
 	__raw_writel((color<<9)|0x51, S3C2410_GPCDAT);
@@ -1545,6 +1477,7 @@ int lcd_ili9225b_read(int addr)
 }
 #endif
 
+#if 0
 void lcd_test_color_pattern(void)
 {
 	int i, x=176, y=220;	
@@ -1563,6 +1496,7 @@ void lcd_test_color_pattern(void)
 		}
 	}
 }
+#endif
 
 void _lcd_ili9225b_reg_write(int reg, int data)
 {
@@ -1570,25 +1504,24 @@ void _lcd_ili9225b_reg_write(int reg, int data)
 	lcd_ili9225b_data(data);
 }
 
-void lcd_write_command(int xs, int xe, int ys, int ye)
-{	
-	_lcd_ili9225b_reg_write (0x36, xs+xe);
-	_lcd_ili9225b_reg_write (0x37, xs);
-        _lcd_ili9225b_reg_write (0x38, ys+ye);
-        _lcd_ili9225b_reg_write (0x39, ys);
+void lcd_prepare_write(int x, int y)
+{
+	_lcd_ili9225b_reg_write (0x20, x & 0xff);
+	_lcd_ili9225b_reg_write (0x21, y & 0xff);
 
 	lcd_ili9225b_reg(0x22);
 }
 
-void lcd_fill_color(int color)
-{
-	int i, x=176, y=220;	
-
-	lcd_write_command(0, 176-1, 0, 220-1);
-
-	for (i=0;i<(x*y);i++) {
-		lcd_ili9225b_data(color);
-	}
+static void s3c_fb_change_fb(struct fb_info *info)
+{
+	int i = H_RESOLUTION * V_RESOLUTION;
+	u16 __iomem *buf = (u16 __iomem *)info->screen_base;
+
+	
+	lcd_prepare_write(0, 0);
+	while (i-- > 0) {
+		lcd_write_pixel(*buf++);
+	}
 }
 
 void lcd_module_init (void)
@@ -1639,7 +1572,16 @@ void lcd_module_init (void)
        _lcd_ili9225b_reg_write(0x0007, 0x1017);
        lcd_ili9225b_reg(0x22);	   
 
-	lcd_test_color_pattern();	   
+	/* set window size */
+	int xs = 0;
+	int xe = 176 -1;
+	int ys = 0;
+	int ye = 220 -1;
+	_lcd_ili9225b_reg_write (0x36, xs+xe);
+	_lcd_ili9225b_reg_write (0x37, xs);
+        _lcd_ili9225b_reg_write (0x38, ys+ye);
+        _lcd_ili9225b_reg_write (0x39, ys);
+	
 }
 
 void SetLcdPort(void)
@@ -1655,7 +1597,6 @@ void Init_LDI(void)
 	SetLcdPort();
 }
 
-EXPORT_SYMBOL(lcd_write_fixel);
-EXPORT_SYMBOL(lcd_write_command);
+EXPORT_SYMBOL(lcd_prepare_write);
+EXPORT_SYMBOL(lcd_write_pixel);
 EXPORT_SYMBOL(lcd_module_init);
-EXPORT_SYMBOL(lcd_fill_color);

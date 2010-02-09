@@ -113,7 +113,8 @@ static int ucc_ioctl(struct inode *inode, struct file *file,
 			break;	
 
 		case IOCTLUCC_LCD:		
-			//printk("IOCTLUCC_LCD [0x%x]\n", arg);	
+			//printk("IOCTLUCC_LCD [0x%x]\n", arg);
+#if 0
 			if (arg == 0) lcd_power(0);
 			if (arg == 1) lcd_power(1);
 			if (arg == 0x10) lcd_reset();
@@ -122,7 +123,8 @@ static int ucc_ioctl(struct inode *inode, struct file *file,
 			if (arg == 0x21) lcd_fill_color(0xf800); /* Red */
 			if (arg == 0x22) lcd_fill_color(0x07e0); /* Green */
 			if (arg == 0x23) lcd_fill_color(0x001f); /* Blue */
-			if (arg == 0x24) lcd_fill_color(0); /* Black */			
+			if (arg == 0x24) lcd_fill_color(0); /* Black */
+#endif
 			break;
 
 		case IOCTLUCC_BACKLIGHT:		
