@@ -1581,7 +1581,13 @@ void lcd_module_init (void)
 	_lcd_ili9225b_reg_write (0x37, xs);
         _lcd_ili9225b_reg_write (0x38, ys+ye);
         _lcd_ili9225b_reg_write (0x39, ys);
+
+	int i = H_RESOLUTION * V_RESOLUTION;
 	
+	lcd_prepare_write(0, 0);
+	while (i-- > 0) {
+		lcd_write_pixel(0);
+	}
 }
 
 void SetLcdPort(void)
