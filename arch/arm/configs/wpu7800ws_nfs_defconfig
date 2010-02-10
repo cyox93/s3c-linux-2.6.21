@@ -1234,7 +1234,9 @@ CONFIG_RTC_DRV_S3C=y
 #
 # Pulse Width Modulation Timer
 #
-# CONFIG_PWM is not set
+CONFIG_PWM=y
+CONFIG_S3C2416_PWM=y
+CONFIG_S3C2416_PWM_CDEV=y
 
 #
 # File systems

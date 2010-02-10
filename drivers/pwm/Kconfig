@@ -25,6 +25,12 @@ config S3C2416_PWM
          help
             S3C2416 PWM support.
 
+config S3C2416_PWM_CDEV
+         bool "S3C2416 PWM control support"
+         depends on CPU_S3C2416 && PWM && S3C2416_PWM
+         help
+            S3C2416 PWM control support.
+
 config S3C6400_PWM
          bool "S3C6400/10 PWM support"
          depends on (CPU_S3C6400 || CPU_S3C6410) && PWM

@@ -99,4 +99,5 @@ extern int s3c2450_pwm_set_buffdone_fn(pwmch_t, s3c_pwm_cbfn_t rtn);
 
 extern int s3c2450_timer_setup (int channel, int usec, unsigned long g_tcnt, unsigned long g_tcmp);
 
+extern int s3c2450_pwm_stop(int channel);
 #endif /* __ASM_ARCH_DMA_H */
