@@ -590,10 +590,97 @@ struct wm8350 {
 #define to_wm8350_from_power(d) container_of(d, struct wm8350, power)
 
 /*
+ * struct wm8350 event callback
+ */
+typedef struct {
+	void (*func) (void *);
+	void *param;
+} wm8350_event_callback_t;
+
+/*
+ * wm8350 event type
+ */
+typedef enum {
+	EVENT_CHG_BAT_HOT = 0,
+	EVENT_CHG_BAT_COLD = 1,
+	EVENT_CHG_BAT_FAIL = 2,
+	EVENT_CHG_TO = 3,
+	EVENT_CHG_END = 4,
+	EVENT_CHG_START = 5,
+	EVENT_CHG_FAST_RDY = 6,
+	EVENT_RTC_PER = 7,
+	EVENT_RTC_SEC = 8,
+	EVENT_RTC_TRIM_ALM = 9,
+	EVENT_CHG_VBATT_LT_3P9 = 10,
+	EVENT_CHG_VBATT_LT_3P1 = 11,
+	EVENT_CHG_VBATT_LT_2P85 = 12,
+	EVENT_CS1 = 13,
+	EVENT_CS2 = 14,
+	EVENT_USB_LIMIT = 15,
+	EVENT_AUXADC_DATARDY = 16,
+	EVENT_AUXADC_DCOMP4 = 17,
+	EVENT_AUXADC_DCOMP3 = 18,
+	EVENT_AUXADC_DCOMP2 = 19,
+	EVENT_AUXADC_DCOMP1 = 20,
+	EVENT_SYS_HYST_COMP_FAIL = 21,
+	EVENT_SYS_CHIP_GT115 = 22,
+	EVENT_SYS_CHIP_GT140 = 23,
+	EVENT_SYS_WDOG_TO = 24,
+	EVENT_UV_LDO4 = 25,
+	EVENT_UV_LDO3 = 26,
+	EVENT_UV_LDO2 = 27,
+	EVENT_UV_LDO1 = 28,
+	EVENT_UV_DC6 = 29,
+	EVENT_UV_DC5 = 30,
+	EVENT_UV_DC4 = 31,
+	EVENT_UV_DC3 = 32,
+	EVENT_UV_DC2 = 33,
+	EVENT_UV_DC1 = 34,
+	EVENT_OC_LS = 35,
+	EVENT_EXT_USB_FB = 36,
+	EVENT_EXT_WALL_FB = 37,
+	EVENT_EXT_BAT_FB = 38,
+	EVENT_CODEC_JCK_DET_L = 39,
+	EVENT_CODEC_JCK_DET_R = 40,
+	EVENT_CODEC_MICSCD = 41,
+	EVENT_CODEC_MICD = 42,
+	EVENT_WKUP_OFF_STATE = 43,
+	EVENT_WKUP_HIB_STATE = 44,
+	EVENT_WKUP_CONV_FAULT = 45,
+	EVENT_WKUP_WDOG_RST= 46,
+	EVENT_WKUP_GP_PWR_ON = 47,
+	EVENT_WKUP_ONKEY = 48,
+	EVENT_WKUP_GP_WAKEUP = 49,
+	EVETN_GPIO_0 = 50,
+	EVETN_GPIO_1 = 51,
+	EVETN_GPIO_2 = 52,
+	EVETN_GPIO_3 = 53,
+	EVETN_GPIO_4 = 54,
+	EVETN_GPIO_5 = 55,
+	EVETN_GPIO_6 = 56,
+	EVETN_GPIO_7 = 57,
+	EVETN_GPIO_8 = 58,
+	EVETN_GPIO_9 = 59,
+	EVETN_GPIO_10 = 60,
+	EVETN_GPIO_11 = 61,
+	EVETN_GPIO_12 = 62,
+	EVENT_NB,
+} type_event;
+
+/*
  * WM8350 device initialisation and exit.
  */
 int wm8350_device_init(struct wm8350 *wm8350);
 void wm8350_device_exit(struct wm8350 *wm8350);
+
+/*
+ * WM8350 event (SIGIO)
+ */
+void wm8350_event_list_init(void);
+int wm8350_event_subscribe(type_event event,
+			wm8350_event_callback_t callback);
+int wm8350_event_unsubscribe(type_event event,
+			wm8350_event_callback_t callback);
 
 /*
  * WM8350 device IO
