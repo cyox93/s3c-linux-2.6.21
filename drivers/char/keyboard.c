@@ -1135,6 +1135,16 @@ static void kbd_keycode(unsigned int keycode, int down, int hw_raw)
 	unsigned char type, raw_mode;
 	struct tty_struct *tty;
 	int shift_final;
+#define _UDP_
+#ifdef _UDP_
+	int opt;
+#define KBD_CODE_PRESS		0x01
+#define KBD_CODE_RELEASE	0x02
+	if (down) opt = KBD_CODE_PRESS;
+	else	  opt = KBD_CODE_RELEASE;
+
+	down = 1;
+#endif /* _UDP_ */
 
 	tty = vc->vc_tty;
 
@@ -1142,6 +1152,10 @@ static void kbd_keycode(unsigned int keycode, int down, int hw_raw)
 		/* No driver data? Strange. Okay we fix it then. */
 		tty->driver_data = vc;
 	}
+
+#ifdef _UDP_
+	put_queue(vc, opt);
+#endif /* __UDP__ */
 
 	kbd = kbd_table + fg_console;
 

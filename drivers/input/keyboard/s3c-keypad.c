@@ -89,6 +89,8 @@ static int _keypad_scan(unsigned long data)
 			rval_old = rval;
 			key_press = 1;
 			input_report_key(dev,pdata->keycodes[real_value],1);
+			input_sync(dev);
+
 			DPRINTK("Pressed  : %d\n",i);
 			printk("key Pressed  : %d\n", pdata->keycodes[real_value]);
 			__raw_writel(0xff, S3C2410_GPGDAT);
@@ -97,8 +99,9 @@ static int _keypad_scan(unsigned long data)
 	}
 
 	if (((rval_sum/4) == 0x3f)&&key_press) {
-		input_report_key(dev,pdata->keycodes[real_value],1);
-		input_report_key(dev,pdata->keycodes[real_value],0);
+		input_report_key(dev,pdata->keycodes[real_value], 0);
+		input_sync(dev);
+
 		DPRINTK("Released : %d\n",pdata->keycodes[real_value]);
 		printk("key Released : %d\n",pdata->keycodes[real_value]);
 		key_press = 0;
