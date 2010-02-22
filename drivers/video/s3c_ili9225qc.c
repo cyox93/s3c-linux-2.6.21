@@ -1382,7 +1382,8 @@ extern void lcd_backlight(int control);
 extern void vd_bus_inout_set(int flag);
 
 //#define WPU7800_EVM_LCD
-#define WPU7800_WS_LCD
+//#define WPU7800_WS_LCD
+#define WPU7800_ES_LCD
 
 #ifdef WPU7800_EVM_LCD
 void lcd_ili9225b_reg(int reg)
@@ -1474,6 +1475,54 @@ int lcd_ili9225b_read(int addr)
 	vd_bus_inout_set(0);
 
 	return datav;
+}
+#endif
+
+#ifdef WPU7800_ES_LCD
+void lcd_ili9225b_reg(int reg)
+{	
+	__raw_writel(0x41, S3C2410_GPCDAT);
+	__raw_writel((reg<<8)|0x41, S3C2410_GPCDAT);
+	__raw_writel((reg>>8), S3C2410_GPDDAT);
+	__raw_writel(0x57, S3C2410_GPCDAT);
+}
+
+void lcd_ili9225b_data(int data)
+{	
+	__raw_writel(0x51, S3C2410_GPCDAT);
+	__raw_writel((data<<8)|0x51, S3C2410_GPCDAT);
+	__raw_writel((data>>8), S3C2410_GPDDAT);
+	__raw_writel(0x57, S3C2410_GPCDAT);	
+}
+
+void lcd_write_pixel(int color)
+{	
+	__raw_writel(0x51, S3C2410_GPCDAT);
+	__raw_writel((color<<8)|0x51, S3C2410_GPCDAT);
+	__raw_writel((color>>8), S3C2410_GPDDAT);
+	__raw_writel(0x57, S3C2410_GPCDAT);	
+}
+
+int lcd_ili9225b_read(int addr)
+{	
+	int data, data1;
+	__raw_writel(0x41, S3C2410_GPCDAT);
+	__raw_writel((addr<<8)|0x41, S3C2410_GPCDAT);
+	__raw_writel((addr>>8), S3C2410_GPDDAT);
+	__raw_writel(0x57, S3C2410_GPCDAT);	
+
+	vd_bus_inout_set(1);
+
+	__raw_writel(0x52, S3C2410_GPCDAT);
+	data = __raw_readl(S3C2410_GPCDAT);
+	data1 = __raw_readl(S3C2410_GPDDAT);
+	__raw_writel(0x57, S3C2410_GPCDAT);	
+
+	data = (data>>8)|(data1<<8);
+
+	vd_bus_inout_set(0);
+
+	return data;
 }
 #endif
 
