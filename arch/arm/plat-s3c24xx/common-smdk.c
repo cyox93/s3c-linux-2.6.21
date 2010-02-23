@@ -418,9 +418,9 @@ void audio_ext_clock(bool flag)
 void speaker_amp(bool flag)
 {
 	if (flag) { 
-		s3c2410_gpio_setpin(S3C2410_GPH2, 1);
+		s3c2410_gpio_setpin(S3C2410_GPH8, 1);
 	} else {
-		s3c2410_gpio_setpin(S3C2410_GPH2, 0);
+		s3c2410_gpio_setpin(S3C2410_GPH8, 0);
 	}
 }
 
@@ -456,8 +456,8 @@ void wpu7800_gpio_init(void)
 	printk("wpu7800_gpio_init\n");
 
 	// Speaker AMP
-	s3c2410_gpio_cfgpin(S3C2410_GPH2, S3C2410_GPH2_OUTP);
-	s3c2410_gpio_setpin(S3C2410_GPH2, 0);
+	s3c2410_gpio_cfgpin(S3C2410_GPH8, S3C2410_GPH8_OUTP);
+	s3c2410_gpio_setpin(S3C2410_GPH8, 1);
 
 	// key LED
 	s3c2410_gpio_cfgpin(S3C2410_GPD15, S3C2410_GPD15_OUTP);

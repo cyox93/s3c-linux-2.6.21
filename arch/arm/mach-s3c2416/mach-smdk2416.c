@@ -624,7 +624,7 @@ static int config_s3c_wm8350_gpio(struct wm8350 *wm8350)
 			   WM8350_GPIO_DEBOUNCE_OFF);
 
 	wm8350_gpio_config(wm8350, 12, WM8350_GPIO_DIR_OUT,
-			   WM8350_GPIO12_32KHZ_OUT, WM8350_GPIO_ACTIVE_LOW,
+			   WM8350_GPIO12_LINE_EN_OUT, WM8350_GPIO_ACTIVE_LOW,
 			   WM8350_GPIO_PULL_NONE, WM8350_GPIO_INVERT_OFF,
 			   WM8350_GPIO_DEBOUNCE_OFF);
 
@@ -635,7 +635,6 @@ static int config_s3c_wm8350_gpio(struct wm8350 *wm8350)
 int wm8350_dev_init(struct wm8350 *wm8350)
 {
 	int i, ret;
-	u32 reg;
 
 #if 0
 	/* dont assert RTS when hibernating */
@@ -646,12 +645,9 @@ int wm8350_dev_init(struct wm8350 *wm8350)
 	wm8350_set_bits(wm8350, WM8350_SYSTEM_CONTROL_1, WM8350_IRQ_POL);
 	wm8350_reg_lock(wm8350);
 
-	reg = readl(S3C2410_EXTINT1) & ~(0x70000);
-	writel((reg | (S3C2410_EXTINT_RISEEDGE << 16)), S3C2410_EXTINT1);
-
-	s3c2410_gpio_pullup(S3C2410_GPG4, 0);
-	s3c2410_gpio_cfgpin(S3C2410_GPG4, S3C2410_GPG4_EINT12);
-	set_irq_type(IRQ_EINT12, IRQT_RISING);
+	s3c2410_gpio_pullup(S3C2410_GPF1, 0);
+	s3c2410_gpio_cfgpin(S3C2410_GPF1, S3C2410_GPF1_EINT1);
+	set_irq_type(IRQ_EINT1, IRQT_RISING);
 
 	config_s3c_wm8350_gpio(wm8350);
 
