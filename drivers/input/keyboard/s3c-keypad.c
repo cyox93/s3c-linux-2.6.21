@@ -62,12 +62,12 @@ static int _keypad_scan(unsigned long data)
 	struct input_dev *dev = pdata->dev;
 
 	for (i=0; i<KEYPAD_COLUMNS; i++) {
-		__raw_writel(~(0x01<<i), S3C2410_GPGDAT);
+		__raw_writel(~(0x01<<(i+11)), S3C2410_GPDDAT);
 		
 		udelay(KEYPAD_DELAY);
 
-		rval = __raw_readl(S3C2410_GPFDAT);
-		rval = ((rval>>1)&0x07)|((rval>>2)&0x38);		
+		rval = __raw_readl(S3C2410_GPGDAT);
+		rval &= 0x3f;
 
 		rval_sum += rval;
 
@@ -110,7 +110,8 @@ static int _keypad_scan(unsigned long data)
 
 	rval_old = rval;
 
-	__raw_writel(0xff, S3C2410_GPGDAT);
+	cval = __raw_readl(S3C2410_GPDDAT);
+	__raw_writel(cval | 0x7800, S3C2410_GPDDAT);
 
 	return 0;
 }

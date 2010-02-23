@@ -244,32 +244,32 @@ static struct platform_device __initdata *smdk_devs[] = {
 void key_led(bool flag)
 {
 	if (flag) { 
-		s3c2410_gpio_setpin(S3C2410_GPA12, 1);
+		s3c2410_gpio_setpin(S3C2410_GPD15, 0);
 	} else {
-		s3c2410_gpio_setpin(S3C2410_GPA12, 0);
+		s3c2410_gpio_setpin(S3C2410_GPD15, 1);
 	}
 }
 
 void Key_gpio_init(void)
 {
-	s3c2410_gpio_cfgpin(S3C2410_GPG0, S3C2410_GPG0_OUTP);
-	s3c2410_gpio_cfgpin(S3C2410_GPG1, S3C2410_GPG1_OUTP);
-	s3c2410_gpio_cfgpin(S3C2410_GPG2, S3C2410_GPG2_OUTP);	
-	s3c2410_gpio_cfgpin(S3C2410_GPG3, S3C2410_GPG3_OUTP);
+	s3c2410_gpio_cfgpin(S3C2410_GPD11, S3C2410_GPD11_OUTP);
+	s3c2410_gpio_cfgpin(S3C2410_GPD12, S3C2410_GPD12_OUTP);
+	s3c2410_gpio_cfgpin(S3C2410_GPD13, S3C2410_GPD13_OUTP);	
+	s3c2410_gpio_cfgpin(S3C2410_GPD14, S3C2410_GPD14_OUTP);
 
-	s3c2410_gpio_cfgpin(S3C2410_GPF1, S3C2410_GPF1_INP);
-	s3c2410_gpio_cfgpin(S3C2410_GPF2, S3C2410_GPF2_INP);
-	s3c2410_gpio_cfgpin(S3C2410_GPF3, S3C2410_GPF3_INP);	
-	s3c2410_gpio_cfgpin(S3C2410_GPF5, S3C2410_GPF5_INP);
-	s3c2410_gpio_cfgpin(S3C2410_GPF6, S3C2410_GPF6_INP);	
-	s3c2410_gpio_cfgpin(S3C2410_GPF7, S3C2410_GPF7_INP);	
+	s3c2410_gpio_cfgpin(S3C2410_GPG0, S3C2410_GPG0_INP);
+	s3c2410_gpio_cfgpin(S3C2410_GPG1, S3C2410_GPG1_INP);
+	s3c2410_gpio_cfgpin(S3C2410_GPG2, S3C2410_GPG2_INP);	
+	s3c2410_gpio_cfgpin(S3C2410_GPG3, S3C2410_GPG3_INP);
+	s3c2410_gpio_cfgpin(S3C2410_GPG4, S3C2410_GPG4_INP);	
+	s3c2410_gpio_cfgpin(S3C2410_GPG5, S3C2410_GPG5_INP);	
 
-	__raw_writel(0xaaaa, S3C2410_GPFUP);
+	__raw_writel(0xaaaa, S3C2410_GPGUP);
 
-	s3c2410_gpio_setpin(S3C2410_GPG0, 0);
-	s3c2410_gpio_setpin(S3C2410_GPG1, 0);
-	s3c2410_gpio_setpin(S3C2410_GPG2, 0);
-	s3c2410_gpio_setpin(S3C2410_GPG3, 0);	
+	s3c2410_gpio_setpin(S3C2410_GPD11, 0);
+	s3c2410_gpio_setpin(S3C2410_GPD12, 0);
+	s3c2410_gpio_setpin(S3C2410_GPD13, 0);
+	s3c2410_gpio_setpin(S3C2410_GPD14, 0);	
 
 	mdelay(100);
 }
@@ -460,8 +460,9 @@ void wpu7800_gpio_init(void)
 	s3c2410_gpio_setpin(S3C2410_GPH2, 0);
 
 	// key LED
-	s3c2410_gpio_cfgpin(S3C2410_GPA12, S3C2410_GPA12_OUT);
-	s3c2410_gpio_setpin(S3C2410_GPA12, 0);
+	s3c2410_gpio_cfgpin(S3C2410_GPD15, S3C2410_GPD15_OUTP);
+	s3c2410_gpio_pullup(S3C2410_GPD15, 0);
+	s3c2410_gpio_setpin(S3C2410_GPD15, 1);
 
 	// Audio Ext Clock
 	s3c2410_gpio_cfgpin(S3C2410_GPE2, S3C2410_GPE2_CDCLK);
