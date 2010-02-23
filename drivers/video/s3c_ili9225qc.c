@@ -1481,34 +1481,49 @@ int lcd_ili9225b_read(int addr)
 #ifdef WPU7800_ES_LCD
 void lcd_ili9225b_reg(int reg)
 {	
+	int mask;
+	
+	mask = __raw_readl(S3C2410_GPDDAT) & ~(0x07ff);
+
 	__raw_writel(0x41, S3C2410_GPCDAT);
 	__raw_writel((reg<<8)|0x41, S3C2410_GPCDAT);
-	__raw_writel((reg>>8), S3C2410_GPDDAT);
+	__raw_writel((reg>>8)|mask, S3C2410_GPDDAT);
 	__raw_writel(0x57, S3C2410_GPCDAT);
 }
 
 void lcd_ili9225b_data(int data)
 {	
+	int mask;
+	
+	mask = __raw_readl(S3C2410_GPDDAT) & ~(0x07ff);
+
 	__raw_writel(0x51, S3C2410_GPCDAT);
 	__raw_writel((data<<8)|0x51, S3C2410_GPCDAT);
-	__raw_writel((data>>8), S3C2410_GPDDAT);
+	__raw_writel((data>>8)|mask, S3C2410_GPDDAT);
 	__raw_writel(0x57, S3C2410_GPCDAT);	
 }
 
 void lcd_write_pixel(int color)
 {	
+	int  mask;
+	
+	mask = __raw_readl(S3C2410_GPDDAT) & ~(0x07ff);
+
 	__raw_writel(0x51, S3C2410_GPCDAT);
 	__raw_writel((color<<8)|0x51, S3C2410_GPCDAT);
-	__raw_writel((color>>8), S3C2410_GPDDAT);
+	__raw_writel((color>>8)|mask, S3C2410_GPDDAT);
 	__raw_writel(0x57, S3C2410_GPCDAT);	
 }
 
 int lcd_ili9225b_read(int addr)
 {	
-	int data, data1;
+	int mask, data, data1;
+	
+	mask = __raw_readl(S3C2410_GPDDAT) & ~(0x07ff);
+
 	__raw_writel(0x41, S3C2410_GPCDAT);
 	__raw_writel((addr<<8)|0x41, S3C2410_GPCDAT);
-	__raw_writel((addr>>8), S3C2410_GPDDAT);
+	__raw_writel((addr>>8)|mask, S3C2410_GPDDAT);
 	__raw_writel(0x57, S3C2410_GPCDAT);	
 
 	vd_bus_inout_set(1);

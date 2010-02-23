@@ -367,13 +367,17 @@ void lcd_backlight(int control)
 
 void vd_bus_inout_set(int flag)
 {
+	u32 mask;
+
+	mask = __raw_readl(S3C2410_GPDCON) & ~(0x003fffff);
+
 	if(flag) {
 		__raw_writel(0x5555, S3C2410_GPCCON);
-		__raw_writel(0x00000000, S3C2410_GPDCON);
+		__raw_writel(mask | 0x00000000, S3C2410_GPDCON);
 	}
 	else {
 		__raw_writel(0x55555555, S3C2410_GPCCON);
-		__raw_writel(0x55555555, S3C2410_GPDCON);
+		__raw_writel(mask | 0x00155555, S3C2410_GPDCON);
 	}
 }
 
