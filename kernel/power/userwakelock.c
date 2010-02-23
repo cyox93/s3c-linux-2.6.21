@@ -16,8 +16,13 @@
 #include <linux/ctype.h>
 #include <linux/module.h>
 #include <linux/wakelock.h>
+#include <linux/err.h>
 
 #include "power.h"
+
+#ifndef BIT
+#define BIT(a)		(1 << a)
+#endif
 
 enum {
 	DEBUG_FAILURE	= BIT(0),
@@ -126,7 +131,7 @@ bad_arg:
 }
 
 ssize_t wake_lock_show(
-	struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+	struct subsystem *subsys, char *buf)
 {
 	char *s = buf;
 	char *end = buf + PAGE_SIZE;
@@ -147,8 +152,7 @@ ssize_t wake_lock_show(
 }
 
 ssize_t wake_lock_store(
-	struct kobject *kobj, struct kobj_attribute *attr,
-	const char *buf, size_t n)
+	struct subsystem *subsys, const char *buf, size_t n)
 {
 	long timeout;
 	struct user_wake_lock *l;
@@ -174,7 +178,7 @@ bad_name:
 
 
 ssize_t wake_unlock_show(
-	struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+	struct subsystem *subsys, char *buf)
 {
 	char *s = buf;
 	char *end = buf + PAGE_SIZE;
@@ -195,8 +199,7 @@ ssize_t wake_unlock_show(
 }
 
 ssize_t wake_unlock_store(
-	struct kobject *kobj, struct kobj_attribute *attr,
-	const char *buf, size_t n)
+	struct subsystem *subsys, const char *buf, size_t n)
 {
 	struct user_wake_lock *l;
 

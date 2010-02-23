@@ -281,7 +281,7 @@ static ssize_t state_store(struct subsystem * subsys, const char * buf, size_t n
 #endif
 	const char * const *s;
 	char *p;
-	int error;
+	int error = 0;
 	int len;
 
 	p = memchr(buf, '\n', n);
@@ -291,7 +291,7 @@ static ssize_t state_store(struct subsystem * subsys, const char * buf, size_t n
 		if (*s && !strncmp(buf, *s, len))
 			break;
 	}
-	if (state < PM_SUSPEND_MAX && *s)
+	if (state < PM_SUSPEND_MAX && *s) {
 #ifdef CONFIG_EARLYSUSPEND
 		if (state == PM_SUSPEND_ON || valid_state(state)) {
 			error = 0;
@@ -300,6 +300,7 @@ static ssize_t state_store(struct subsystem * subsys, const char * buf, size_t n
 #else
 		error = enter_state(state);
 #endif
+	}
 	else
 		error = -EINVAL;
 	return error ? error : n;

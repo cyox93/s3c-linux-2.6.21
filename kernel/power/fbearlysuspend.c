@@ -63,8 +63,7 @@ static struct early_suspend stop_drawing_early_suspend_desc = {
 	.resume = start_drawing_late_resume,
 };
 
-static ssize_t wait_for_fb_sleep_show(struct kobject *kobj,
-				      struct kobj_attribute *attr, char *buf)
+static ssize_t wait_for_fb_sleep_show(struct subsystem *subsys, char *buf)
 {
 	char *s = buf;
 	int ret;
@@ -78,8 +77,7 @@ static ssize_t wait_for_fb_sleep_show(struct kobject *kobj,
 	return s - buf;
 }
 
-static ssize_t wait_for_fb_wake_show(struct kobject *kobj,
-				     struct kobj_attribute *attr, char *buf)
+static ssize_t wait_for_fb_wake_show(struct subsystem *subsys, char *buf)
 {
 	char *s = buf;
 	int ret;
@@ -103,7 +101,7 @@ static ssize_t wait_for_fb_wake_show(struct kobject *kobj,
 }
 
 #define power_ro_attr(_name) \
-static struct kobj_attribute _name##_attr = {	\
+static struct subsys_attribute _name##_attr = {	\
 	.attr	= {				\
 		.name = __stringify(_name),	\
 		.mode = 0444,			\
@@ -132,7 +130,7 @@ static int __init android_power_init(void)
 	init_waitqueue_head(&fb_state_wq);
 	fb_state = FB_STATE_DRAWING_OK;
 
-	ret = sysfs_create_group(power_kobj, &attr_group);
+	ret = sysfs_create_group(&power_subsys.kset.kobj, &attr_group);
 	if (ret) {
 		pr_err("android_power_init: sysfs_create_group failed\n");
 		return ret;
@@ -145,7 +143,7 @@ static int __init android_power_init(void)
 static void  __exit android_power_exit(void)
 {
 	unregister_early_suspend(&stop_drawing_early_suspend_desc);
-	sysfs_remove_group(power_kobj, &attr_group);
+	sysfs_remove_group(&power_subsys.kset.kobj, &attr_group);
 }
 
 module_init(android_power_init);
