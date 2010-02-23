@@ -82,19 +82,19 @@ int __init s3c2416_init(void)
 	return sysdev_register(&s3c2416_sysdev);
 }
 
-#define   IDLE_PROBE
+//#define   IDLE_PROBE
 static void s3c2416_idle(void)
 {
 	unsigned long tmp;
 
 	/* ensure our idle mode is to go to idle */
 /*if you want to reduce CPU clock with idle */
-	#ifdef DVS_IDLE
+#ifdef DVS_IDLE
 	tmp = __raw_readl(S3C2443_CLKDIV0);
 	tmp &= ~(0x1<<13);
 	tmp |= (0x1<<13);
 	__raw_writel(tmp, S3C2443_CLKDIV0);
-	#else
+#else
 	tmp = __raw_readl(S3C2443_PWRMODE);
 	tmp &= ~(0x1<<17);
 	tmp |= (0x1<<17);
