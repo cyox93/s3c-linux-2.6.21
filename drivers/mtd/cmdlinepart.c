@@ -301,12 +301,15 @@ static int parse_cmdline_partitions(struct mtd_info *master,
 	struct cmdline_mtd_partition *part;
 	char *mtd_id = master->name;
 
-	if(!cmdline)
+	if(!cmdline) {
 		return -EINVAL;
+	}
+
 
 	/* parse command line */
-	if (!cmdline_parsed)
+	if (!cmdline_parsed) {
 		mtdpart_setup_real(cmdline);
+	}
 
 	for(part = partitions; part; part = part->next)
 	{

@@ -709,6 +709,8 @@ static void s3c_nand_write_page_4bit(struct mtd_info *mtd, struct nand_chip *chi
 }
 #endif
 
+const char *part_probes[] = { "cmdlinepart", NULL };
+
 /* s3c_nand_probe
  *
  * called by device layer when it finds a device matching
@@ -724,9 +726,10 @@ static int s3c_nand_probe(struct platform_device *pdev)
 	struct resource *res;
 	int err = 0;
 	int ret = 0;
-	int i, size;
+	int i, j, size;
 	u_char tmp;
 	struct nand_flash_dev *type = NULL;
+	int nbparts = 0;
 
 
 	/* get the clock source and enable it */
@@ -815,9 +818,9 @@ static int s3c_nand_probe(struct platform_device *pdev)
 		tmp = readb(nand->IO_ADDR_R); /* Maf. ID */
 		tmp = readb(nand->IO_ADDR_R); /* Device ID */
 
-		for (i = 0; nand_flash_ids[i].name != NULL; i++) {
-			if (tmp == nand_flash_ids[i].id) {
-				type = &nand_flash_ids[i];
+		for (j = 0; nand_flash_ids[j].name != NULL; j++) {
+			if (tmp == nand_flash_ids[j].id) {
+				type = &nand_flash_ids[j];
 				break;
 			}
 		}
@@ -872,8 +875,16 @@ static int s3c_nand_probe(struct platform_device *pdev)
 			goto exit_error;
 		}
 
-		/* Register the partitions */
-		add_mtd_partitions(s3c_mtd, partition_info, plat_info->mtd_part_nr);
+		/* find nand partition information form Kernel param */
+		nbparts = parse_mtd_partitions(s3c_mtd, part_probes, &partition_info, 0);
+		if (nbparts > 0) {
+			/* Register the partitions */
+			add_mtd_partitions(s3c_mtd, partition_info, nbparts);
+		} else {
+			partition_info = (struct mtd_partition *)plat_info->partition;
+			/* Register the partitions */
+			add_mtd_partitions(s3c_mtd, partition_info, plat_info->mtd_part_nr);
+		}
 	}
 
 	pr_debug("initialized ok\n");
