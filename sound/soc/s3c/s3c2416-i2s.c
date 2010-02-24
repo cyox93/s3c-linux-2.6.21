@@ -227,7 +227,9 @@ static int s3c_i2s_hw_params(struct snd_pcm_substream *substream,
 	s3c2410_gpio_cfgpin(S3C2443_GPH14, S3C2443_GPH14_CLKOUT1);
 #endif
 
+#if 0
 	writel((readl(S3C2410_MISCCR) & ~(7<<8))|(1<<8), S3C2410_MISCCR);
+#endif
 
 	/*Set I2C port to controll WM8753 codec*/
 	s3c2410_gpio_pullup(S3C2410_GPE15, 0);

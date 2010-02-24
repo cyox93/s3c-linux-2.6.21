@@ -723,7 +723,7 @@ static void __init smdk2416_fixup (struct machine_desc *desc, struct tag *tags,
 	mi->bank[0].start = 0x30000000;
 
 #if defined(CONFIG_PLAT_WPU7800)
-	mi->bank[0].size = 32*1024*1024;
+	mi->bank[0].size = 64*1024*1024;
 #else
 #if defined(CONFIG_VIDEO_SAMSUNG)
 	mi->bank[0].size = 49*1024*1024;
