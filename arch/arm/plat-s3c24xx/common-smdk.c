@@ -303,15 +303,24 @@ void gpio_wifi_reset(void)
 	s3c2410_gpio_setpin(S3C2410_GPH6, 0);
 	gpio_wifi_power_down(0);
 	mdelay(10);
-	s3c2410_gpio_setpin(S3C2410_GPH6, 1);
 	gpio_wifi_power_down(1);
+	s3c2410_gpio_setpin(S3C2410_GPH6, 1);
+	mdelay(10);
 }
 
 void wifi_gpio_init (void)
 {	
 	s3c2410_gpio_cfgpin(S3C2410_GPH6, S3C2410_GPH6_OUTP);
-	s3c2410_gpio_cfgpin(S3C2410_GPH12, S3C2410_GPH12_OUTP);
 	s3c2410_gpio_cfgpin(S3C2410_GPH7, S3C2410_GPH7_OUTP);
+	s3c2410_gpio_cfgpin(S3C2410_GPH12, S3C2410_GPH12_OUTP);
+
+	s3c2410_gpio_cfgpin(S3C2410_GPL0, S3C2410_GPL0_SD0_DAT0);
+	s3c2410_gpio_cfgpin(S3C2410_GPL1, S3C2410_GPL1_SD0_DAT1);
+	s3c2410_gpio_cfgpin(S3C2410_GPL2, S3C2410_GPL2_SD0_DAT02);
+	s3c2410_gpio_cfgpin(S3C2410_GPL3, S3C2410_GPL3_SD0_DAT3);
+
+	s3c2410_gpio_cfgpin(S3C2410_GPL8, S3C2410_GPL8_SD0_CMD);
+	s3c2410_gpio_cfgpin(S3C2410_GPL9, S3C2410_GPL9_SD0_CLK);
 
 	s3c2410_gpio_pullup(S3C2410_GPH6, 2); /* WiFi Reset pull-up enable */
 
