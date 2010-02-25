@@ -877,7 +877,7 @@ static int s3c_nand_probe(struct platform_device *pdev)
 
 		/* find nand partition information form Kernel param */
 		nbparts = parse_mtd_partitions(s3c_mtd, part_probes, &partition_info, 0);
-		if (nbparts > 0) {
+		if (nbparts > 0 && partition_info) {
 			/* Register the partitions */
 			add_mtd_partitions(s3c_mtd, partition_info, nbparts);
 		} else {
