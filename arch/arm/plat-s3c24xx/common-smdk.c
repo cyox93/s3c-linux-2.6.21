@@ -292,14 +292,6 @@ void Key_gpio_init(void)
 	s3c2410_gpio_pullup(S3C2410_GPG4, 2);
 	s3c2410_gpio_pullup(S3C2410_GPG5, 2);
 
-	set_irq_type(IRQ_EINT0, IRQT_FALLING);
-	set_irq_type(IRQ_EINT8, IRQT_FALLING);
-	set_irq_type(IRQ_EINT9, IRQT_FALLING);
-	set_irq_type(IRQ_EINT10, IRQT_FALLING);
-	set_irq_type(IRQ_EINT11, IRQT_FALLING);
-	set_irq_type(IRQ_EINT12, IRQT_FALLING);
-	set_irq_type(IRQ_EINT13, IRQT_FALLING);
-
 	mdelay(100);
 }
 

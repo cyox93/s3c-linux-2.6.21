@@ -331,37 +331,37 @@ static int s3c_keypad_request_irq(struct s3c_keypad *keypad)
 {
 	int ret = 0;
 
-	ret = request_irq(IRQ_EINT0, s3c_keypad_isr, SA_SAMPLE_RANDOM,
+	ret = request_irq(IRQ_EINT0, s3c_keypad_isr, SA_INTERRUPT|SA_TRIGGER_FALLING,
 			DEVICE_NAME, (void *)keypad);
 	if (ret)
 		printk("request_irq failed (IRQ_EINT0)\n");
 
-	ret = request_irq(IRQ_EINT8, s3c_keypad_isr, SA_SAMPLE_RANDOM,
+	ret = request_irq(IRQ_EINT8, s3c_keypad_isr, SA_INTERRUPT|SA_TRIGGER_FALLING,
 			DEVICE_NAME, (void *)keypad);
 	if (ret)
 		printk("request_irq failed (IRQ_EINT8)\n");
 
-	ret = request_irq(IRQ_EINT9, s3c_keypad_isr, SA_SAMPLE_RANDOM,
+	ret = request_irq(IRQ_EINT9, s3c_keypad_isr, SA_INTERRUPT|SA_TRIGGER_FALLING,
 			DEVICE_NAME, (void *)keypad);
 	if (ret)
 		printk("request_irq failed (IRQ_EINT9)\n");
 
-	ret = request_irq(IRQ_EINT10, s3c_keypad_isr, SA_SAMPLE_RANDOM,
+	ret = request_irq(IRQ_EINT10, s3c_keypad_isr, SA_INTERRUPT|SA_TRIGGER_FALLING,
 			DEVICE_NAME, (void *)keypad);
 	if (ret)
 		printk("request_irq failed (IRQ_EINT10)\n");
 
-	ret = request_irq(IRQ_EINT11, s3c_keypad_isr, SA_SAMPLE_RANDOM,
+	ret = request_irq(IRQ_EINT11, s3c_keypad_isr, SA_INTERRUPT|SA_TRIGGER_FALLING,
 			DEVICE_NAME, (void *)keypad);
 	if (ret)
 		printk("request_irq failed (IRQ_EINT11)\n");
 
-	ret = request_irq(IRQ_EINT12, s3c_keypad_isr, SA_SAMPLE_RANDOM,
+	ret = request_irq(IRQ_EINT12, s3c_keypad_isr, SA_INTERRUPT|SA_TRIGGER_FALLING,
 			DEVICE_NAME, (void *)keypad);
 	if (ret)
 		printk("request_irq failed (IRQ_EINT12)\n");
 
-	ret = request_irq(IRQ_EINT13, s3c_keypad_isr, SA_SAMPLE_RANDOM,
+	ret = request_irq(IRQ_EINT13, s3c_keypad_isr, SA_INTERRUPT|SA_TRIGGER_FALLING,
 			DEVICE_NAME, (void *)keypad);
 	if (ret)
 		printk("request_irq failed (IRQ_EINT13)\n");
