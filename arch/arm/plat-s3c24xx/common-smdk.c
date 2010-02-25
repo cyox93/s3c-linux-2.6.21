@@ -36,6 +36,7 @@
 
 #include <asm/arch/regs-gpio.h>
 #include <asm/arch/leds-gpio.h>
+#include <asm/arch/regs-irq.h>
 
 #include <asm/arch/nand.h>
 
@@ -244,32 +245,60 @@ static struct platform_device __initdata *smdk_devs[] = {
 void key_led(bool flag)
 {
 	if (flag) { 
-		s3c2410_gpio_setpin(S3C2410_GPD15, 0);
-	} else {
 		s3c2410_gpio_setpin(S3C2410_GPD15, 1);
+	} else {
+		s3c2410_gpio_setpin(S3C2410_GPD15, 0);
 	}
 }
 
 void Key_gpio_init(void)
 {
+	u32 mask, mask1, mask2;
+
+	mask  = __raw_readl(S3C2410_INTMSK);
+	mask1 = __raw_readl(S3C2410_EXTINT0) & ~(0x00000007);
+	mask2 = __raw_readl(S3C2410_EXTINT1) & ~(0x00777777);
+	
+	__raw_writel(mask1 | 0x00000002, S3C2410_EXTINT0);
+	__raw_writel(mask2 | 0x00222222, S3C2410_EXTINT1);
+
+	__raw_writel(mask | 0x21, S3C2410_INTMSK);
+	__raw_writel(0x21, S3C2410_SRCPND);
+	__raw_writel(0x21, S3C2410_INTPND);
+
 	s3c2410_gpio_cfgpin(S3C2410_GPD11, S3C2410_GPD11_OUTP);
 	s3c2410_gpio_cfgpin(S3C2410_GPD12, S3C2410_GPD12_OUTP);
 	s3c2410_gpio_cfgpin(S3C2410_GPD13, S3C2410_GPD13_OUTP);	
 	s3c2410_gpio_cfgpin(S3C2410_GPD14, S3C2410_GPD14_OUTP);
 
-	s3c2410_gpio_cfgpin(S3C2410_GPG0, S3C2410_GPG0_INP);
-	s3c2410_gpio_cfgpin(S3C2410_GPG1, S3C2410_GPG1_INP);
-	s3c2410_gpio_cfgpin(S3C2410_GPG2, S3C2410_GPG2_INP);	
-	s3c2410_gpio_cfgpin(S3C2410_GPG3, S3C2410_GPG3_INP);
-	s3c2410_gpio_cfgpin(S3C2410_GPG4, S3C2410_GPG4_INP);	
-	s3c2410_gpio_cfgpin(S3C2410_GPG5, S3C2410_GPG5_INP);	
-
-	__raw_writel(0xaaaa, S3C2410_GPGUP);
-
 	s3c2410_gpio_setpin(S3C2410_GPD11, 0);
 	s3c2410_gpio_setpin(S3C2410_GPD12, 0);
 	s3c2410_gpio_setpin(S3C2410_GPD13, 0);
 	s3c2410_gpio_setpin(S3C2410_GPD14, 0);	
+
+	s3c2410_gpio_cfgpin(S3C2410_GPF0, S3C2410_GPF0_EINT0);
+	s3c2410_gpio_cfgpin(S3C2410_GPG0, S3C2410_GPG0_EINT8);
+	s3c2410_gpio_cfgpin(S3C2410_GPG1, S3C2410_GPG1_EINT9);
+	s3c2410_gpio_cfgpin(S3C2410_GPG2, S3C2410_GPG2_EINT10);	
+	s3c2410_gpio_cfgpin(S3C2410_GPG3, S3C2410_GPG3_EINT11);
+	s3c2410_gpio_cfgpin(S3C2410_GPG4, S3C2410_GPG4_EINT12);	
+	s3c2410_gpio_cfgpin(S3C2410_GPG5, S3C2410_GPG5_EINT13);	
+
+	s3c2410_gpio_pullup(S3C2410_GPF0, 0);
+	s3c2410_gpio_pullup(S3C2410_GPG0, 2);
+	s3c2410_gpio_pullup(S3C2410_GPG1, 2);
+	s3c2410_gpio_pullup(S3C2410_GPG2, 2);
+	s3c2410_gpio_pullup(S3C2410_GPG3, 2);
+	s3c2410_gpio_pullup(S3C2410_GPG4, 2);
+	s3c2410_gpio_pullup(S3C2410_GPG5, 2);
+
+	set_irq_type(IRQ_EINT0, IRQT_FALLING);
+	set_irq_type(IRQ_EINT8, IRQT_FALLING);
+	set_irq_type(IRQ_EINT9, IRQT_FALLING);
+	set_irq_type(IRQ_EINT10, IRQT_FALLING);
+	set_irq_type(IRQ_EINT11, IRQT_FALLING);
+	set_irq_type(IRQ_EINT12, IRQT_FALLING);
+	set_irq_type(IRQ_EINT13, IRQT_FALLING);
 
 	mdelay(100);
 }
@@ -470,8 +499,7 @@ void wpu7800_gpio_init(void)
 
 	// key LED
 	s3c2410_gpio_cfgpin(S3C2410_GPD15, S3C2410_GPD15_OUTP);
-	s3c2410_gpio_pullup(S3C2410_GPD15, 0);
-	s3c2410_gpio_setpin(S3C2410_GPD15, 1);
+	s3c2410_gpio_setpin(S3C2410_GPD15, 0);
 
 	// Audio Ext Clock
 	s3c2410_gpio_cfgpin(S3C2410_GPE2, S3C2410_GPE2_CDCLK);

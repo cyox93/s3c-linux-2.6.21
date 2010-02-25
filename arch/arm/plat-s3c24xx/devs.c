@@ -1387,26 +1387,14 @@ EXPORT_SYMBOL(s3c_device_ide);
 
 static struct resource s3c_keypad_resource[] = {
 	[0] = {
-#if 1
 		.start = S3C24XX_PA_GPIO,
 		.end   = S3C24XX_PA_GPIO+ S3C24XX_SZ_GPIO - 1,
 		.flags = IORESOURCE_MEM,		
-#else
-		.start = S3C24XX_PA_KEYPAD,
-		.end   = S3C24XX_PA_KEYPAD+ S3C24XX_SZ_KEYPAD - 1,
-		.flags = IORESOURCE_MEM,
-#endif
 	},
 	[1] = {
-#if 0
-		.start = IRQ_EINT1, 
-		.end   = IRQ_EINT1,  
+		.start = IRQ_EINT0, 
+		.end   = IRQ_EINT13,  
 		.flags = IORESOURCE_IRQ,
-//#else
-		.start = IRQ_KEYPAD,
-		.end   = IRQ_KEYPAD,
-		.flags = IORESOURCE_IRQ,
-#endif
 	}
 };
 

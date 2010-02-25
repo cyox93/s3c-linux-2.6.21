@@ -648,6 +648,7 @@ int wm8350_dev_init(struct wm8350 *wm8350)
 	s3c2410_gpio_pullup(S3C2410_GPF1, 0);
 	s3c2410_gpio_cfgpin(S3C2410_GPF1, S3C2410_GPF1_EINT1);
 	set_irq_type(IRQ_EINT1, IRQT_RISING);
+	set_irq_type(IRQ_EINT1, IRQT_BOTHEDGE);
 
 	config_s3c_wm8350_gpio(wm8350);
 
