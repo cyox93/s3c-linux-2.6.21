@@ -470,7 +470,9 @@ static int s3c24xx_i2c_set_master(struct s3c24xx_i2c *i2c)
 		if (!(iicstat & S3C2410_IICSTAT_BUSBUSY))
 			return 0;
 
+#ifndef CONFIG_PLAT_WPU7800
 		msleep(1);
+#endif
 	}
 
 	dev_dbg(i2c->dev, "timeout: GPEDAT is %08x\n",
@@ -522,7 +524,9 @@ static int s3c24xx_i2c_doxfer(struct s3c24xx_i2c *i2c, struct i2c_msg *msgs, int
 
 	/* ensure the stop has been through the bus */
 
+#ifndef CONFIG_PLAT_WPU7800
 	msleep(1);
+#endif
 
  out:
 	return ret;
