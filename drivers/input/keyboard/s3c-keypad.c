@@ -254,8 +254,10 @@ static int endkey_scan(struct s3c_keypad *pdata)
 		input_report_key(dev, pdata->keycodes[12], 0);
 		input_sync(dev);
 		
-		printk("key Released : %d\n", pdata->keycodes[12]);
+		endkey_press = 0;
 
+		printk("key Released : %d\n", pdata->keycodes[12]);
+		
 		ret = KEY_RELEASE_STATE;
 	}
 
