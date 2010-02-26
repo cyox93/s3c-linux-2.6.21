@@ -1511,9 +1511,14 @@ u16 ucc_wm8350_reg_read(int reg)
 	struct wm8350 *wm8350;
 
 	wm8350 = kzalloc(sizeof(struct wm8350_data), GFP_KERNEL);
+#if 0
 	wm8350 = _wm8350;
-	
 	data = wm8350_reg_read(wm8350, reg);
+#else
+	memcpy(wm8350, _wm8350, sizeof(struct wm8350_data));
+	data = wm8350_reg_read(wm8350, reg);
+	kfree(wm8350);
+#endif
 
 	return data;
 }
@@ -1525,11 +1530,14 @@ int ucc_wm8350_reg_write(int reg, u16 val)
 	struct wm8350 *wm8350;
 
 	wm8350 = kzalloc(sizeof(struct wm8350_data), GFP_KERNEL);
-
+#if 0
 	wm8350 = _wm8350;
-	
 	wm8350_reg_write(wm8350, reg, val);
-
+#else
+	memcpy(wm8350, _wm8350, sizeof(struct wm8350_data));	
+	wm8350_reg_write(wm8350, reg, val);
+	kfree(wm8350);
+#endif
 	return ret;
 }
 EXPORT_SYMBOL(ucc_wm8350_reg_write);
