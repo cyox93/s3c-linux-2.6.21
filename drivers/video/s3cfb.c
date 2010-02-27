@@ -739,7 +739,11 @@ int __init s3c_fb_probe(struct platform_device *pdev)
 		if(index==0){
 			s3c_fb_backlight_power(1);
 			s3c_fb_lcd_power(1);
-			s3c_fb_backlight_level(DEFAULT_BACKLIGHT_LEVEL);
+
+			if (mach_info.backlight_default)
+				backlight_level = mach_info.backlight_default;
+
+			s3c_fb_backlight_level(backlight_level);
 
 			dprintk("dev FB init\n");
 

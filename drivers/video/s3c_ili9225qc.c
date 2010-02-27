@@ -19,6 +19,7 @@
 #include <asm/mach/map.h>
 #include <asm/arch/regs-lcd.h>
 #include <asm/arch/regs-gpio.h>
+#include <asm/arch/regs-timer.h>
 
 #if defined(CONFIG_CPU_S3C2450) || defined(CONFIG_CPU_S3C2416)
 #include <asm/arch/regs-s3c2450-clock.h>
@@ -104,12 +105,16 @@ int osd_left_bottom_y = V_RESOLUTION_OSD -1;
 #define LCD_PIXEL_CLOCK (VFRAME_FREQ *(H_FP+H_SW+H_BP+H_RESOLUTION) * (V_FP+V_SW+V_BP+V_RESOLUTION))
 #define PIXEL_CLOCK	VFRAME_FREQ * LCD_PIXEL_CLOCK	/*  vclk = frame * pixel_count */
 
-#define MAX_DISPLAY_BRIGHTNESS		9
-#define DEF_DISPLAY_BRIGHTNESS		4
+#define MAX_DISPLAY_BRIGHTNESS		100
+#define DEF_DISPLAY_BRIGHTNESS		80
 
 int display_brightness = DEF_DISPLAY_BRIGHTNESS;
+int backup_brightness = DEF_DISPLAY_BRIGHTNESS;
+int backlight_power_state = 1;
 
 void set_brightness(int);
+void backlight_power(int);
+static void lcd_ili9225b_power(int set);
 
 struct s3c_fb_mach_info mach_info = {
 
@@ -294,68 +299,76 @@ struct s3c_fb_mach_info mach_info = {
 
       	.sync= 		0,
 	.cmap_static=	1,
+
+	.backlight_min = 0,
+	.backlight_max = 100,
+	.backlight_default = 80,
+
+	.backlight_power = backlight_power,
+	.set_brightness = set_brightness,
 };
 
-#if defined(CONFIG_S3C6400_PWM) || defined(CONFIG_S3C2450_PWM) || defined(CONFIG_S3C2416_PWM)
+static void
+_backlight_set_pwm(unsigned long tcnt, unsigned long tcmp)
+{
+	unsigned long tcon;
+
+	tcon = __raw_readl(S3C2410_TCON);
+
+	if (tcmp) {
+		s3c2410_gpio_cfgpin(S3C2410_GPB2, S3C2410_GPB2_TOUT2);
+		s3c2410_gpio_setpin(S3C2410_GPB2, 0);
+
+		__raw_writel(tcnt, S3C2410_TCNTB(2));
+		__raw_writel(tcmp, S3C2410_TCMPB(2));
+
+		tcon |= S3C2410_TCON_T2MANUALUPD;
+		__raw_writel(tcon, S3C2410_TCON);
+
+		tcon &= ~(S3C2410_TCON_T2MANUALUPD);
+		tcon |= (S3C2410_TCON_T2START | S3C2410_TCON_T2RELOAD) ;
+		__raw_writel(tcon, S3C2410_TCON);
+	} else {
+		tcon &= ~(S3C2410_TCON_T2MANUALUPD | S3C2410_TCON_T2START | S3C2410_TCON_T2RELOAD);
+		__raw_writel(tcon, S3C2410_TCON);
+
+		s3c2410_gpio_setpin(S3C2410_GPB2, 0);
+		s3c2410_gpio_cfgpin(S3C2410_GPB2, S3C2410_GPB2_OUTP);
+	}
+}
+
 void set_brightness(int val)
 {
 
-#if defined(CONFIG_S3C6400_PWM)
-	int channel = 1;  // must use channel-1
-#elif defined(CONFIG_S3C2450_PWM) || defined(CONFIG_S3C2416_PWM)
-	int channel = 2;  // must use channel-3
-#endif
-	int usec = 0;       // don't care value
-	unsigned long tcnt=1000;
-	unsigned long tcmp=0;
+	unsigned long tcnt=0x5000;
+	unsigned long tcmp=1;
 
 	if(val < 0) val=0;
 	if(val > MAX_DISPLAY_BRIGHTNESS) val=MAX_DISPLAY_BRIGHTNESS;
 
 	display_brightness = val;
+	if (!backlight_power_state) {
+		backup_brightness = val;
+		return ;
+	}
 
-	switch (val) {
-		case 0:
-			tcmp= 0;
-			break;
-		case 1:
-			tcmp= 50;
-			break;
-		case 2:
-			tcmp= 100;
-			break;
-		case 3:
-			tcmp= 150;
-			break;
-		case 4:
-			tcmp= 200;
-			break;
-		case 5:
-			tcmp= 250;
-			break;
-		case 6:
-			tcmp= 300;
-			break;
-		case 7:
-			tcmp= 350;
-			break;
-		case 8:
-			tcmp= 400;
-			break;
-		case 9:
-			tcmp= 450;
-			break;
-	}  // end of switch (level)
+	tcmp = tcnt * val / 100;
+	if (tcnt == tcmp) tcmp--;
 
-#if defined(CONFIG_S3C6400_PWM)
-	s3c6400_timer_setup (channel, usec, tcnt, tcmp);
-#else
-	s3c2450_timer_setup (channel, usec, tcnt, tcmp);
-#endif
-
+//	s3c2450_timer_setup (channel, usec, tcnt, tcmp);
+	_backlight_set_pwm(tcnt, tcmp);
 }
-#endif
 
+void backlight_power(int val)
+{
+	if (val) {
+		backlight_power_state = 1;
+		set_brightness(backup_brightness);
+	} else {
+		set_brightness(0);
+		backlight_power_state = 0;
+	}
+}
 
 #if defined(CONFIG_FB_VIRTUAL_SCREEN)
 void set_virtual_display_offset(int val)
@@ -709,9 +722,7 @@ int s3c_fb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 		case SET_DISPLAY_BRIGHTNESS:
 				if(copy_from_user(&brightness, (int *) arg, sizeof(int)))
 					return -EFAULT;
-				#if defined(CONFIG_S3C6400_PWM) || defined(CONFIG_S3C2450_PWM) || defined(CONFIG_S3C2416_PWM)
 				set_brightness(brightness);
-				#endif
 				break;
 
 		case GET_DISPLAY_BRIGHTNESS:
