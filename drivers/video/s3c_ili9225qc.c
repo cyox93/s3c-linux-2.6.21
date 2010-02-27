@@ -114,8 +114,8 @@ void set_brightness(int);
 struct s3c_fb_mach_info mach_info = {
 
 #if defined(CONFIG_CPU_S3C2443) ||  defined(CONFIG_CPU_S3C2450) || defined(CONFIG_CPU_S3C2416)
-	.vidcon0= S3C_VIDCON0_VIDOUT_RGB_IF | S3C_VIDCON0_PNRMODE_RGB_P | S3C_VIDCON0_CLKDIR_DIVIDED | S3C_VIDCON0_VCLKEN_ENABLE |S3C_VIDCON0_CLKSEL_F_HCLK,
-	.vidcon1= S3C_VIDCON1_IHSYNC_INVERT | S3C_VIDCON1_IVSYNC_INVERT,
+	.vidcon0= S3C_VIDCON0_VIDOUT_I80IF0 | S3C_VIDCON0_L0_DATA16_MAIN_16_MODE | S3C_VIDCON0_CLKDIR_DIVIDED | S3C_VIDCON0_VCLKEN_ENABLE |S3C_VIDCON0_CLKSEL_F_HCLK,
+	.vidcon1= S3C_VIDCON1_IHSYNC_INVERT | S3C_VIDCON1_IVSYNC_INVERT | S3C_VIDCON1_IVDEN_INVERT,
 	.vidtcon0= S3C_VIDTCON0_VBPD(V_BP-1) | S3C_VIDTCON0_VFPD(V_FP-1) | S3C_VIDTCON0_VSPW(V_SW-1),
 	.vidtcon1= S3C_VIDTCON1_HBPD(H_BP-1) | S3C_VIDTCON1_HFPD(H_FP-1 ) | S3C_VIDTCON1_HSPW(H_SW-1),
 
@@ -141,7 +141,7 @@ struct s3c_fb_mach_info mach_info = {
 
 #elif defined (CONFIG_FB_BPP_16)
 	#if defined(CONFIG_CPU_S3C2443) ||  defined(CONFIG_CPU_S3C2450) || defined(CONFIG_CPU_S3C2416)
-	.wincon0=  S3C_WINCONx_HAWSWP_ENABLE | S3C_WINCONx_BURSTLEN_4WORD |  S3C_WINCONx_BPPMODE_F_16BPP_565,  // 4word burst, 16bpp,
+	.wincon0=  S3C_WINCONx_HAWSWP_ENABLE | S3C_WINCONx_BURSTLEN_16WORD |  S3C_WINCONx_BPPMODE_F_16BPP_565,  // 4word burst, 16bpp,
 	.wincon1=  S3C_WINCONx_HAWSWP_ENABLE | S3C_WINCONx_BURSTLEN_4WORD |  S3C_WINCONx_BPPMODE_F_16BPP_565 | S3C_WINCONx_BLD_PIX_PLANE | S3C_WINCONx_ALPHA_SEL_1,  // 4word burst, 16bpp for OSD
 	//.wincon1=  S3C_WINCONx_HAWSWP_ENABLE | S3C_WINCONx_BURSTLEN_4WORD |  S3C_WINCONx_BPPMODE_F_16BPP_A555 | S3C_WINCONx_BLD_PIX_PIXEL| S3C_WINCONx_ALPHA_SEL_1,  // 4word burst, 16bpp for OSD
 	#elif defined(CONFIG_CPU_S3C6400) || defined(CONFIG_CPU_S3C6410)
@@ -219,7 +219,7 @@ struct s3c_fb_mach_info mach_info = {
 #endif
 
 #if defined(CONFIG_CPU_S3C2443) ||  defined(CONFIG_CPU_S3C2450) || defined(CONFIG_CPU_S3C2416)
-	.vidintcon= S3C_VIDINTCON0_FRAMESEL0_VSYNC | S3C_VIDINTCON0_FRAMESEL1_NONE | S3C_VIDINTCON0_INTFRMEN_ENABLE | S3C_VIDINTCON0_INTEN_ENABLE,
+	.vidintcon= 0,
 #elif defined(CONFIG_CPU_S3C6400) || defined(CONFIG_CPU_S3C6410)
 //	.vidintcon0 = S3C_VIDINTCON0_FRAMESEL0_BACK | S3C_VIDINTCON0_FRAMESEL1_NONE | S3C_VIDINTCON0_INTFRMEN_DISABLE | S3C_VIDINTCON0_FIFOSEL_WIN0 | S3C_VIDINTCON0_FIFOLEVEL_25 | S3C_VIDINTCON0_INTFIFOEN_DISABLE | S3C_VIDINTCON0_INTEN_DISABLE,
 	.vidintcon0 = S3C_VIDINTCON0_FRAMESEL0_VSYNC | S3C_VIDINTCON0_FRAMESEL1_NONE | S3C_VIDINTCON0_INTFRMEN_DISABLE | S3C_VIDINTCON0_FIFOSEL_WIN0 | S3C_VIDINTCON0_FIFOLEVEL_25 | S3C_VIDINTCON0_INTFIFOEN_DISABLE | S3C_VIDINTCON0_INTEN_ENABLE,
@@ -303,7 +303,7 @@ void set_brightness(int val)
 #if defined(CONFIG_S3C6400_PWM)
 	int channel = 1;  // must use channel-1
 #elif defined(CONFIG_S3C2450_PWM) || defined(CONFIG_S3C2416_PWM)
-	int channel = 3;  // must use channel-3
+	int channel = 2;  // must use channel-3
 #endif
 	int usec = 0;       // don't care value
 	unsigned long tcnt=1000;
@@ -872,7 +872,132 @@ int s3c_fb_init_registers(struct s3c_fb_info *fbi)
 
 	local_irq_save(flags);
 
-	lcd_module_init();
+	if(win_num==0){ 	
+		mach_info.vidcon0 = mach_info.vidcon0 & ~(S3C_VIDCON0_ENVID_ENABLE | S3C_VIDCON0_ENVID_F_ENABLE);
+		__raw_writel(mach_info.vidcon0, S3C_VIDCON0);
+
+		mach_info.vidcon0 |=  S3C_VIDCON0_CLKVAL_F(3);
+
+		__raw_writel(0x7, S3C_SYSIFCON0);
+
+		lcd_module_init();
+ 	}
+
+        /* For buffer start address */
+	__raw_writel(VideoPhysicalTemp_f1, S3C_VIDW00ADD0B0+(0x08*win_num));
+	#if defined(CONFIG_CPU_S3C2443)||defined(CONFIG_CPU_S3C2450)
+	if(win_num==0) __raw_writel(VideoPhysicalTemp_f2, S3C_VIDW00ADD0B1);	
+	#elif defined(CONFIG_CPU_S3C6400) || defined(CONFIG_CPU_S3C6410)
+	if(win_num<2) __raw_writel(VideoPhysicalTemp_f2, S3C_VIDW00ADD0B1+(0x08*win_num));	
+	#endif
+	#if defined(CONFIG_FB_VIRTUAL_SCREEN)
+	if(win_num==0){
+		mach_info.vidw00add0b0=VideoPhysicalTemp_f1;
+		mach_info.vidw00add0b1=VideoPhysicalTemp_f2;
+	}
+	#endif
+	
+	PageWidth = var->xres * mach_info.bytes_per_pixel;
+	Offset = (var->xres_virtual - var->xres) * mach_info.bytes_per_pixel;
+	#if defined(CONFIG_FB_VIRTUAL_SCREEN)
+	if(win_num==0) Offset=0;
+	#endif
+	
+	/* End address */
+	__raw_writel(S3C_VIDWxxADD1_VBASEL_F((unsigned long) VideoPhysicalTemp_f1 + (PageWidth + Offset) * (var->yres)), 
+				S3C_VIDW00ADD1B0+(0x08*win_num));
+	#if defined(CONFIG_CPU_S3C2443)||defined(CONFIG_CPU_S3C2450)
+	if(win_num==0) 
+		__raw_writel(S3C_VIDWxxADD1_VBASEL_F((unsigned long) VideoPhysicalTemp_f2 + (PageWidth + Offset) * (var->yres)), 
+				S3C_VIDW00ADD1B1);	
+	#elif defined(CONFIG_CPU_S3C6400) || defined(CONFIG_CPU_S3C6410)
+	if(win_num<2) 
+		__raw_writel(S3C_VIDWxxADD1_VBASEL_F((unsigned long) VideoPhysicalTemp_f2 + (PageWidth + Offset) * (var->yres)), 
+				S3C_VIDW00ADD1B1+(0x08*win_num));	
+	#endif
+	#if defined(CONFIG_FB_VIRTUAL_SCREEN)
+	if(win_num==0){
+		mach_info.vidw00add1b0=S3C_VIDWxxADD1_VBASEL_F((unsigned long) VideoPhysicalTemp_f1 + (PageWidth + Offset) * (var->yres));
+		mach_info.vidw00add1b1=S3C_VIDWxxADD1_VBASEL_F((unsigned long) VideoPhysicalTemp_f2 + (PageWidth + Offset) * (var->yres));
+	}
+	#endif
+	
+	/* size of buffer */
+	#if defined(CONFIG_CPU_S3C2443)||defined(CONFIG_CPU_S3C2450)
+	__raw_writel(S3C_VIDWxxADD2_OFFSIZE_F(Offset) | (S3C_VIDWxxADD2_PAGEWIDTH_F(PageWidth)), S3C_VIDW00ADD2B0+(0x08*win_num));
+	if(win_num==0) __raw_writel(S3C_VIDWxxADD2_OFFSIZE_F(Offset) | (S3C_VIDWxxADD2_PAGEWIDTH_F(PageWidth)), S3C_VIDW00ADD2B1);
+	#elif defined(CONFIG_CPU_S3C6400) || defined(CONFIG_CPU_S3C6410)
+	__raw_writel(S3C_VIDWxxADD2_OFFSIZE_F(Offset) | (S3C_VIDWxxADD2_PAGEWIDTH_F(PageWidth)), S3C_VIDW00ADD2+(0x04*win_num));
+	#endif
+	
+	switch(win_num){
+	case 0:
+		__raw_writel(mach_info.wincon0, S3C_WINCON0);
+		__raw_writel(mach_info.vidcon0, S3C_VIDCON0);
+		__raw_writel(mach_info.vidcon1, S3C_VIDCON1);
+		__raw_writel(mach_info.vidtcon0, S3C_VIDTCON0);
+		__raw_writel(mach_info.vidtcon1, S3C_VIDTCON1);
+		__raw_writel(mach_info.vidtcon2, S3C_VIDTCON2);
+
+		#if defined(CONFIG_CPU_S3C2443) || defined(CONFIG_CPU_S3C2450)
+		__raw_writel(mach_info.vidintcon, S3C_VIDINTCON);
+		#elif defined(CONFIG_CPU_S3C6400) || defined(CONFIG_CPU_S3C6410)
+		__raw_writel(mach_info.dithmode, S3C_DITHMODE);
+		__raw_writel(mach_info.vidintcon0, S3C_VIDINTCON0);
+		__raw_writel(mach_info.vidintcon1, S3C_VIDINTCON1);
+		#endif
+		__raw_writel(mach_info.vidosd0a, S3C_VIDOSD0A);
+		__raw_writel(mach_info.vidosd0b, S3C_VIDOSD0B);
+		#if defined(CONFIG_CPU_S3C6400) || defined(CONFIG_CPU_S3C6410)
+		__raw_writel(mach_info.vidosd0c, S3C_VIDOSD0C);
+		#endif
+		__raw_writel(mach_info.wpalcon, S3C_WPALCON);
+
+		s3c_fb_win_onoff(fbi, ON);
+		break;
+
+	case 1:
+		__raw_writel(mach_info.wincon1, S3C_WINCON1);
+		__raw_writel(mach_info.vidosd1a, S3C_VIDOSD1A);
+		__raw_writel(mach_info.vidosd1b, S3C_VIDOSD1B);
+		__raw_writel(mach_info.vidosd1c, S3C_VIDOSD1C);
+		#if defined(CONFIG_CPU_S3C6400) || defined(CONFIG_CPU_S3C6410)
+		__raw_writel(mach_info.vidosd1d, S3C_VIDOSD1D);
+		#endif
+		__raw_writel(mach_info.wpalcon, S3C_WPALCON);
+		s3c_fb_win_onoff(fbi, OFF);
+		break;
+
+	#if defined(CONFIG_CPU_S3C6400) || defined(CONFIG_CPU_S3C6410)
+	case 2:
+		__raw_writel(mach_info.wincon2, S3C_WINCON2);
+		__raw_writel(mach_info.vidosd2a, S3C_VIDOSD2A);
+		__raw_writel(mach_info.vidosd2b, S3C_VIDOSD2B);
+		__raw_writel(mach_info.vidosd2c, S3C_VIDOSD2C);
+		__raw_writel(mach_info.vidosd2d, S3C_VIDOSD2D);
+		__raw_writel(mach_info.wpalcon, S3C_WPALCON);
+		s3c_fb_win_onoff(fbi, OFF);
+		break; 
+
+	case 3:
+		__raw_writel(mach_info.wincon3, S3C_WINCON3);
+		__raw_writel(mach_info.vidosd3a, S3C_VIDOSD3A);
+		__raw_writel(mach_info.vidosd3b, S3C_VIDOSD3B);
+		__raw_writel(mach_info.vidosd3c, S3C_VIDOSD3C);
+		__raw_writel(mach_info.wpalcon, S3C_WPALCON);
+		s3c_fb_win_onoff(fbi, OFF);
+		break;
+
+	case 4:
+		__raw_writel(mach_info.wincon4, S3C_WINCON4);
+		__raw_writel(mach_info.vidosd4a, S3C_VIDOSD4A);
+		__raw_writel(mach_info.vidosd4b, S3C_VIDOSD4B);
+		__raw_writel(mach_info.vidosd4c, S3C_VIDOSD4C);
+		__raw_writel(mach_info.wpalcon, S3C_WPALCON);
+		s3c_fb_win_onoff(fbi, OFF);
+		break;
+	#endif
+	}
 
 	local_irq_restore(flags);
 
@@ -1367,205 +1492,58 @@ int s3c_fb_set_out_path(struct s3c_fb_info *fbi, int Path)
 	return 0;
 }
 
-/*
- * FIXME: (yslee)
- *
- * 아래 드라이버 코드는 새로 작성되어야 한다.
- * S3C2416 LCD controller를 사용치 않고 GPIO를 직접 access하는 이 방식은 속도가 늦은
- * 문제가 있다. 이를 LCDC의 DMA controller를 이용하여 copy 되도록 하여야 한다.
- * 
- */	
-
-
 extern void lcd_reset(void);
-extern void lcd_backlight(int control);
-extern void vd_bus_inout_set(int flag);
+extern void lcd_gpio_init(void);
 
-//#define WPU7800_EVM_LCD
-//#define WPU7800_WS_LCD
-#define WPU7800_ES_LCD
-
-#ifdef WPU7800_EVM_LCD
-void lcd_ili9225b_reg(int reg)
-{	
-	__raw_writel(0x41, S3C2410_GPCDAT);
-	__raw_writel((reg<<10)|0x41, S3C2410_GPCDAT);
-	__raw_writel((reg>>6), S3C2410_GPDDAT);
-	__raw_writel(0x57, S3C2410_GPCDAT);
-}
-
-void lcd_ili9225b_data(int data)
-{	
-	__raw_writel(0x51, S3C2410_GPCDAT);
-	__raw_writel((data<<10)|0x51, S3C2410_GPCDAT);
-	__raw_writel((data>>6), S3C2410_GPDDAT);
-	__raw_writel(0x57, S3C2410_GPCDAT);	
-}
-
-void lcd_write_pixel(int color)
-{	
-	__raw_writel(0x51, S3C2410_GPCDAT);
-	__raw_writel((color<<10)|0x51, S3C2410_GPCDAT);
-	__raw_writel((color>>6), S3C2410_GPDDAT);
-	__raw_writel(0x57, S3C2410_GPCDAT);	
-}
-
-int lcd_ili9225b_read(int addr)
-{	
-	int data, data1;
-	__raw_writel(0x41, S3C2410_GPCDAT);
-	__raw_writel((addr<<10)|0x41, S3C2410_GPCDAT);
-	__raw_writel((addr>>6), S3C2410_GPDDAT);
-	__raw_writel(0x57, S3C2410_GPCDAT);	
-
-	__raw_writel(0x52, S3C2410_GPCDAT);
-	data = __raw_readl(S3C2410_GPCDAT);
-	data1 = __raw_readl(S3C2410_GPDDAT);
-	__raw_writel(0x57, S3C2410_GPCDAT);	
-
-	data = (data>>10)|(data1<<6);
-
-	return data;
-}
-#endif
-
-#ifdef WPU7800_WS_LCD
-void lcd_ili9225b_reg(int reg)
-{	
-	__raw_writel(0x41, S3C2410_GPCDAT);
-	__raw_writel((reg<<9)|0x41, S3C2410_GPCDAT);
-	__raw_writel((((reg>>7)&0x01)|(((reg>>8)&0xffff)<<2)), S3C2410_GPDDAT);
-	__raw_writel(0x57, S3C2410_GPCDAT);
-}
-
-void lcd_ili9225b_data(int data)
-{	
-	__raw_writel(0x51, S3C2410_GPCDAT);
-	__raw_writel((data<<9)|0x51, S3C2410_GPCDAT);
-	__raw_writel((((data>>7)&0x01)|(((data>>8)&0xffff)<<2)), S3C2410_GPDDAT);
-	__raw_writel(0x57, S3C2410_GPCDAT);	
-}
-
-void lcd_write_pixel(int color)
-{	
-	__raw_writel(0x51, S3C2410_GPCDAT);
-	__raw_writel((color<<9)|0x51, S3C2410_GPCDAT);
-	__raw_writel((((color>>7)&0x01)|(((color>>8)&0xffff)<<2)), S3C2410_GPDDAT);
-	__raw_writel(0x57, S3C2410_GPCDAT);	
-}
-
-int lcd_ili9225b_read(int addr)
-{	
-	int datav, data, data1;
-	
-	__raw_writel(0x41, S3C2410_GPCDAT);
-	__raw_writel((addr<<9)|0x41, S3C2410_GPCDAT);
-	__raw_writel((((addr>>7)&0x01)|(((addr>>8)&0xffff)<<2)), S3C2410_GPDDAT);
-	__raw_writel(0x57, S3C2410_GPCDAT);	
-
-	vd_bus_inout_set(1);
-
-	__raw_writel(0x52, S3C2410_GPCDAT);
-	data = __raw_readl(S3C2410_GPCDAT);
-	data1 = __raw_readl(S3C2410_GPDDAT);
-	__raw_writel(0x57, S3C2410_GPCDAT);	
-
-	datav  = ((data>>9) & 0x007f) |((data1&0x0001)<<7)|(((data1>>2)&0xffff)<<8); 
-
-	vd_bus_inout_set(0);
-
-	return datav;
-}
-#endif
-
-#ifdef WPU7800_ES_LCD
-void lcd_ili9225b_reg(int reg)
-{	
-	int mask;
-	
-	mask = __raw_readl(S3C2410_GPDDAT) & ~(0x07ff);
-
-	__raw_writel(0x41, S3C2410_GPCDAT);
-	__raw_writel((reg<<8)|0x41, S3C2410_GPCDAT);
-	__raw_writel((reg>>8)|mask, S3C2410_GPDDAT);
-	__raw_writel(0x57, S3C2410_GPCDAT);
-}
-
-void lcd_ili9225b_data(int data)
-{	
-	int mask;
-	
-	mask = __raw_readl(S3C2410_GPDDAT) & ~(0x07ff);
-
-	__raw_writel(0x51, S3C2410_GPCDAT);
-	__raw_writel((data<<8)|0x51, S3C2410_GPCDAT);
-	__raw_writel((data>>8)|mask, S3C2410_GPDDAT);
-	__raw_writel(0x57, S3C2410_GPCDAT);	
-}
-
-void lcd_write_pixel(int color)
-{	
-	int  mask;
-	
-	mask = __raw_readl(S3C2410_GPDDAT) & ~(0x07ff);
-
-	__raw_writel(0x51, S3C2410_GPCDAT);
-	__raw_writel((color<<8)|0x51, S3C2410_GPCDAT);
-	__raw_writel((color>>8)|mask, S3C2410_GPDDAT);
-	__raw_writel(0x57, S3C2410_GPCDAT);	
-}
-
-int lcd_ili9225b_read(int addr)
-{	
-	int mask, data, data1;
-	
-	mask = __raw_readl(S3C2410_GPDDAT) & ~(0x07ff);
-
-	__raw_writel(0x41, S3C2410_GPCDAT);
-	__raw_writel((addr<<8)|0x41, S3C2410_GPCDAT);
-	__raw_writel((addr>>8)|mask, S3C2410_GPDDAT);
-	__raw_writel(0x57, S3C2410_GPCDAT);	
-
-	vd_bus_inout_set(1);
-
-	__raw_writel(0x52, S3C2410_GPCDAT);
-	data = __raw_readl(S3C2410_GPCDAT);
-	data1 = __raw_readl(S3C2410_GPDDAT);
-	__raw_writel(0x57, S3C2410_GPCDAT);	
-
-	data = (data>>8)|(data1<<8);
-
-	vd_bus_inout_set(0);
-
-	return data;
-}
-#endif
-
-#if 0
-void lcd_test_color_pattern(void)
+void lcd_set_command_mode (int set)
 {
-	int i, x=176, y=220;	
-
-	//printk("+++ lcd_test_color_pattern\n");
-
-	lcd_ili9225b_reg(0x22);
-	
-	for (i=0;i<(x*y);i++) {
-		if (i<(x * (y/2))) {
-			if (((i%x)>=0) && ((i%x)<88) ) lcd_ili9225b_data(0xffff); 	
-			if (((i%x)>=88) && ((i%x)<176))  lcd_ili9225b_data(0x07e0);	 	
-		} else {
-			if (((i%x)>=0) && ((i%x)<88)) lcd_ili9225b_data(0); 	
-			if (((i%x)>=88) && ((i%x)<176)) lcd_ili9225b_data(0x001f);
-		}
-	}
+	if (set)
+		__raw_writel(S3C_I80SIFCCON0_COM_ENABLE
+				| S3C_I80SIFCCON0_RS_CON_HIGH,
+				S3C_SIFCCON0);
+	else
+		__raw_writel(S3C_I80SIFCCON0_COM_DISABLE, S3C_SIFCCON0);
 }
-#endif
+
+static inline void
+_lcd_i80_cmd(int control)
+{
+	__raw_writel(control | S3C_I80SIFCCON0_COM_ENABLE, S3C_SIFCCON0);
+}
+
+void _lcd_ili9225b_reg(int reg)
+{
+	// set RS, CS0, WR
+	_lcd_i80_cmd(S3C_I80SIFCCON0_CS0_CON_ENABLE
+			| S3C_I80SIFCCON0_RS_CON_LOW
+			| S3C_I80SIFCCON0_WR_CON_ENABLE);
+
+	__raw_writel(reg, S3C_SIFCCON1);
+
+	_lcd_i80_cmd(S3C_I80SIFCCON0_RS_CON_HIGH);
+}
 
 void _lcd_ili9225b_reg_write(int reg, int data)
 {
-	lcd_ili9225b_reg(reg);
-	lcd_ili9225b_data(data);
+	// set RS, CS0, WR
+	_lcd_i80_cmd(S3C_I80SIFCCON0_CS0_CON_ENABLE
+			| S3C_I80SIFCCON0_RS_CON_LOW
+			| S3C_I80SIFCCON0_WR_CON_ENABLE);
+
+	__raw_writel(reg, S3C_SIFCCON1);
+
+	// set CS0
+	_lcd_i80_cmd(S3C_I80SIFCCON0_CS0_CON_ENABLE
+			| S3C_I80SIFCCON0_RS_CON_HIGH);
+
+	// set CS0, WR
+	_lcd_i80_cmd(S3C_I80SIFCCON0_CS0_CON_ENABLE
+			| S3C_I80SIFCCON0_RS_CON_HIGH
+			| S3C_I80SIFCCON0_WR_CON_ENABLE);
+
+	__raw_writel(data, S3C_SIFCCON1);
+
+	_lcd_i80_cmd(S3C_I80SIFCCON0_RS_CON_HIGH);
 }
 
 void lcd_prepare_write(int x, int y)
@@ -1573,24 +1551,30 @@ void lcd_prepare_write(int x, int y)
 	_lcd_ili9225b_reg_write (0x20, x & 0xff);
 	_lcd_ili9225b_reg_write (0x21, y & 0xff);
 
-	lcd_ili9225b_reg(0x22);
+	_lcd_ili9225b_reg (0x22);
+}
+
+void lcd_write_pixel(int color)
+{	
+	// set CS0, WR
+	_lcd_i80_cmd(S3C_I80SIFCCON0_CS0_CON_ENABLE
+			| S3C_I80SIFCCON0_RS_CON_HIGH
+			| S3C_I80SIFCCON0_WR_CON_ENABLE);
+
+	__raw_writel(color, S3C_SIFCCON1);
+
+	_lcd_i80_cmd(S3C_I80SIFCCON0_RS_CON_HIGH);
 }
 
 static void s3c_fb_change_fb(struct fb_info *info)
 {
-	int i = H_RESOLUTION * V_RESOLUTION;
-	u16 __iomem *buf = (u16 __iomem *)info->screen_base;
-
-	
-	lcd_prepare_write(0, 0);
-	while (i-- > 0) {
-		lcd_write_pixel(*buf++);
-	}
+	__raw_writel((1<<0), S3C_CPUTRIGCON2);
 }
 
 void lcd_module_init (void)
 {
-	//printk("+++ lcd_module_init\n");
+	lcd_reset();
+	lcd_set_command_mode(1);
 	
       //************* Start Initial Sequence **********//
        _lcd_ili9225b_reg_write(0x0001, 0x011C);               // set SS and NL bit
@@ -1634,7 +1618,7 @@ void lcd_module_init (void)
        _lcd_ili9225b_reg_write(0x0059, 0x000E);
        mdelay(50);        // Delay 50ms
        _lcd_ili9225b_reg_write(0x0007, 0x1017);
-       lcd_ili9225b_reg(0x22);	   
+       _lcd_ili9225b_reg(0x22);	   
 
 	/* set window size */
 	int xs = 0;
@@ -1652,21 +1636,18 @@ void lcd_module_init (void)
 	while (i-- > 0) {
 		lcd_write_pixel(0);
 	}
+
+	lcd_set_command_mode(0);
 }
 
 void SetLcdPort(void)
 {
-	lcd_reset();
-	lcd_backlight(5);
+	lcd_gpio_init();
 }
 
 void Init_LDI(void)
 {
-	printk(KERN_INFO "LCD TYPE :: S3C_ILI9225QC LCD will be initialized\n");
+	printk(KERN_INFO "LCD TYPE :: S3C_ILI9225QC LCD will only be set port\n");
 
 	SetLcdPort();
 }
-
-EXPORT_SYMBOL(lcd_prepare_write);
-EXPORT_SYMBOL(lcd_write_pixel);
-EXPORT_SYMBOL(lcd_module_init);

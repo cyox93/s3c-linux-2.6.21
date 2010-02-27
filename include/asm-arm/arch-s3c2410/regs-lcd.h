@@ -181,6 +181,12 @@
 #define S3C_VIDINTCON		S3C_LCDREG(0xAC)  	/* LCD CONTROL 1 */
 #define S3C_W1KEYCON0		S3C_LCDREG(0xB0)  	/* LCD CONTROL 1 */
 #define S3C_W1KEYCON1		S3C_LCDREG(0xB4)  	/* LCD CONTROL 1 */
+#define S3C_W2KEYCON0		S3C_LCDREG(0xB8)  	/* LCD CONTROL 1 */
+#define S3C_W2KEYCON1		S3C_LCDREG(0xBC)  	/* LCD CONTROL 1 */
+#define S3C_W3KEYCON0		S3C_LCDREG(0xC0)  	/* LCD CONTROL 1 */
+#define S3C_W3KEYCON1		S3C_LCDREG(0xC4)  	/* LCD CONTROL 1 */
+#define S3C_W4KEYCON0		S3C_LCDREG(0xC8)  	/* LCD CONTROL 1 */
+#define S3C_W4KEYCON1		S3C_LCDREG(0xCC)  	/* LCD CONTROL 1 */
 #define S3C_WIN0MAP		S3C_LCDREG(0xD0)  	/* LCD CONTROL 1 */
 #define S3C_WIN1MAP		S3C_LCDREG(0xD4)  	/* LCD CONTROL 1 */
 #define S3C_WPALCON		S3C_LCDREG(0xE4)  	/* LCD CONTROL 1 */
@@ -324,6 +330,43 @@
 
 /*--------------------------------------------------------------*/
 /* Video Main Control 0 register - VIDCON0 */
+#if defined(CONFIG_CPU_S3C2416)
+#define S3C_VIDCON0_VIDOUT(x)  				(((x)&0x3)<<22)
+#define S3C_VIDCON0_VIDOUT_RGB_IF			(0<<22)
+#define S3C_VIDCON0_VIDOUT_I80IF0			(2<<22)
+#define S3C_VIDCON0_VIDOUT_I80IF1			(3<<22)
+#define S3C_VIDCON0_L1_DATA16(x)  			(((x)&0x7)<<19)
+#define S3C_VIDCON0_L1_DATA16_SUB_16_MODE		(0<<19)
+#define S3C_VIDCON0_L1_DATA16_SUB_16PLUS2_MODE		(1<<19)
+#define S3C_VIDCON0_L1_DATA16_SUB_9PLUS9_MODE 		(2<<19)
+#define S3C_VIDCON0_L1_DATA16_SUB_16PLUS8_MODE		(3<<19)
+#define S3C_VIDCON0_L1_DATA16_SUB_18_MODE		(4<<19)
+#define S3C_VIDCON0_L0_DATA16(x)  			(((x)&0x7)<<16)
+#define S3C_VIDCON0_L0_DATA16_MAIN_16_MODE		(0<<16)
+#define S3C_VIDCON0_L0_DATA16_MAIN_16PLUS2_MODE		(1<<16)
+#define S3C_VIDCON0_L0_DATA16_MAIN_9PLUS9_MODE		(2<<16)
+#define S3C_VIDCON0_L0_DATA16_MAIN_16PLUS8_MODE		(3<<16)
+#define S3C_VIDCON0_L0_DATA16_MAIN_18_MODE		(4<<16)
+#define S3C_VIDCON0_PNRMODE(x)  			(((x)&0x3)<<13)
+#define S3C_VIDCON0_PNRMODE_RGB_P			(0<<13)
+#define S3C_VIDCON0_PNRMODE_BGR_P			(1<<13)
+#define S3C_VIDCON0_PNRMODE_RGB_S			(2<<13)
+#define S3C_VIDCON0_PNRMODE_BGR_S			(3<<13)
+#define S3C_VIDCON0_PNRMODE_MASK			(3<<13)
+#define S3C_VIDCON0_CLKVALUP_ALWAYS 			(0<<12)
+#define S3C_VIDCON0_CLKVALUP_ST_FRM 			(1<<12)
+#define S3C_VIDCON0_CLKVAL_F(x)				(((x)&0x3F)<<6)
+#define S3C_VIDCON0_VCLKEN_ENABLE			(1<<5)
+#define S3C_VIDCON0_CLKDIR_DIVIDED   			(1<<4)
+#define S3C_VIDCON0_CLKDIR_DIRECTED  			(0<<4)
+#define S3C_VIDCON0_CLKSEL(x)   			(((x)&0x3)<<2)
+#define S3C_VIDCON0_CLKSEL_F_HCLK	  		(0<<2)
+#define S3C_VIDCON0_ENVID_ENABLE	    		(3 << 0)	/* Enable video output and logics */
+#define S3C_VIDCON0_ENVID_DISABLE	    		(0 << 0)	/* Disable video signals and logics immediately */
+#define S3C_VIDCON0_ENVID_F_ENABLE     			(2 << 0)	/* Disable video signals and logics at the end of current frame */
+#define S3C_VIDCON0_ENVID_MASK     			(3 << 0)
+
+#else // CONFIG_CPU_S3C2416
 #define S3C_VIDCON0_INTERLACE_F_PROGRESSIVE		(0<<29)
 #define S3C_VIDCON0_INTERLACE_F_INTERLACE		(1<<29)
 #define S3C_VIDCON0_VIDOUT(x)  				(((x)&0x7)<<26)
@@ -364,6 +407,7 @@
 #define S3C_VIDCON0_ENVID_DISABLE	    		(0 << 1)	/* 0:Disable 1:Enable LCD video output and logic immediatly */
 #define S3C_VIDCON0_ENVID_F_ENABLE     			(1 << 0)	/* 0:Dis 1:Ena wait until Current frame end. */
 #define S3C_VIDCON0_ENVID_F_DISABLE     		(0 << 0)	/* 0:Dis 1:Ena wait until Current frame end. */
+#endif // CONFIG_CPU_S3C2416
 
 /* Video Main Control 1 register - VIDCON1 */
 #define S3C_VIDCON1_IVCLK_FALL_EDGE 			(0<<7)
@@ -396,6 +440,15 @@
 
 
 /* Window 0~4 Control register - WINCONx */
+#if defined(CONFIG_CPU_S3C2416)
+#define S3C_WINCONx_BUFSEL_0				(0<<23)
+#define S3C_WINCONx_BUFSEL_1				(1<<23)
+#define S3C_WINCONx_BUF_MASK				(1<<23)
+#define S3C_WINCONx_BUFAUTOEN_DISABLE			(0<<22)
+#define S3C_WINCONx_BUFAUTOEN_ENABLE			(1<<22)
+#define S3C_WINCONx_BUFAUTOEN_MASK			(1<<22)
+
+#else // CONFIG_CPU_S3C2416
 #define S3C_WINCONx_WIDE_NARROW(x)			(((x)&0x3)<<26)
 #define S3C_WINCONx_ENLOCAL_DMA				(0<<22)
 #define S3C_WINCONx_ENLOCAL_POST			(1<<22)
@@ -405,6 +458,8 @@
 #define S3C_WINCONx_BUFAUTOEN_DISABLE			(0<<19)
 #define S3C_WINCONx_BUFAUTOEN_ENABLE			(1<<19)
 #define S3C_WINCONx_BUFAUTOEN_MASK			(1<<19)
+#endif // CONFIG_CPU_S3C2416
+
 #define S3C_WINCONx_BITSWP_DISABLE			(0<<18)
 #define S3C_WINCONx_BITSWP_ENABLE			(1<<18)
 #define S3C_WINCONx_BYTSWP_DISABLE			(0<<17)
@@ -465,7 +520,11 @@
 #define  S3C_VIDOSDxD_OSDSIZE(x)			(((x)&0xFFFFFF)<<0)
 
 /* Frame buffer Start Address register - VIDWxxADD0 */
+#if defined(CONFIG_CPU_S3C2416)
+#define S3C_VIDWxxADD0_VBANK_F(x) 			(((x)&0xFF)<<24) /* the end address of the LCD frame buffer. */
+#else // CONFIG_CPU_S3C2416
 #define S3C_VIDWxxADD0_VBANK_F(x) 			(((x)&0xFF)<<23) /* the end address of the LCD frame buffer. */
+#endif // CONFIG_CPU_S3C2416
 #define S3C_VIDWxxADD0_VBASEU_F(x)			(((x)&0xFFFFFF)<<0) /* Virtual screen offset size (the number of byte). */
 
 /* Frame buffer End Address register - VIDWxxADD1 */
@@ -530,6 +589,18 @@
 #define S3C_WxKEYCON1_COLVAL(x)				(((x)&0xFFFFFF)<<0)
 
 /* Dithering Control 1 register - DITHMODE */
+#if defined(CONFIG_CPU_S3C2416)
+#define S3C_DITHMODE_RDITHPOS_8BIT			(2<<5)
+#define S3C_DITHMODE_RDITHPOS_6BIT			(1<<5)
+#define S3C_DITHMODE_RDITHPOS_5BIT			(0<<5)
+#define S3C_DITHMODE_GDITHPOS_8BIT			(2<<3)
+#define S3C_DITHMODE_GDITHPOS_6BIT			(1<<3)
+#define S3C_DITHMODE_GDITHPOS_5BIT			(0<<3)
+#define S3C_DITHMODE_BDITHPOS_8BIT			(2<<1)
+#define S3C_DITHMODE_BDITHPOS_6BIT			(1<<1)
+#define S3C_DITHMODE_BDITHPOS_5BIT			(0<<1)
+
+#else // CONFIG_CPU_S3C2416
 #define S3C_DITHMODE_RDITHPOS_8BIT			(0<<5)
 #define S3C_DITHMODE_RDITHPOS_6BIT			(1<<5)
 #define S3C_DITHMODE_RDITHPOS_5BIT			(2<<5)
@@ -539,6 +610,8 @@
 #define S3C_DITHMODE_BDITHPOS_8BIT			(0<<1)
 #define S3C_DITHMODE_BDITHPOS_6BIT			(1<<1)
 #define S3C_DITHMODE_BDITHPOS_5BIT			(2<<1)
+#endif // CONFIG_CPU_S3C2416
+
 #define S3C_DITHMODE_RGB_DITHPOS_MASK			(0x3f<<1)
 #define S3C_DITHMODE_DITHERING_DISABLE			(0<<0)
 #define S3C_DITHMODE_DITHERING_ENABLE			(1<<0)
@@ -585,6 +658,19 @@
 #define S3C_I80IFCONAx_LCD_WR_ACT(x)			(((x)&0xF)<<8)
 #define S3C_I80IFCONAx_LCD_WR_HOLD(x)			(((x)&0xF)<<4)
 
+/* LCD I80 Interface Command Control 0 register - I80SIFCCON0 */
+#define S3C_I80SIFCCON0_CS1_CON_ENABLE 			(1 << 9)
+#define S3C_I80SIFCCON0_CS1_CON_DISABLE	 		(0 << 9)
+#define S3C_I80SIFCCON0_CS0_CON_ENABLE 			(1 << 8)
+#define S3C_I80SIFCCON0_CS0_CON_DISABLE 		(0 << 8)
+#define S3C_I80SIFCCON0_OE_CON_ENABLE 			(1 << 7)
+#define S3C_I80SIFCCON0_OE_CON_DISABLE 			(0 << 7)
+#define S3C_I80SIFCCON0_WR_CON_ENABLE 			(1 << 6)
+#define S3C_I80SIFCCON0_WR_CON_DISABLE 			(0 << 6)
+#define S3C_I80SIFCCON0_RS_CON_HIGH 			(1 << 1)
+#define S3C_I80SIFCCON0_RS_CON_LOW 			(0 << 1)
+#define S3C_I80SIFCCON0_COM_ENABLE 			(1 << 0)
+#define S3C_I80SIFCCON0_COM_DISABLE 			(0 << 0)
 
 /***************************************************************************/
 /*HOST IF registers */

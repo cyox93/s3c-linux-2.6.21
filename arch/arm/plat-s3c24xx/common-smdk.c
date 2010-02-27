@@ -357,15 +357,6 @@ void wifi_gpio_init (void)
 	gpio_wifi_power(0); 
 }
 
-void lcd_power(bool flag)
-{
-	if (flag) { 
-		s3c2410_gpio_setpin(S3C2410_GPB0, 1);
-	} else {
-		s3c2410_gpio_setpin(S3C2410_GPB0, 0);
-	}
-}
-
 void lcd_reset(void)
 {
 	mdelay(10);
@@ -375,65 +366,21 @@ void lcd_reset(void)
 	mdelay(50);
 }
 
-void lcd_backlight(int control)
-{
-	int i;
-
-	if (!control) {
-		s3c2410_gpio_setpin(S3C2410_GPB2, 0);
-	}
-	else {	
-		s3c2410_gpio_setpin(S3C2410_GPB2, 1);
-		udelay(500);
-			
-		for (i=0;i < control;i++) {
-			s3c2410_gpio_setpin(S3C2410_GPB2, 0);
-			udelay(50);
-			s3c2410_gpio_setpin(S3C2410_GPB2, 1);
-			udelay(50);
-		}
-	}
-}
-
-void vd_bus_inout_set(int flag)
-{
-	u32 mask;
-
-	mask = __raw_readl(S3C2410_GPDCON) & ~(0x003fffff);
-
-	if(flag) {
-		__raw_writel(0x5555, S3C2410_GPCCON);
-		__raw_writel(mask | 0x00000000, S3C2410_GPDCON);
-	}
-	else {
-		__raw_writel(0x55555555, S3C2410_GPCCON);
-		__raw_writel(mask | 0x00155555, S3C2410_GPDCON);
-	}
-}
-
 void lcd_gpio_init(void)
 {
-	s3c2410_gpio_cfgpin(S3C2410_GPB0, S3C2410_GPB0_OUTP);
+	u32 val;
+
+	// set gpio out for lcd reset 
 	s3c2410_gpio_cfgpin(S3C2410_GPB1, S3C2410_GPB1_OUTP);
-	s3c2410_gpio_cfgpin(S3C2410_GPB2, S3C2410_GPB2_OUTP);	
-
-	s3c2410_gpio_cfgpin(S3C2410_GPC0, S3C2410_GPC0_OUTP); // read
-	s3c2410_gpio_cfgpin(S3C2410_GPC1, S3C2410_GPC1_OUTP); // wirte
-	s3c2410_gpio_cfgpin(S3C2410_GPC2, S3C2410_GPC2_OUTP); // cs
-	s3c2410_gpio_cfgpin(S3C2410_GPC4, S3C2410_GPC4_OUTP); // RS
-
-	vd_bus_inout_set(0);
-
-	s3c2410_gpio_setpin(S3C2410_GPC0, 1);
-	s3c2410_gpio_setpin(S3C2410_GPC1, 1);
-	s3c2410_gpio_setpin(S3C2410_GPC2, 1);
-	s3c2410_gpio_setpin(S3C2410_GPC4, 1);
-
-	s3c2410_gpio_setpin(S3C2410_GPB0, 1);
 	s3c2410_gpio_setpin(S3C2410_GPB1, 1);
-	s3c2410_gpio_setpin(S3C2410_GPB2, 1);
 
-	udelay(100);
+	// set lcd interface
+	val = __raw_readl(S3C2410_GPCCON) & 0x0fcc0;
+	__raw_writel(val | 0xaaaa033a, S3C2410_GPCCON);
+
+	// set lcd interface
+	val = __raw_readl(S3C2410_GPDCON) & ~(0x003fffff);
+	__raw_writel(val | 0x002aaaaa, S3C2410_GPDCON);
 }
 
 void audio_ext_clock(bool flag)
@@ -510,9 +457,6 @@ void wpu7800_gpio_init(void)
    	 // Wi-Fi
 	wifi_gpio_init();
 
-	// LCD
-	lcd_gpio_init();
-
 	// KeyPAD 	
 	Key_gpio_init();
 	
@@ -550,10 +494,8 @@ void __init smdk_machine_init(void)
 EXPORT_SYMBOL(gpio_wifi_power);
 EXPORT_SYMBOL(gpio_wifi_power_down);
 EXPORT_SYMBOL(gpio_wifi_reset);
-EXPORT_SYMBOL(lcd_power);
 EXPORT_SYMBOL(lcd_reset);
-EXPORT_SYMBOL(lcd_backlight);
-EXPORT_SYMBOL(vd_bus_inout_set);
+EXPORT_SYMBOL(lcd_gpio_init);
 EXPORT_SYMBOL(key_led);
 EXPORT_SYMBOL(audio_ext_clock);
 EXPORT_SYMBOL(speaker_amp);

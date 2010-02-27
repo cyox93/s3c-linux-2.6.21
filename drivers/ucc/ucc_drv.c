@@ -112,40 +112,6 @@ static int ucc_ioctl(struct inode *inode, struct file *file,
 			printk("IOCTLUCC_POWER [0x%x] ... 'kernel Not Support' \n", arg);			
 			break;	
 
-		case IOCTLUCC_LCD:		
-			//printk("IOCTLUCC_LCD [0x%x]\n", arg);
-#if 0
-			if (arg == 0) lcd_power(0);
-			if (arg == 1) lcd_power(1);
-			if (arg == 0x10) lcd_reset();
-			if (arg == 0x11) lcd_module_init();
-			if (arg == 0x20) lcd_fill_color(0xffff); /* White */
-			if (arg == 0x21) lcd_fill_color(0xf800); /* Red */
-			if (arg == 0x22) lcd_fill_color(0x07e0); /* Green */
-			if (arg == 0x23) lcd_fill_color(0x001f); /* Blue */
-			if (arg == 0x24) lcd_fill_color(0); /* Black */
-#endif
-			break;
-
-		case IOCTLUCC_BACKLIGHT:		
-			//printk("IOCTLUCC_BACKLIGHT [0x%x]\n", arg);			
-			if (arg >= 16) {		
-				temp = (arg/16)-1;
-				if (temp == 10) {
-					temp = 18;
-					i = 15;
-				} 
-				else {
-					if (temp)
-						temp = temp *2;
-				}
-				//s3c2450_timer_setup(3,10,1000,(temp*50+i));
-			}
-			else {
-			 	lcd_backlight(arg);
-			}	
-			break;
-
 		case IOCTLUCC_WLAN:		
 			//printk("IOCTLUCC_WLAN [0x%x]\n", arg);
 			if (arg == 0) gpio_wifi_power(0);

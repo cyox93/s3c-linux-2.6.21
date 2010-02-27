@@ -56,10 +56,6 @@ extern void key_led(bool flag);
 extern void gpio_wifi_power(bool flag);
 extern void gpio_wifi_reset(void);
 extern void gpio_wifi_power_down(bool flag);
-extern void lcd_power(int flag);
-extern void lcd_reset(void);
-extern void lcd_module_init (void);
-extern void lcd_backlight(int control);
 extern void audio_ext_clock(bool flag);
 extern void speaker_amp(bool flag);
 extern void vibrator_control(bool flag);
@@ -68,7 +64,6 @@ extern void charger_red_led(bool flag);
 extern int s3c2450_timer_setup (int channel, int usec, unsigned long g_tcnt, unsigned long g_tcmp);
 extern int ucc_wm8350_reg_write(int reg, unsigned int val);
 extern unsigned int ucc_wm8350_reg_read(int reg);
-extern void lcd_fill_color(int color);
 extern void gpio_wifi_core_power(bool flag);
 
 		
