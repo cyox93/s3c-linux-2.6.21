@@ -74,6 +74,8 @@ struct wm8350_data {
 struct wm8350_data *_wm8350;
 #endif
 
+extern void speaker_amp(bool flag);
+
 static unsigned int wm8350_codec_cache_read(struct snd_soc_codec *codec,
 					    unsigned int reg)
 {
@@ -1180,6 +1182,13 @@ static int wm8350_set_bias_level(struct snd_soc_codec *codec,
 			pm1 = wm8350_reg_read(wm8350, WM8350_POWER_MGMT_1);
 			wm8350_reg_write(wm8350, WM8350_POWER_MGMT_1,
 					 pm1 | WM8350_BIASEN);
+		
+			/* speaker amp on */
+			speaker_amp(1);
+		}
+		else {
+			/* speaker amp off */
+			speaker_amp(0);
 		}
 		break;
 	case SND_SOC_BIAS_STANDBY:	/* Off, with power */

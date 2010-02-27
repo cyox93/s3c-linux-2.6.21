@@ -487,7 +487,7 @@ void wpu7800_gpio_init(void)
 
 	// Speaker AMP
 	s3c2410_gpio_cfgpin(S3C2410_GPH8, S3C2410_GPH8_OUTP);
-	s3c2410_gpio_setpin(S3C2410_GPH8, 1);
+	s3c2410_gpio_setpin(S3C2410_GPH8, 0);
 
 	// key LED
 	s3c2410_gpio_cfgpin(S3C2410_GPD15, S3C2410_GPD15_OUTP);
