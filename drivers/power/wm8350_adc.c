@@ -178,7 +178,6 @@ static int wm8350_adc_ioctl(struct inode *inode, struct file *file,
 
 		default:
 			printk("wm8350 adc : unsupported ioctl command 0x%x\n", cmd);	
-			break;
 	}
 
 	return 0;
@@ -203,12 +202,13 @@ static int __init wm8350_adc_probe(struct platform_device *pdev)
 
 	printk(KERN_INFO "pmic adc probe...\n");
 
-	wm8350_adc = platform_get_drvdata(pdev);
 	ret = misc_register(&wm8350_adc_miscdev);
 	if (ret < 0) {
 		printk(KERN_ERR "wm8350 adc driver failed\n");
 		return ret;
 	}
+
+	wm8350_adc = platform_get_drvdata(pdev);
 
 	return ret;
 }

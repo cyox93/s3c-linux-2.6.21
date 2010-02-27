@@ -57,7 +57,6 @@ static int s3c2450_pwm_start (int channel)
 {
 	unsigned long tcon;
 	tcon = __raw_readl(S3C2410_TCON);
-
 	switch(channel)
 	{
 	case 0:
@@ -111,7 +110,7 @@ int s3c2450_timer_setup (int channel, int usec, unsigned long g_tcnt, unsigned l
 	clk_enable(clk);
 
 	pclk = clk_get_rate(clk);
-	
+
 	/* configure clock tick */
 
 	switch(channel)
@@ -183,7 +182,6 @@ int s3c2450_timer_setup (int channel, int usec, unsigned long g_tcnt, unsigned l
 	__raw_writel(tcfg0, S3C2410_TCFG0);
 
 	__raw_writel(tcon, S3C2410_TCON);
-
 #if 0
 	if (tcnt > 0xffffffff) {
 		panic("setup_timer: HZ is too small, cannot configure timer!");
@@ -223,34 +221,6 @@ int s3c2450_timer_setup (int channel, int usec, unsigned long g_tcnt, unsigned l
 	return 0;
 }
 
-int s3c2450_pwm_stop(int channel)
-{
-	unsigned long tcon;
-
-	tcon = __raw_readl(S3C2410_TCON);
-
-	switch(channel) {
-		case 0:
-			tcon &= ~(S3C2410_TCON_T0MANUALUPD | S3C2410_TCON_T0START);
-			break;
-
-		case 1:
-			tcon &= ~(S3C2410_TCON_T1MANUALUPD | S3C2410_TCON_T1START);
-			break;
-
-		case 2:
-			tcon &= ~(S3C2410_TCON_T2MANUALUPD | S3C2410_TCON_T2START);
-			break;
-
-		case 3:
-			tcon &= ~(S3C2410_TCON_T3MANUALUPD | S3C2410_TCON_T3START);
-			break;
-	}
-
-	__raw_writel(tcon, S3C2410_TCON);
-
-	return 0;
-}
 
 static irqreturn_t s3c2450_pwm_irq(int irq, void *devpw)
 {
@@ -410,4 +380,3 @@ static int __init s3c2450_init_pwm(void)
 }
 __initcall(s3c2450_init_pwm);
 EXPORT_SYMBOL(s3c2450_timer_setup);
-EXPORT_SYMBOL(s3c2450_pwm_stop);
