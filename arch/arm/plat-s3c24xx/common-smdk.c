@@ -361,9 +361,11 @@ void lcd_reset(void)
 {
 	mdelay(10);
 	s3c2410_gpio_setpin(S3C2410_GPB1, 0);
-	mdelay(10);
+	//mdelay(10);
+	mdelay(20);
 	s3c2410_gpio_setpin(S3C2410_GPB1, 1);
-	mdelay(50);
+	//mdelay(50);
+	mdelay(150);
 }
 
 void lcd_gpio_init(void)
@@ -381,6 +383,16 @@ void lcd_gpio_init(void)
 	// set lcd interface
 	val = __raw_readl(S3C2410_GPDCON) & ~(0x003fffff);
 	__raw_writel(val | 0x002aaaaa, S3C2410_GPDCON);
+
+	// set gpio in for lcd panel id
+	s3c2410_gpio_cfgpin(S3C2410_GPD8, S3C2410_GPD8_INP);
+	s3c2410_gpio_cfgpin(S3C2410_GPD9, S3C2410_GPD9_INP);
+	s3c2410_gpio_cfgpin(S3C2410_GPD10, S3C2410_GPD10_INP);
+
+	// set pull up/down disable for lcd panel id
+	s3c2410_gpio_pullup(S3C2410_GPD8, 0);
+	s3c2410_gpio_pullup(S3C2410_GPD9, 0);
+	s3c2410_gpio_pullup(S3C2410_GPD10, 0);
 }
 
 void audio_ext_clock(bool flag)

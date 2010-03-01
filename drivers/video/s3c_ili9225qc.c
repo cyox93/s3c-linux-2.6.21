@@ -1582,54 +1582,128 @@ static void s3c_fb_change_fb(struct fb_info *info)
 	__raw_writel((1<<0), S3C_CPUTRIGCON2);
 }
 
+#define _LCD_PANEL_BYD		0
+#define _LCD_PANEL_TRULY	1
+#define _LCD_PANEL_TCL		2
+
+static int
+_lcd_get_panel_id(void)
+{
+	return (__raw_readl(S3C2410_GPDDAT) & 0x700) >> 8;
+}
+
+static void
+_lcd_panel_set_display(int on)
+{
+	if (on)
+		_lcd_ili9225b_reg_write(0x0007,0x1017);
+	else
+		_lcd_ili9225b_reg_write(0x0007,0x0000);
+}
+
+static void
+_lcd_panel_init_tcl(void)
+{
+	_lcd_ili9225b_reg_write(0x0000,0x0001);
+	_lcd_ili9225b_reg_write(0x0001,0x011C);
+	_lcd_ili9225b_reg_write(0x0002,0x0100);	//set 1 line inversion 
+	_lcd_ili9225b_reg_write(0x0003,0x1030);
+
+	_lcd_ili9225b_reg_write(0x0007,0x0000);
+	_lcd_ili9225b_reg_write(0x0008,0x0808);
+	_lcd_ili9225b_reg_write(0x000B,0x0100);
+	_lcd_ili9225b_reg_write(0x000C,0x0000);
+	_lcd_ili9225b_reg_write(0x000F,0x0d01);	//Oscillator Control
+       	
+	//power on sequence//
+	_lcd_ili9225b_reg_write(0x0010,0x0000);
+	mdelay(10);
+	_lcd_ili9225b_reg_write(0x0011,0x0008);
+	_lcd_ili9225b_reg_write(0x0012,0x6332);
+	mdelay(40);
+	_lcd_ili9225b_reg_write(0x0013,0x0000);
+	mdelay(40);
+
+	_lcd_ili9225b_reg_write(0x0010,0x0A00);
+
+	mdelay(10);
+	_lcd_ili9225b_reg_write(0x0011,0x1038);
+	_lcd_ili9225b_reg_write(0x0012,0x6332);
+	mdelay(40);
+	_lcd_ili9225b_reg_write(0x0013,0x0068);
+	mdelay(40);
+	_lcd_ili9225b_reg_write(0x0014,0x4a60);
+
+	// Gamma Control Setting//
+	_lcd_ili9225b_reg_write(0x0050,0x0400);
+	_lcd_ili9225b_reg_write(0x0051,0x060B);
+	_lcd_ili9225b_reg_write(0x0052,0x0C0A);
+	_lcd_ili9225b_reg_write(0x0053,0x0105);
+	_lcd_ili9225b_reg_write(0x0054,0x0A0C);
+	_lcd_ili9225b_reg_write(0x0055,0x0B06);
+	_lcd_ili9225b_reg_write(0x0056,0x0004);
+	_lcd_ili9225b_reg_write(0x0057,0x0501);
+	_lcd_ili9225b_reg_write(0x0058,0x0E00);
+	_lcd_ili9225b_reg_write(0x0059,0x000E);
+
+	//set GRAM area //	
+	_lcd_ili9225b_reg_write(0x0020,0x0000);
+	_lcd_ili9225b_reg_write(0x0021,0x0000);
+	_lcd_ili9225b_reg_write(0x0030,0x0000);
+	_lcd_ili9225b_reg_write(0x0031,0x00DB);
+	_lcd_ili9225b_reg_write(0x0032,0x0000);
+	_lcd_ili9225b_reg_write(0x0033,0x0000);
+	_lcd_ili9225b_reg_write(0x0034,0x00DB);
+	_lcd_ili9225b_reg_write(0x0035,0x0000);
+
+	_lcd_ili9225b_reg_write(0x0036,0x00AF);
+	_lcd_ili9225b_reg_write(0x0037,0x0000);
+	_lcd_ili9225b_reg_write(0x0038,0x00DB);
+	_lcd_ili9225b_reg_write(0x0039,0x0000);
+	mdelay(50);
+}
+
+static void
+_lcd_panel_init_truly(void)
+{
+	_lcd_panel_init_tcl();
+}
+
+static void
+_lcd_panel_init_byd(void)
+{
+	_lcd_panel_init_tcl();
+}
+
+static void
+_lcd_panel_init(void)
+{
+	int id = _lcd_get_panel_id();
+
+	switch (id) {
+	case _LCD_PANEL_BYD:
+		_lcd_panel_init_byd();
+		break;
+	case _LCD_PANEL_TRULY:
+		_lcd_panel_init_truly();
+		break;
+	case _LCD_PANEL_TCL:
+	default:
+		_lcd_panel_init_tcl();
+		break;
+	}
+}
+
 void lcd_module_init (void)
 {
 	lcd_reset();
 	lcd_set_command_mode(1);
-	
-      //************* Start Initial Sequence **********//
-       _lcd_ili9225b_reg_write(0x0001, 0x011C);               // set SS and NL bit
-       _lcd_ili9225b_reg_write(0x0002, 0x0100);               // set 1 line inversion
-       _lcd_ili9225b_reg_write(0x0003, 0x1030);               // set GRAM write direction and BGR=1.
-       _lcd_ili9225b_reg_write(0x0008, 0x0808);               // set BP and FP
-       _lcd_ili9225b_reg_write(0x000C, 0x0000);               // RGB interface setting     R0Ch=0x0110 for RGB 18Bit and R0Ch=0111for RGB16Bit
-       _lcd_ili9225b_reg_write(0x000F, 0x0801);               // Set frame rate
-       _lcd_ili9225b_reg_write(0x0020, 0x0000);                  // Set GRAM Address
-       _lcd_ili9225b_reg_write(0x0021, 0x0000);                  // Set GRAM Address
-    //*************Power On sequence ****************//
-       mdelay(50);        // Delay 50ms
-       _lcd_ili9225b_reg_write(0x0010, 0x0A00);                   // Set SAP,DSTB,STB
-                                                               // Set APON,PON,AON,VCI1EN,VC
-       _lcd_ili9225b_reg_write(0x0011, 0x1038);
-       mdelay(50);        // Delay 50ms
-       _lcd_ili9225b_reg_write(0x0012, 0x1121);                  // Internal reference voltage= Vci;
-       _lcd_ili9225b_reg_write(0x0013, 0x0066);                  // Set GVDD
-       _lcd_ili9225b_reg_write(0x0014, 0x5F60);                  // Set VCOMH/VCOML voltage
-//------------------------ Set GRAM area --------------------------------//
-       _lcd_ili9225b_reg_write (0x30, 0x0000);
-       _lcd_ili9225b_reg_write (0x31, 0x00DB);
-       _lcd_ili9225b_reg_write (0x32, 0x0000);
-       _lcd_ili9225b_reg_write (0x33, 0x0000);
-       _lcd_ili9225b_reg_write (0x34, 0x00DB);
-       _lcd_ili9225b_reg_write (0x35, 0x0000);
-       _lcd_ili9225b_reg_write (0x36, 0x00AF);
-       _lcd_ili9225b_reg_write (0x37, 0x0000);
-       _lcd_ili9225b_reg_write (0x38, 0x00DB);
-       _lcd_ili9225b_reg_write (0x39, 0x0000);
-// ----------- Adjust the Gamma       Curve ----------//
-       _lcd_ili9225b_reg_write(0x0050, 0x0400);
-       _lcd_ili9225b_reg_write(0x0051, 0x060B);
-       _lcd_ili9225b_reg_write(0x0052, 0x0C0A);
-       _lcd_ili9225b_reg_write(0x0053, 0x0105);
-       _lcd_ili9225b_reg_write(0x0054, 0x0A0C);
-       _lcd_ili9225b_reg_write(0x0055, 0x0B06);
-       _lcd_ili9225b_reg_write(0x0056, 0x0004);
-       _lcd_ili9225b_reg_write(0x0057, 0x0501);
-       _lcd_ili9225b_reg_write(0x0058, 0x0E00);
-       _lcd_ili9225b_reg_write(0x0059, 0x000E);
-       mdelay(50);        // Delay 50ms
-       _lcd_ili9225b_reg_write(0x0007, 0x1017);
-       _lcd_ili9225b_reg(0x22);	   
+
+	_lcd_panel_init();
+	_lcd_panel_set_display(1);
+
+	// clear lcd
+	_lcd_ili9225b_reg(0x22);	   
 
 	/* set window size */
 	int xs = 0;
