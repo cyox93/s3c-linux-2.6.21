@@ -14,10 +14,13 @@
 
 #include <linux/module.h>
 #include <linux/err.h>
+#include <linux/circ_buf.h>
 #include <linux/platform_device.h>
 #include <linux/power_supply.h>
+
 #include <linux/mfd/wm8350/supply.h>
 #include <linux/mfd/wm8350/core.h>
+#include <linux/mfd/wm8350/gpio.h>
 #include <linux/mfd/wm8350/comparator.h>
 
 #define WM8350_POWER_VERSION	"0.5"
@@ -25,6 +28,96 @@
 #define WM8350_BATT_SUPPLY	1
 #define WM8350_USB_SUPPLY	2
 #define WM8350_LINE_SUPPLY	4
+
+#define DEV_NAME	"wm8350_bat"
+#define CIRC_BUF_MAX	16	
+#define CIRC_ADD(elem,cir_buf,size)				\
+	down(&event_mutex);					\
+	if(CIRC_SPACE(cir_buf.head, cir_buf.tail, size)){	\
+		cir_buf.buf[cir_buf.head] = (char)elem;		\
+		cir_buf.head = (cir_buf.head + 1) & (size - 1);	\
+	} else {						\
+		pr_info("Failed to notify event to the user\n");\
+	}							\
+	up(&event_mutex);
+
+#define CIRC_REMOVE(elem,cir_buf,size)				\
+	down(&event_mutex);					\
+	if(CIRC_CNT(cir_buf.head, cir_buf.tail, size)){         \
+		elem = (int)cir_buf.buf[cir_buf.tail];          \
+		cir_buf.tail = (cir_buf.tail + 1) & (size - 1); \
+	} else {                                                \
+		elem = -1;                                      \
+		pr_info("No valid notified event\n");           \
+	}							\
+	up(&event_mutex);
+
+#define WM8350_BAT_STATUS			_IOWR('P', 0xa7, int)
+#define WM8350_BAT_NOTIFY_USER		_IOR('P', 0xa8, int)
+#define WM8350_BAT_GET_NOTIFY		_IOR('P', 0xa9, int)
+#define WM8350_BAT_SUBSCRIBE		_IOR('P', 0xaa, int)
+#define WM8350_BAT_UNSUBSCRIBE		_IOR('P', 0xab, int)
+#define WM8350_BAT_REMOVE_USER		_IOR('P', 0xac, int)
+
+#define CHG_MODE_STATUS		0x3000
+
+typedef enum _t_wm8350_chg_status {
+	WM8350_BAT_UVOLTAGE = 0,
+	WM8350_CHG_MODE_STATUS,
+	WM8350_LINE_STATUS,
+} wm8350_chg_status;
+
+typedef enum {
+	WM8350_BAT_EVENT_DETECT = 0,
+	WM8350_BAT_EVENT_NOTDETECT,
+	WM8350_BAT_EVENT_FULL_CHG,
+	WM8350_BAT_EVENT_FAULT,
+	WM8350_BAT_EVENT_NUM,
+} type_bat_event;
+
+typedef struct {
+	void (*func) (void *);
+	void *param;
+} wm8350_bat_event_callback_t;
+
+typedef struct {
+	// keeps a list of subsecibed clients to an event
+	struct list_head list;
+
+	// Callback function with parameter, called whend event occurs
+	wm8350_bat_event_callback_t callback;
+} wm8350_bat_event_callback_list_t;
+
+typedef struct {
+	unsigned int command;
+	unsigned int status;
+	unsigned int uvolt;	
+} _t_wm8350_chg_data;
+
+
+static int wm8350_bat_major;
+static struct class *wm8350_dev_class;
+static struct fasync_struct *wm8350_bat_queue;
+static struct circ_buf wm8350_event;
+static struct list_head wm8350_bat_events[WM8350_BAT_EVENT_NUM];
+static struct wm8350 *wm8350_bat = NULL;
+
+static struct timer_list bat_chg_timer;
+static struct timer_list bat_det_timer; 
+static struct timer_list bat_fault_timer;
+
+static int bat_detect = 0;
+static int bat_count = 0;
+
+static DECLARE_MUTEX(event_mutex);
+
+void wm8350_bat_det_work(struct work_struct *work);
+void wm8350_bat_chg_work(struct work_struct *work);
+void wm8350_bat_fault_work(struct work_struct *work);
+
+DECLARE_WORK(bat_det, wm8350_bat_det_work);
+DECLARE_WORK(bat_chg, wm8350_bat_chg_work);
+DECLARE_WORK(bat_fault, wm8350_bat_fault_work);
 
 static inline int wm8350_charge_time_min(struct wm8350 *wm8350, int min)
 {
@@ -238,7 +331,7 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 {
 	struct wm8350_power *power = &wm8350->power;
 	struct wm8350_charger_policy *policy = power->policy;
-
+	
 	mutex_lock(&power->charger_mutex);
 	switch (irq) {
 	case WM8350_IRQ_CHG_BAT_HOT:
@@ -249,15 +342,32 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 		break;
 	case WM8350_IRQ_CHG_BAT_FAIL:
 		printk(KERN_ERR "wm8350-power: battery failed\n");
+
+		del_timer(&bat_fault_timer);
+		bat_fault_timer.expires = jiffies + msecs_to_jiffies(1000);
+		add_timer(&bat_fault_timer);
 		break;
 	case WM8350_IRQ_CHG_TO:
 		printk(KERN_INFO "wm8350-power: charger timeout\n");
+
+		bat_count = 0;
+		del_timer(&bat_chg_timer);
+		bat_chg_timer.expires = jiffies + msecs_to_jiffies(2000);
+		add_timer(&bat_chg_timer);
 		break;
 	case WM8350_IRQ_CHG_END:
 		printk(KERN_INFO "wm8350-power: charger stopped\n");
+
+		bat_count = 0;
+		del_timer(&bat_chg_timer);
+		bat_chg_timer.expires = jiffies + msecs_to_jiffies(2000);
+		add_timer(&bat_chg_timer);
 		break;
 	case WM8350_IRQ_CHG_START:
 		printk(KERN_INFO "wm8350-power: charger started\n");
+
+		bat_count = 0;
+		del_timer(&bat_chg_timer);
 		break;
 	case WM8350_IRQ_CHG_FAST_RDY:
 		/* we are ready to fast charge */
@@ -281,19 +391,25 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 		printk(KERN_WARNING "wm8350-power: battery < 2.85V\n");
 		wm8350_charger_enable(wm8350, 1);
 		break;
-	case WM8350_EXT_USB_FB_EINT:
+	case WM8350_IRQ_EXT_USB_FB:
 		printk(KERN_INFO "wm8350-power: USB is now supply\n");
 		power->is_usb_supply = 1;
 		wm8350_charger_config(wm8350, policy);
 		wm8350_charger_enable(wm8350, 1);
 		break;
-	case WM8350_EXT_WALL_FB_EINT:
+	case WM8350_IRQ_EXT_WALL_FB:
 		printk(KERN_INFO "wm8350-power: AC is now supply\n");
 		power->is_usb_supply = 0;
 		wm8350_charger_config(wm8350, policy);
 		wm8350_charger_enable(wm8350, 1);
+		
+		bat_count = 0;
+		del_timer(&bat_chg_timer);
+		del_timer(&bat_det_timer);
+		bat_det_timer.expires = jiffies + msecs_to_jiffies(1000);
+		add_timer(&bat_det_timer);
 		break;
-	case WM8350_EXT_BAT_FB_EINT:
+	case WM8350_IRQ_EXT_BAT_FB:
 		printk(KERN_INFO "wm8350-power: Battery is now supply\n");
 		power->is_usb_supply = 0;
 		break;
@@ -304,7 +420,372 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 	default:
 		printk(KERN_ERR "wm8350-power: irq %d don't care\n", irq);
 	}
+
 	mutex_unlock(&power->charger_mutex);
+}
+
+/*********************************************************************
+ *		Timer Driver	
+ *********************************************************************/
+void wm8350_bat_det_work(struct work_struct *work)
+{
+	int event = 0;
+	int state, uvolt;
+	struct list_head *p;
+	struct wm8350 *wm8350 = wm8350_bat;
+	struct wm8350_power *power = &wm8350->power;
+	struct wm8350_charger_policy *policy = power->policy;
+	wm8350_bat_event_callback_list_t *temp = NULL;
+	
+	state = wm8350_get_supplies(wm8350) & WM8350_LINE_SUPPLY;
+	uvolt = wm8350_read_battery_uvolts(wm8350);
+	
+	/* LED Control */
+	if (state) {
+		printk("battery detect...\n");
+		wm8350_gpio_set_status(wm8350, 10, 1);
+		wm8350_gpio_set_status(wm8350, 11, 0);
+
+		event		= WM8350_BAT_EVENT_DETECT;
+		bat_detect	= WM8350_BAT_EVENT_DETECT;
+	}
+
+	if (!state) {
+		printk("battery not detect...\n");
+		wm8350_gpio_set_status(wm8350, 10, 1);
+		wm8350_gpio_set_status(wm8350, 11, 1);
+
+		event		= WM8350_BAT_EVENT_NOTDETECT;
+		bat_detect	= WM8350_BAT_EVENT_NOTDETECT;
+	}
+	
+
+	if (!list_empty(&wm8350_bat_events[event])) {
+		list_for_each(p, &wm8350_bat_events[event]) {
+			temp = list_entry(p, wm8350_bat_event_callback_list_t, list);
+			temp->callback.func(temp->callback.param);
+		}
+	}
+}
+
+void wm8350_bat_chg_work(struct work_struct *work)
+{
+	int event = 0;
+	int line, batt;
+	struct list_head *p;
+	struct wm8350 *wm8350 = wm8350_bat;
+	wm8350_bat_event_callback_list_t *temp = NULL;
+
+	bat_count = 0;
+	line = wm8350_get_supplies(wm8350) & WM8350_LINE_SUPPLY;
+	batt = wm8350_batt_status(wm8350);
+
+	if (line && (batt == POWER_SUPPLY_STATUS_DISCHARGING) &&
+				(bat_detect == WM8350_BAT_EVENT_DETECT)) {
+		printk("battery full charging..\n");
+		wm8350_gpio_set_status(wm8350, 10, 0);
+		wm8350_gpio_set_status(wm8350, 11, 1);
+
+		event = WM8350_BAT_EVENT_FULL_CHG;
+		
+		if (!list_empty(&wm8350_bat_events[event])) {
+			list_for_each(p, &wm8350_bat_events[event]) {
+				temp = list_entry(p, wm8350_bat_event_callback_list_t, list);
+				temp->callback.func(temp->callback.param);
+			}
+		}
+	}
+}
+
+void wm8350_bat_fault_work(struct work_struct *work)
+{
+	int event = 0;
+	struct list_head *p;
+	wm8350_bat_event_callback_list_t *temp = NULL;
+
+	event = WM8350_BAT_EVENT_FAULT;
+
+	if (!list_empty(&wm8350_bat_events[event])) {
+		list_for_each(p, &wm8350_bat_events[event]) {
+			temp = list_entry(p, wm8350_bat_event_callback_list_t, list);
+			temp->callback.func(temp->callback.param);
+		}
+	}
+}
+
+static void bat_chg_timer_handler(unsigned long data)
+{
+	if (bat_count < 24) {  // bat charging check to 5 Mintue
+		bat_count++;
+
+		del_timer(&bat_chg_timer);
+		bat_chg_timer.expires = jiffies + msecs_to_jiffies(2000);
+		add_timer(&bat_chg_timer);
+	}
+	else {
+		schedule_work(&bat_chg);
+	}
+}
+
+static void bat_det_timer_handler(unsigned long data)
+{
+	schedule_work(&bat_det);
+}
+
+static void bat_fault_timer_handler(unsigned long data)
+{
+	schedule_work(&bat_fault);
+}
+
+/*********************************************************************
+ *		Control Driver	
+ *********************************************************************/
+static int wm8350_bat_event_subscribe(type_bat_event event,
+					wm8350_bat_event_callback_t callback)
+{
+	wm8350_bat_event_callback_list_t *new = NULL;
+
+	pr_debug("Event: %d Subscribe\n", event);
+
+	/* Check wheter the event & callback are valid? */
+	if (event >= WM8350_BAT_EVENT_NUM) {
+		printk("Invalid Event : %d\n", event);
+		return -EINVAL;
+	}
+
+	if (NULL == callback.func) {
+		pr_debug("Null or Invalid Callback\n");
+		return -EINVAL;
+	}
+
+	/* Create a new linked list entry */
+	new = kmalloc(sizeof(wm8350_bat_event_callback_list_t), GFP_KERNEL);
+	if (NULL == new) {
+		return -ENOMEM;
+	}
+
+	/* Initialize the list node fields */
+	new->callback.func = callback.func;
+	new->callback.param = callback.param;
+	INIT_LIST_HEAD(&new->list);
+
+	/* Obtain the lock to access the list */
+	if (down_interruptible(&event_mutex)) {
+		kfree(new);
+		return -EINTR;
+	}
+
+	/* Add this entry to the event list */
+	list_add_tail(&new->list, &wm8350_bat_events[event]);
+
+	/* Release the lock */
+	up(&event_mutex);
+
+	return 0;
+}
+
+static int wm8350_bat_event_unsubscribe(type_bat_event event,
+				   wm8350_bat_event_callback_t callback)
+{
+	struct list_head *p;
+	struct list_head *n;
+	wm8350_bat_event_callback_list_t *temp = NULL;
+	int ret = -1;
+
+	pr_debug("Event:%d Unsubscribe\n", event);
+
+	/* Check whether the event & callback are valid? */
+	if (event >= WM8350_BAT_EVENT_NUM) {
+		printk("Invalid Event:%d\n", event);
+		return -EINVAL;
+	}
+
+	if (NULL == callback.func) {
+		pr_debug("Null or Invalid Callback\n");
+		return -EINVAL;
+	}
+
+	/* Obtain the lock to access the list */
+	if (down_interruptible(&event_mutex)) {
+		return -EINTR;
+	}
+
+	/* Find the entry in the list */
+	list_for_each_safe(p, n, &wm8350_bat_events[event]) {
+		temp = list_entry(p, wm8350_bat_event_callback_list_t, list);
+		if (temp->callback.func == callback.func
+		    && temp->callback.param == callback.param) {
+			/* Remove the entry from the list */
+			list_del(p);
+			kfree(temp);
+			ret = 0;
+			break;
+		}
+	}
+
+	/* Release the lock */
+	up(&event_mutex);
+
+	return ret;
+}
+
+static void wm8350_bat_event_list_init(void)
+{
+	int i;
+	for (i=0; i<WM8350_BAT_EVENT_NUM; i++) {
+		INIT_LIST_HEAD(&wm8350_bat_events[i]);
+	}
+
+	sema_init(&event_mutex, 1);
+}
+
+static void wm8350_bat_callbackfn(void *event)
+{
+	printk(KERN_INFO "\n\n DETECT WM8350 BAT EVENT : %d\n\n",
+			(unsigned int)event);
+}
+
+static void wm8350_bat_user_notify_callback(void *event)
+{
+	printk("user_notify_callback ...\n");
+
+	CIRC_ADD((int)event, wm8350_event, CIRC_BUF_MAX);
+	kill_fasync(&wm8350_bat_queue, SIGIO, POLL_IN);
+}
+
+static int wm8350_bat_open(struct inode *inode, struct file *file)
+{
+	return 0;
+}
+static int wm8350_bat_release(struct inode *inode, struct file *file)
+{
+	int i;
+	wm8350_bat_event_callback_t event_sub;
+
+	for(i=0; i<WM8350_BAT_EVENT_NUM; i++) {
+		event_sub.func = wm8350_bat_user_notify_callback;
+		event_sub.param = (void *)i;
+		wm8350_bat_event_unsubscribe(i, event_sub);	
+
+		event_sub.func = wm8350_bat_callbackfn;
+		wm8350_bat_event_unsubscribe(i, event_sub);
+	}
+
+	wm8350_event.head = wm8350_event.tail = 0;
+
+	return 0;
+}
+
+static int wm8350_bat_get_status(struct wm8350 *wm8350, unsigned long arg)
+{
+	_t_wm8350_chg_data chg_data = {0};
+
+	if (copy_from_user((void *)&chg_data,
+				(const void *)arg,
+				sizeof(chg_data)))
+		return -EFAULT;
+
+	switch (chg_data.command) {
+		case WM8350_BAT_UVOLTAGE:
+			chg_data.uvolt = wm8350_read_battery_uvolts(wm8350);
+			break;
+
+		case WM8350_CHG_MODE_STATUS:
+			chg_data.status = (wm8350_reg_read(wm8350, 
+					WM8350_BATTERY_CHARGER_CONTROL_2) &
+					CHG_MODE_STATUS) >> 12;
+			break;
+	
+		case WM8350_LINE_STATUS:
+			chg_data.status = (wm8350_get_supplies(wm8350) & 
+					WM8350_LINE_SUPPLY) >> 2; 
+				break;
+
+		default:
+			printk("wm8350 bat : unsupported command 0x%x\n", chg_data.command);
+			return 0;
+	}
+
+	if (copy_to_user((void *)arg,
+				&chg_data, sizeof(chg_data)))
+		return -EFAULT;
+
+	return 0;
+}
+
+static int wm8350_bat_ioctl(struct inode *inode, struct file *file,
+				unsigned int cmd, unsigned long arg)
+{
+	
+	int ret = 0;
+	struct wm8350 *wm8350 = wm8350_bat;
+	wm8350_bat_event_callback_t event_sub;
+	type_bat_event event;
+
+	if (_IOC_TYPE(cmd) != 'P')
+		return -ENOTTY;
+
+	switch (cmd) {
+		case WM8350_BAT_STATUS:
+			ret = wm8350_bat_get_status(wm8350, arg);
+			break;
+
+		case WM8350_BAT_SUBSCRIBE:
+			if (get_user(event, (int __user *)arg)) {
+				return -EFAULT;
+			}
+			event_sub.func = wm8350_bat_callbackfn;
+			event_sub.param = (void *)event;
+			ret = wm8350_bat_event_subscribe(event, event_sub);
+			pr_debug("subscribe done\n");
+			break;
+		
+		case WM8350_BAT_UNSUBSCRIBE:
+			if (get_user(event, (int __user *)arg)) {
+				return -EFAULT;
+			}
+			event_sub.func = wm8350_bat_callbackfn;
+			event_sub.param = (void *)event;
+			ret = wm8350_bat_event_unsubscribe(event, event_sub);
+			pr_debug("unsubscribe done\n");
+			break;
+
+		case WM8350_BAT_NOTIFY_USER:
+			if (get_user(event, (int __user *)arg)) {
+				return -EFAULT;
+			}
+			event_sub.func = wm8350_bat_user_notify_callback;
+			event_sub.param = (void *)event;
+			ret = wm8350_bat_event_subscribe(event, event_sub);
+			break;
+
+		case WM8350_BAT_GET_NOTIFY:
+			CIRC_REMOVE(event, wm8350_event, CIRC_BUF_MAX);
+			if (put_user(event, (int __user *)arg)) {
+				return -EFAULT;
+			}
+			break;
+
+		case WM8350_BAT_REMOVE_USER:
+			if (get_user(event, (int __user *)arg)) {
+				return -EFAULT;
+			}
+			event_sub.func = wm8350_bat_user_notify_callback;
+			event_sub.param = (void *)event;
+			ret = wm8350_bat_event_unsubscribe(event, event_sub);
+			break;
+
+		default:
+			printk("wm8350 bat : unsupported ioctl command 0x%x\n", cmd);
+			break;
+	}
+
+	return ret;
+}
+
+static int wm8350_bat_fasync(int fd, struct file *filp, int mode)
+{
+	return fasync_helper(fd, filp, mode, &wm8350_bat_queue);
 }
 
 /*********************************************************************
@@ -442,15 +923,15 @@ static void wm8350_init_charger(struct wm8350 *wm8350)
 	wm8350_unmask_irq(wm8350, WM8350_IRQ_CHG_VBATT_LT_2P85);
 
 	/* and supply change events */
-	wm8350_register_irq(wm8350, WM8350_EXT_USB_FB_EINT,
+	wm8350_register_irq(wm8350, WM8350_IRQ_EXT_USB_FB,
 			    wm8350_charger_handler, NULL);
-	wm8350_unmask_irq(wm8350, WM8350_EXT_USB_FB_EINT);
-	wm8350_register_irq(wm8350, WM8350_EXT_WALL_FB_EINT,
+	wm8350_unmask_irq(wm8350, WM8350_IRQ_EXT_USB_FB);
+	wm8350_register_irq(wm8350, WM8350_IRQ_EXT_WALL_FB,
 			    wm8350_charger_handler, NULL);
-	wm8350_unmask_irq(wm8350, WM8350_EXT_WALL_FB_EINT);
-	wm8350_register_irq(wm8350, WM8350_EXT_BAT_FB_EINT,
+	wm8350_unmask_irq(wm8350, WM8350_IRQ_EXT_WALL_FB);
+	wm8350_register_irq(wm8350, WM8350_IRQ_EXT_BAT_FB,
 			    wm8350_charger_handler, NULL);
-	wm8350_unmask_irq(wm8350, WM8350_EXT_BAT_FB_EINT);
+	wm8350_unmask_irq(wm8350, WM8350_IRQ_EXT_BAT_FB);
 
 	/* system monitoring */
 	wm8350_unmask_irq(wm8350, WM8350_IRQ_SYS_HYST_COMP_FAIL);
@@ -478,12 +959,12 @@ static void free_charger_irq(struct wm8350 *wm8350)
 	wm8350_free_irq(wm8350, WM8350_IRQ_CHG_VBATT_LT_3P1);
 	wm8350_mask_irq(wm8350, WM8350_IRQ_CHG_VBATT_LT_2P85);
 	wm8350_free_irq(wm8350, WM8350_IRQ_CHG_VBATT_LT_2P85);
-	wm8350_mask_irq(wm8350, WM8350_EXT_USB_FB_EINT);
-	wm8350_free_irq(wm8350, WM8350_EXT_USB_FB_EINT);
-	wm8350_mask_irq(wm8350, WM8350_EXT_WALL_FB_EINT);
-	wm8350_free_irq(wm8350, WM8350_EXT_WALL_FB_EINT);
-	wm8350_mask_irq(wm8350, WM8350_EXT_BAT_FB_EINT);
-	wm8350_free_irq(wm8350, WM8350_EXT_BAT_FB_EINT);
+	wm8350_mask_irq(wm8350, WM8350_IRQ_EXT_USB_FB);
+	wm8350_free_irq(wm8350, WM8350_IRQ_EXT_USB_FB);
+	wm8350_mask_irq(wm8350, WM8350_IRQ_EXT_WALL_FB);
+	wm8350_free_irq(wm8350, WM8350_IRQ_EXT_WALL_FB);
+	wm8350_mask_irq(wm8350, WM8350_IRQ_EXT_BAT_FB);
+	wm8350_free_irq(wm8350, WM8350_IRQ_EXT_BAT_FB);
 
 	wm8350_mask_irq(wm8350, WM8350_IRQ_SYS_HYST_COMP_FAIL);
 	wm8350_free_irq(wm8350, WM8350_IRQ_SYS_HYST_COMP_FAIL);
@@ -493,10 +974,10 @@ static int wm8350_fast_charger_mode(struct wm8350 *wm8350)
 {
 	int state, uvolts;
 
-	state = wm8350_batt_status(wm8350);
+	state = wm8350_get_supplies(wm8350) && WM8350_LINE_SUPPLY;
 	uvolts = wm8350_read_battery_uvolts(wm8350);
-
-	if ((state == 1) && (uvolts > 3100000)) {
+	
+	if (state && (uvolts > 3100000)) {
 		printk(KERN_INFO "Fast Charger Mode [%d uV]....\n", uvolts);
 		wm8350_reg_unlock(wm8350);
 		wm8350_set_bits(wm8350, WM8350_BATTERY_CHARGER_CONTROL_1,
@@ -504,18 +985,35 @@ static int wm8350_fast_charger_mode(struct wm8350 *wm8350)
 		wm8350_reg_lock(wm8350);
 	}
 
+	if (state) {
+		wm8350_gpio_set_status(wm8350, 10, 1);
+		wm8350_gpio_set_status(wm8350, 11, 0);
+
+		bat_detect = WM8350_BAT_EVENT_DETECT;
+	}
+
 	return 0;	
 }
 
+static struct file_operations wm8350_bat_fos = {
+	.owner		= THIS_MODULE,
+	.ioctl		= wm8350_bat_ioctl,
+	.open		= wm8350_bat_open,
+	.release	= wm8350_bat_release,
+	.fasync		= wm8350_bat_fasync,
+};
+
 static int __init wm8350_power_probe(struct platform_device *pdev)
 {
+	int ret;
 	struct wm8350 *wm8350 = platform_get_drvdata(pdev);
 	struct wm8350_power *power = &wm8350->power;
 	struct wm8350_charger_policy *policy = power->policy;
 	struct power_supply *usb = &power->usb;
 	struct power_supply *battery = &power->battery;
 	struct power_supply *ac = &power->ac;
-	int ret;
+
+	struct class_device *wm8350_device;
 
 	printk(KERN_INFO "wm8350: power driver %s\n", WM8350_POWER_VERSION);
 
@@ -548,6 +1046,51 @@ static int __init wm8350_power_probe(struct platform_device *pdev)
 	if (ret)
 		goto usb_failed;
 
+	wm8350_bat = platform_get_drvdata(pdev);
+	wm8350_bat_major = register_chrdev(0, DEV_NAME, &wm8350_bat_fos);
+	if (wm8350_bat_major < 0) {
+		printk(KERN_ERR "unable to get a major for wm8350_bat\n");
+		ret = wm8350_bat_major;
+		goto usb_failed;
+	}
+
+	wm8350_dev_class = class_create(THIS_MODULE, DEV_NAME);
+	if (IS_ERR(wm8350_dev_class)) {
+		printk(KERN_ERR "error creating wm8350 dev class\n");
+		ret = -1;
+		goto class_failed;
+	}
+
+	wm8350_device = 
+		class_device_create(wm8350_dev_class, NULL, MKDEV(wm8350_bat_major, 0),
+				NULL, DEV_NAME);
+	if (IS_ERR(wm8350_device)) {
+		printk(KERN_ERR "error creating wm8350 class device\n");
+		ret = -1;
+		goto dev_failed;
+	}
+
+	wm8350_event.buf = kmalloc(CIRC_BUF_MAX * sizeof(char), GFP_KERNEL);
+	if (NULL == wm8350_event.buf) {
+		ret = -ENOMEM;
+		goto buf_failed;
+	}
+
+	wm8350_bat_event_list_init();
+	wm8350_event.head = wm8350_event.tail = 0;
+
+	/* battery charging timer */
+	init_timer(&bat_chg_timer);
+	bat_chg_timer.function = bat_chg_timer_handler;
+
+	/* battery detection timer */
+	init_timer(&bat_det_timer);
+	bat_det_timer.function = bat_det_timer_handler;
+
+	/* battery fault timer */
+	init_timer(&bat_fault_timer);
+	bat_fault_timer.function = bat_fault_timer_handler;
+
 	ret = device_create_file(&pdev->dev, &dev_attr_supply_state);
 	if (ret < 0)
 		printk(KERN_WARNING "wm8350: failed to add supply sysfs\n");
@@ -558,13 +1101,6 @@ static int __init wm8350_power_probe(struct platform_device *pdev)
 	if (ret < 0)
 		printk(KERN_WARNING "wm8350: failed to add charge sysfs\n");
 	ret = 0;
-	goto success;
-
-usb_failed:
-	power_supply_unregister(battery);
-battery_failed:
-	power_supply_unregister(ac);
-success:
 
 	if (policy == NULL)
 		printk(KERN_INFO "%s: no charger policy - "
@@ -583,13 +1119,26 @@ success:
 	}
 
 	return ret;
+
+buf_failed:
+	class_device_destroy(wm8350_dev_class, MKDEV(wm8350_bat_major, 0));
+dev_failed:
+	class_destroy(wm8350_dev_class);
+class_failed:
+	unregister_chrdev(wm8350_bat_major, DEV_NAME);
+usb_failed:
+	power_supply_unregister(battery);
+battery_failed:
+	power_supply_unregister(ac);
+
+	return ret;
 }
 
 static int __devexit wm8350_power_remove(struct platform_device *pdev)
 {
 	struct wm8350 *wm8350 = platform_get_drvdata(pdev);
 	struct wm8350_power *power = &wm8350->power;
-
+	
 	if (power->charger_enabled) {
 		wm8350_charger_enable(wm8350, 0);
 		free_charger_irq(wm8350);
@@ -600,6 +1149,15 @@ static int __devexit wm8350_power_remove(struct platform_device *pdev)
 	power_supply_unregister(&power->battery);
 	power_supply_unregister(&power->ac);
 	power_supply_unregister(&power->usb);
+
+	wm8350_bat = NULL;
+	class_device_destroy(wm8350_dev_class, MKDEV(wm8350_bat_major, 0));
+	class_destroy(wm8350_dev_class);
+	unregister_chrdev(wm8350_bat_major, DEV_NAME);
+
+	del_timer(&bat_chg_timer);
+	del_timer(&bat_det_timer);
+	del_timer(&bat_fault_timer);
 	return 0;
 }
 

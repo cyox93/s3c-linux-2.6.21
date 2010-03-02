@@ -507,10 +507,10 @@ static inline void s3c_init_wm8350(void)
 
 struct wm8350_charger_policy wm8350_charger = {
 	.eoc_mA			= 50,/* end of charge current (mA)  */
-	.charge_mV		= WM8350_CHG_4_15V, /* charge voltage */
+	.charge_mV		= WM8350_CHG_4_05V, /* charge voltage */
 	.fast_limit_mA		= 500,/* fast charge current limit */
 	.fast_limit_USB_mA	= 400,/* USB fast charge current limit */
-	.charge_timeout		= 60,	/* charge timeout (mins) */
+	.charge_timeout		= 300,	/* charge timeout (mins) */
 	.trickle_start_mV	= WM8350_CHG_TRICKLE_3_1V, /* trickle charge starts at mV */
 	.trickle_charge_mA	= WM8350_CHG_TRICKLE_50mA, /* trickle charge current */
 };
@@ -627,6 +627,10 @@ static int config_s3c_wm8350_gpio(struct wm8350 *wm8350)
 			   WM8350_GPIO12_LINE_EN_OUT, WM8350_GPIO_ACTIVE_LOW,
 			   WM8350_GPIO_PULL_NONE, WM8350_GPIO_INVERT_OFF,
 			   WM8350_GPIO_DEBOUNCE_OFF);
+
+	/* Chager LED initial */
+	wm8350_gpio_set_status(wm8350, 10, 1);
+	wm8350_gpio_set_status(wm8350, 11, 1);
 
 	return 0;
 }
