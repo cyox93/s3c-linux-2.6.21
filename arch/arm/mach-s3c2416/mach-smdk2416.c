@@ -508,7 +508,7 @@ static inline void s3c_init_wm8350(void)
 struct wm8350_charger_policy wm8350_charger = {
 	.eoc_mA			= 50,/* end of charge current (mA)  */
 	.charge_mV		= WM8350_CHG_4_05V, /* charge voltage */
-	.fast_limit_mA		= 500,/* fast charge current limit */
+	.fast_limit_mA		= 750,/* fast charge current limit */
 	.fast_limit_USB_mA	= 400,/* USB fast charge current limit */
 	.charge_timeout		= 300,	/* charge timeout (mins) */
 	.trickle_start_mV	= WM8350_CHG_TRICKLE_3_1V, /* trickle charge starts at mV */

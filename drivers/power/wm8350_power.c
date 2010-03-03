@@ -58,6 +58,7 @@
 #define WM8350_BAT_SUBSCRIBE		_IOR('P', 0xaa, int)
 #define WM8350_BAT_UNSUBSCRIBE		_IOR('P', 0xab, int)
 #define WM8350_BAT_REMOVE_USER		_IOR('P', 0xac, int)
+#define WM8350_BAT_LED_CONTROL		_IOWR('P', 0xab, int)
 
 #define CHG_MODE_STATUS		0x3000
 
@@ -74,6 +75,11 @@ typedef enum {
 	WM8350_BAT_EVENT_FAULT,
 	WM8350_BAT_EVENT_NUM,
 } type_bat_event;
+
+typedef enum {
+	WM8350_BAT_GREEN_LED = 0,
+	WM8350_BAT_RED_LED,
+} wm8350_led_control;
 
 typedef struct {
 	void (*func) (void *);
@@ -94,6 +100,10 @@ typedef struct {
 	unsigned int uvolt;	
 } _t_wm8350_chg_data;
 
+typedef struct {
+	unsigned int command;
+	unsigned int control;
+} _t_wm8350_led_data;
 
 static int wm8350_bat_major;
 static struct class *wm8350_dev_class;
@@ -433,8 +443,6 @@ void wm8350_bat_det_work(struct work_struct *work)
 	int state, uvolt;
 	struct list_head *p;
 	struct wm8350 *wm8350 = wm8350_bat;
-	struct wm8350_power *power = &wm8350->power;
-	struct wm8350_charger_policy *policy = power->policy;
 	wm8350_bat_event_callback_list_t *temp = NULL;
 	
 	state = wm8350_get_supplies(wm8350) & WM8350_LINE_SUPPLY;
@@ -713,6 +721,34 @@ static int wm8350_bat_get_status(struct wm8350 *wm8350, unsigned long arg)
 	return 0;
 }
 
+static int wm8350_bat_led_control(struct wm8350 *wm8350, unsigned long arg)
+{
+	_t_wm8350_led_data led_data = {0};
+
+	if (copy_from_user((void *)&led_data,
+				(const void *)arg,
+				sizeof(led_data)))
+		return -EFAULT;
+
+	switch (led_data.command) {
+		case WM8350_BAT_GREEN_LED:
+			if (led_data.control)
+				wm8350_gpio_set_status(wm8350, 10, 0);
+			else
+				wm8350_gpio_set_status(wm8350, 10, 1);
+			break;
+
+		case WM8350_BAT_RED_LED:
+			if (led_data.control)
+				wm8350_gpio_set_status(wm8350, 11, 0);
+			else
+				wm8350_gpio_set_status(wm8350, 11, 1);
+			break;
+	}
+
+	return 0;
+}
+
 static int wm8350_bat_ioctl(struct inode *inode, struct file *file,
 				unsigned int cmd, unsigned long arg)
 {
@@ -728,6 +764,10 @@ static int wm8350_bat_ioctl(struct inode *inode, struct file *file,
 	switch (cmd) {
 		case WM8350_BAT_STATUS:
 			ret = wm8350_bat_get_status(wm8350, arg);
+			break;
+		
+		case WM8350_BAT_LED_CONTROL:
+			ret = wm8350_bat_led_control(wm8350, arg);
 			break;
 
 		case WM8350_BAT_SUBSCRIBE:
