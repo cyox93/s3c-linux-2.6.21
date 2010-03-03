@@ -1586,6 +1586,8 @@ static void s3c_fb_change_fb(struct fb_info *info)
 #define _LCD_PANEL_TRULY	1
 #define _LCD_PANEL_TCL		2
 
+static const char *_lcd_panel_str[8] = { "BYD", "TRULY", "TCL", NULL, };
+
 static int
 _lcd_get_panel_id(void)
 {
@@ -1661,12 +1663,63 @@ _lcd_panel_init_tcl(void)
 	_lcd_ili9225b_reg_write(0x0038,0x00DB);
 	_lcd_ili9225b_reg_write(0x0039,0x0000);
 	mdelay(50);
+	_lcd_ili9225b_reg_write(0x0007,0x1017); 
 }
 
 static void
 _lcd_panel_init_truly(void)
 {
-	_lcd_panel_init_tcl();
+	_lcd_ili9225b_reg_write(0x0010,0x0000); 
+	_lcd_ili9225b_reg_write(0x0011,0x0000); 
+	_lcd_ili9225b_reg_write(0x0012,0x0000); 
+	_lcd_ili9225b_reg_write(0x0013,0x0000); 
+	_lcd_ili9225b_reg_write(0x0014,0x0000); 
+	mdelay(40);                       
+	_lcd_ili9225b_reg_write(0x0011,0x0018); 
+	_lcd_ili9225b_reg_write(0x0012,0x6121); 
+	_lcd_ili9225b_reg_write(0x0013,0x0043);
+	_lcd_ili9225b_reg_write(0x0014,0x414A); //414E
+	_lcd_ili9225b_reg_write(0x0010,0x0800);
+	mdelay(10);                       
+	_lcd_ili9225b_reg_write(0x0011,0x103B); 
+	mdelay(30);                       
+	_lcd_ili9225b_reg_write(0x0001,0x011C);
+	_lcd_ili9225b_reg_write(0x0002,0x0100); 
+	_lcd_ili9225b_reg_write(0x0003,0x1030); 
+	_lcd_ili9225b_reg_write(0x0007,0x0000); 
+	_lcd_ili9225b_reg_write(0x0008,0x0808); 
+	_lcd_ili9225b_reg_write(0x000B,0x1100);
+	_lcd_ili9225b_reg_write(0x000C,0x0000); 
+	mdelay(15);
+	_lcd_ili9225b_reg_write(0x0015,0x0020);
+	_lcd_ili9225b_reg_write(0x0020,0x0000);
+	_lcd_ili9225b_reg_write(0x0021,0x0000);
+	_lcd_ili9225b_reg_write(0x0030,0x0000); 
+	_lcd_ili9225b_reg_write(0x0031,0x00DB); 
+	_lcd_ili9225b_reg_write(0x0032,0x0000); 
+	_lcd_ili9225b_reg_write(0x0033,0x0000); 
+	_lcd_ili9225b_reg_write(0x0034,0x00DB); 
+	_lcd_ili9225b_reg_write(0x0035,0x0000); 
+	_lcd_ili9225b_reg_write(0x0036,0x00AF); 
+	_lcd_ili9225b_reg_write(0x0037,0x0000); 
+	_lcd_ili9225b_reg_write(0x0038,0x00DB); 
+	_lcd_ili9225b_reg_write(0x0039,0x0000); 
+	_lcd_ili9225b_reg_write(0x0050,0x0404); 
+	_lcd_ili9225b_reg_write(0x0051,0x0404); 
+	_lcd_ili9225b_reg_write(0x0052,0x0404); 
+	_lcd_ili9225b_reg_write(0x0053,0x0404); 
+	_lcd_ili9225b_reg_write(0x0054,0x0404); 
+	_lcd_ili9225b_reg_write(0x0055,0x0404); 
+	_lcd_ili9225b_reg_write(0x0056,0x0404); 
+	_lcd_ili9225b_reg_write(0x0057,0x0404); 
+	_lcd_ili9225b_reg_write(0x0058,0x0C00);
+	_lcd_ili9225b_reg_write(0x0059,0x000C); 
+	_lcd_ili9225b_reg_write(0x000F,0x0801); 
+	_lcd_ili9225b_reg_write(0x00EC,0x124A);
+	_lcd_ili9225b_reg_write(0x0007,0x0012); 
+	mdelay(50);                      
+	_lcd_ili9225b_reg_write(0x0007,0x1017); 
+	_lcd_ili9225b_reg(0x0022);
 }
 
 static void
@@ -1679,6 +1732,9 @@ static void
 _lcd_panel_init(void)
 {
 	int id = _lcd_get_panel_id();
+
+	printk("Initialize %s LCD panel\n",
+			_lcd_panel_str[id] ? _lcd_panel_str[id] : "unknown");
 
 	switch (id) {
 	case _LCD_PANEL_BYD:
@@ -1700,10 +1756,6 @@ void lcd_module_init (void)
 	lcd_set_command_mode(1);
 
 	_lcd_panel_init();
-	_lcd_panel_set_display(1);
-
-	// clear lcd
-	_lcd_ili9225b_reg(0x22);	   
 
 	/* set window size */
 	int xs = 0;
