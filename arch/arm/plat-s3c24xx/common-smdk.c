@@ -320,13 +320,11 @@ void gpio_wifi_power_down(bool flag)
 
 void gpio_wifi_reset(void)
 {
-	mdelay(10);
+	mdelay(1);
 	s3c2410_gpio_setpin(S3C2410_GPH6, 0);
-	gpio_wifi_power_down(0);
 	mdelay(10);
-	gpio_wifi_power_down(1);
 	s3c2410_gpio_setpin(S3C2410_GPH6, 1);
-	mdelay(10);
+	mdelay(1);
 }
 
 void wifi_gpio_init (void)
