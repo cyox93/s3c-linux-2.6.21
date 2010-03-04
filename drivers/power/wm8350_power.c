@@ -129,6 +129,58 @@ DECLARE_WORK(bat_det, wm8350_bat_det_work);
 DECLARE_WORK(bat_chg, wm8350_bat_chg_work);
 DECLARE_WORK(bat_fault, wm8350_bat_fault_work);
 
+static int wm8350_bat_green_led_show(struct device *dev, struct device_attribute *attr, 
+					char *buf)
+{
+	struct wm8350 *wm8350 = dev_get_drvdata(dev);
+		
+	return snprintf(buf, PAGE_SIZE, "%d\n", wm8350_gpio_get_status(wm8350, 10) ? 0 : 1);
+}
+
+static int wm8350_bat_green_led_store(struct device *dev, struct device_attribute *attr,
+					const char *buf, size_t len)
+{
+	unsigned long value = simple_strtoul(buf, NULL, 10);
+	struct wm8350 *wm8350 = dev_get_drvdata(dev);
+
+	if (value > 1)
+		return -ERANGE;
+
+	wm8350_gpio_set_status(wm8350, 10, value ? 0 : 1);
+
+	return len;
+}
+
+static int wm8350_bat_red_led_show(struct device *dev, struct device_attribute *attr, 
+					char *buf)
+{
+	struct wm8350 *wm8350 = dev_get_drvdata(dev);
+		
+	return snprintf(buf, PAGE_SIZE, "%d\n", wm8350_gpio_get_status(wm8350, 11) ? 0 : 1);
+}
+
+static int wm8350_bat_red_led_store(struct device *dev, struct device_attribute *attr,
+					const char *buf, size_t len)
+{
+	unsigned long value = simple_strtoul(buf, NULL, 10);
+	struct wm8350 *wm8350 = dev_get_drvdata(dev);
+
+	if (value > 1)
+		return -ERANGE;
+
+	wm8350_gpio_set_status(wm8350, 11, value ? 0 : 1);
+
+	return len;
+}
+
+static DEVICE_ATTR(green_led, 0644,
+		wm8350_bat_green_led_show,
+		wm8350_bat_green_led_store);
+
+static DEVICE_ATTR(red_led, 0644,
+		wm8350_bat_red_led_show,
+		wm8350_bat_red_led_store);
+
 static inline int wm8350_charge_time_min(struct wm8350 *wm8350, int min)
 {
 	if (wm8350->rev == WM8351_REV_M)
@@ -1014,7 +1066,7 @@ static int wm8350_fast_charger_mode(struct wm8350 *wm8350)
 {
 	int state, uvolts;
 
-	state = wm8350_get_supplies(wm8350) && WM8350_LINE_SUPPLY;
+	state = wm8350_get_supplies(wm8350) & WM8350_LINE_SUPPLY;
 	uvolts = wm8350_read_battery_uvolts(wm8350);
 	
 	if (state && (uvolts > 3100000)) {
@@ -1140,6 +1192,14 @@ static int __init wm8350_power_probe(struct platform_device *pdev)
 	ret = device_create_file(&pdev->dev, &dev_attr_charger_state);
 	if (ret < 0)
 		printk(KERN_WARNING "wm8350: failed to add charge sysfs\n");
+	
+	ret = device_create_file(&pdev->dev, &dev_attr_green_led);
+	if (ret <0)
+		printk(KERN_WARNING "wm8350: failed to add green led sysfs\n");
+	ret = device_create_file(&pdev->dev, &dev_attr_red_led);
+	if (ret <0)
+		printk(KERN_WARNING "wm8350: failed to add red led sysfs\n");
+
 	ret = 0;
 
 	if (policy == NULL)
