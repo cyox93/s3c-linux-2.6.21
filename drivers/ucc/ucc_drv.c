@@ -131,14 +131,6 @@ static int ucc_ioctl(struct inode *inode, struct file *file,
 			if (arg == 0x11) speaker_amp(1);
 			break;	
 
-		case IOCTLUCC_KEY_LED :			
-			//printk("IOCTLUCC_KEY_LED [0x%x]\n", arg);
-			if (arg) 
-				key_led(1);
-			else
-				key_led(0);
-			break;	
-
 		case IOCTLUCC_VIBRATOR :			
 			//printk("IOCTLUCC_VIBRATOR [0x%x]\n", arg);
 			if (arg) 

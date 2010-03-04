@@ -72,6 +72,12 @@ static struct s3c24xx_led_platdata smdk_pdata_led7 = {
 	.name		= "led7",
 };
 
+static struct s3c24xx_led_platdata smdk_pdata_led_key_bl = {
+	.gpio		= S3C2410_GPD15,
+	.flags		= 0,
+	.name		= "key-backlight",
+};
+
 static struct platform_device smdk_led4 = {
 	.name		= "s3c24xx_led",
 	.id		= 0,
@@ -101,6 +107,14 @@ static struct platform_device smdk_led7 = {
 	.id		= 3,
 	.dev		= {
 		.platform_data = &smdk_pdata_led7,
+	},
+};
+
+static struct platform_device smdk_led_key_bl = {
+	.name		= "s3c24xx_led",
+	.id		= 4,
+	.dev		= {
+		.platform_data = &smdk_pdata_led_key_bl,
 	},
 };
 
@@ -229,10 +243,15 @@ static struct platform_device __initdata *smdk_devs[] = {
 #if 0
 	&s3c_device_onenand,
 #endif
+
+#if 0
 	&smdk_led4,
 	&smdk_led5,
 	&smdk_led6,
 	&smdk_led7,
+#else
+	&smdk_led_key_bl,
+#endif
 };
 
 //#define WPU7800_EVM_GPIO
@@ -241,16 +260,6 @@ static struct platform_device __initdata *smdk_devs[] = {
 #ifdef WPU7800_WS_GPIO
 #include <asm/arch/regs-lcd.h>
 #include <linux/delay.h>
-
-void key_led(bool flag)
-{
-	if (flag) { 
-		s3c2410_gpio_setpin(S3C2410_GPD15, 1);
-	} else {
-		s3c2410_gpio_setpin(S3C2410_GPD15, 0);
-	}
-}
-
 void Key_gpio_init(void)
 {
 	u32 mask, mask1, mask2;
@@ -506,7 +515,6 @@ EXPORT_SYMBOL(gpio_wifi_power_down);
 EXPORT_SYMBOL(gpio_wifi_reset);
 EXPORT_SYMBOL(lcd_reset);
 EXPORT_SYMBOL(lcd_gpio_init);
-EXPORT_SYMBOL(key_led);
 EXPORT_SYMBOL(audio_ext_clock);
 EXPORT_SYMBOL(speaker_amp);
 EXPORT_SYMBOL(vibrator_control);

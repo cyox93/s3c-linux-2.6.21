@@ -24,7 +24,6 @@
 #define IOCTLUCC_CAMERA				_IOWR('U', 0xc4, int) 
 #define IOCTLUCC_WLAN					_IOWR('U', 0xc5, int) 
 #define IOCTLUCC_AUDIO				_IOWR('U', 0xc6, int) 
-#define IOCTLUCC_KEY_LED				_IOWR('U', 0xc7, int) 
 #define IOCTLUCC_VIBRATOR				_IOWR('U', 0xc8, int) 
 #define IOCTLUCC_CHARGER				_IOWR('U', 0xc9, int) 
 
@@ -52,7 +51,6 @@ typedef struct
 
 /*_____________________ Imported Variables __________________________________*/
 
-extern void key_led(bool flag);
 extern void gpio_wifi_power(bool flag);
 extern void gpio_wifi_reset(void);
 extern void gpio_wifi_power_down(bool flag);

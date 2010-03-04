@@ -46,7 +46,6 @@
 
 static struct timer_list keypad_scan_timer;
 static struct timer_list endkey_scan_timer;
-static struct timer_list keypad_led_timer;
 
 static int curr_key_irq = 0;
 static int key_irq_press = 0;
@@ -55,8 +54,6 @@ static int key_value = 0;
 static int endkey_press = 0;
 
 static void key_bh_handler(struct work_struct *work);
-
-extern void key_led(bool flag);
 
 static void keypad_irq_mask(void)
 {
@@ -164,12 +161,6 @@ static int keypad_scan(struct s3c_keypad *pdata)
 		rval_sum += rval;
 
 		if ((rval != 0x3f)) {
-			key_led(1);
-
-			del_timer(&keypad_led_timer);
-			keypad_led_timer.expires = jiffies + msecs_to_jiffies(2000);
-			add_timer(&keypad_led_timer);
-			
 			row_cnt = 0;
 			for (j=0; j<KEYPAD_ROWS; j++) {
 				if (((~rval) >> j) & 0x01) {
@@ -234,12 +225,6 @@ static int endkey_scan(struct s3c_keypad *pdata)
 	endkey = __raw_readl(S3C2410_GPFDAT) & 0x01;
 
 	if (!endkey && !endkey_press) {
-		key_led(1);
-
-		del_timer(&keypad_led_timer);
-		keypad_led_timer.expires = jiffies + msecs_to_jiffies(2000);
-		add_timer(&keypad_led_timer);
-
 		endkey_press = 1;
 		
 		input_report_key(dev, pdata->keycodes[12], 1);
@@ -294,11 +279,6 @@ static void endkey_scan_timer_handler(unsigned long data)
 		keypad_irq_unmask();
 		key_irq_press = 0;
 	}
-}
-
-static void keypad_led_timer_handler(unsigned long data)
-{		
-	key_led(0);
 }
 
 static void key_bh_handler(struct work_struct *work)
@@ -442,10 +422,6 @@ static int __init s3c_keypad_probe(struct platform_device *pdev)
 	init_timer(&endkey_scan_timer);
 	endkey_scan_timer.function = endkey_scan_timer_handler;
 	endkey_scan_timer.data = (unsigned long)s3c_keypad;
-
-	/* Scan timer init */
-	init_timer(&keypad_led_timer);
-	keypad_led_timer.function = keypad_led_timer_handler;
 	
 	INIT_WORK(&s3c_keypad->work, key_bh_handler);
 	ret = s3c_keypad_request_irq(s3c_keypad);
