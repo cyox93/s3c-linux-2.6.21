@@ -682,6 +682,62 @@ static struct clk init_clocks_disable[] = {
 		.parent		= &clk_p,
 		.enable		= s3c2443_clkcon_enable_p,
 		.ctrlbit	= S3C2443_PCLKCON_SPI1,
+#ifdef CONFIG_MACH_CANOPUS
+	},{
+		.name    	= "2d",
+		.id	   	= -1,
+		.parent  	= &clk_h,
+		.enable  	= s3c2443_clkcon_enable_h,
+		.ctrlbit 	= S3C2443_HCLKCON_2D,
+	},{
+		.name    	= "ssmc",
+		.id	   	= -1,
+		.parent  	= &clk_h,
+		.enable  	= s3c2443_clkcon_enable_h,
+		.ctrlbit 	= S3C2443_HCLKCON_SSMC,
+	}, {
+		.name    	= "irom",
+		.id	   	= -1,
+		.parent  	= &clk_h,
+		.enable  	= s3c2443_clkcon_enable_h,
+		.ctrlbit 	= S3C2443_HCLKCON_IROM,
+	}, {
+		.name		= "pcm",
+		.id		= -1,
+		.parent		= &clk_p,
+		.enable		= s3c2443_clkcon_enable_p,
+		.ctrlbit	= S3C2443_PCLKCON_PCM,
+	}, {
+		.name		= "spi-hs-0",
+		.id		= -1,
+		.parent		= &clk_p,
+		.enable		= s3c2443_clkcon_enable_p,
+		.ctrlbit	= S3C2443_PCLKCON_SPI_HS_0,
+	}, {
+		.name		= "uart",
+		.id		= 1,
+		.parent		= &clk_p,
+		.enable		= s3c2443_clkcon_enable_p,
+		.ctrlbit	= S3C2443_PCLKCON_UART1,
+	}, {
+		.name		= "uart",
+		.id		= 2,
+		.parent		= &clk_p,
+		.enable		= s3c2443_clkcon_enable_p,
+		.ctrlbit	= S3C2443_PCLKCON_UART2,
+	}, {
+		.name		= "uart",
+		.id		= 3,
+		.parent		= &clk_p,
+		.enable		= s3c2443_clkcon_enable_p,
+		.ctrlbit	= S3C2443_PCLKCON_UART3,
+	},{
+		.name    	= "ssmcclk",
+		.id	   	= -1,
+		.parent		= &clk_esysclk,
+		.enable  	= s3c2443_clkcon_enable_s,
+		.ctrlbit 	= S3C2443_SCLKCON_SSMCCLK,
+#endif	// CONFIG_MACH_CANOPUS
 	}
 };
 
@@ -770,6 +826,7 @@ static struct clk init_clocks[] = {
 		.parent		= &clk_p,
 		.enable		= s3c2443_clkcon_enable_p,
 		.ctrlbit	= S3C2443_PCLKCON_UART0,
+#ifndef CONFIG_MACH_CANOPUS
 	}, {
 		.name		= "uart",
 		.id		= 1,
@@ -788,6 +845,7 @@ static struct clk init_clocks[] = {
 		.parent		= &clk_p,
 		.enable		= s3c2443_clkcon_enable_p,
 		.ctrlbit	= S3C2443_PCLKCON_UART3,
+#endif	// CONFIG_MACH_CANOPUS
 	}, {
 		.name		= "rtc",
 		.id		= -1,
