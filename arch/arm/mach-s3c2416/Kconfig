@@ -31,4 +31,11 @@ config MACH_SMDK2416
 	select MACH_SMDK
 	help
 	  Say Y here if you are using an SMDK2416
+
+config MACH_CANOPUS
+        bool "Support UniData Canopus platform"
+	depends on MACH_SMDK2416
+	default y
+	help
+	  UniData Canopus platform based on SMDK2416
 endmenu

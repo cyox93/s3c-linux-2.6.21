@@ -1028,4 +1028,3 @@ source "crypto/Kconfig"
 
 source "lib/Kconfig"
 
-source "arch/arm/plat-wpu7800/Kconfig"

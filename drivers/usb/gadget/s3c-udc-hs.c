@@ -259,11 +259,11 @@ static void udc_disable(struct s3c_udc *dev)
 	/* usb power disable */
 #if defined(CONFIG_CPU_S3C2450) || defined(CONFIG_CPU_S3C2416)
 	s3c2410_gpio_pullup(S3C2443_GPH14, 1); /* pull-down enable */
-#if defined(CONFIG_PLAT_WPU7800)
+#if defined(CONFIG_MACH_CANOPUS)
 	s3c2410_gpio_pullup(S3C2410_GPG6, 1);  /* vbus detect pull-up/down disable */
-#else
+#else	// CONFIG_MACH_CANOPUS
 	s3c2410_gpio_pullup(S3C2410_GPF2, 1);  /* pull-down enable */
-#endif
+#endif	// CONFIG_MACH_CANOPUS
 #else
 	s3c2410_gpio_pullup(S3C2443_GPH14, 2); /* pull-down enable */
 #endif
@@ -324,19 +324,19 @@ static int udc_enable(struct s3c_udc *dev)
 	/* usb power enable, vbus detect pull-up/down disable */
 #if defined(CONFIG_CPU_S3C2450) || defined(CONFIG_CPU_S3C2416)
 	s3c2410_gpio_pullup(S3C2443_GPH14, 2); /* usb power pull-up enable */
-#if defined(CONFIG_PLAT_WPU7800)
+#if defined(CONFIG_MACH_CANOPUS)
 	s3c2410_gpio_pullup(S3C2410_GPG6, 0);  /* vbus detect pull-up/down disable */
-#else
+#else	// CONFIG_MACH_CANOPUS
 	s3c2410_gpio_pullup(S3C2410_GPF2, 0);  /* vbus detect pull-up/down disable */
-#endif
+#endif	// CONFIG_MACH_CANOPUS
 #else
 	s3c2410_gpio_pullup(S3C2443_GPH14, 0); /* usb power pull-up enable */
 #endif
 
-#if !defined(CONFIG_PLAT_WPU7800)
+#if !defined(CONFIG_MACH_CANOPUS)
 	s3c2410_gpio_cfgpin(S3C2443_GPH14, S3C2443_GPH14_OUTP);
 	s3c2410_gpio_setpin(S3C2443_GPH14, 1); 	/* usb power enbale */
-#endif
+#endif	// CONFIG_MACH_CANOPUS
 
 	mdelay(1);
 
@@ -362,13 +362,13 @@ static int udc_enable(struct s3c_udc *dev)
 	__raw_writel((1<<2)|(1<<1)|(0<<0), S3C_URSTCON);
 	__raw_writel((0<<2)|(0<<1)|(0<<0), S3C_URSTCON);
 	
-#if defined(CONFIG_PLAT_WPU7800)
+#if defined(CONFIG_MACH_CANOPUS)
 	/* 48MHz, Crystal,External X-tal,device */
 	__raw_writel((0<<3)|(0<<2)|(1<<1)|(0<<0), S3C_PHYCTRL);
-#else
+#else	// CONFIG_MACH_CANOPUS
 	/* 48Mhz,Oscillator,External X-tal,device */
 	__raw_writel((0<<3)|(1<<2)|(1<<1)|(0<<0), S3C_PHYCTRL);
-#endif
+#endif	// CONFIG_MACH_CANOPUS
 
 	/* 48Mhz clock on ,PHY2.0 analog block power on
 	 * XO block power on,XO block power in suspend mode,

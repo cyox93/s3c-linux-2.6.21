@@ -732,9 +732,9 @@ static void __init smdk2416_fixup (struct machine_desc *desc, struct tag *tags,
 	 */
 	mi->bank[0].start = 0x30000000;
 
-#if defined(CONFIG_PLAT_WPU7800)
+#if defined(CONFIG_MACH_CANOPUS)
 	mi->bank[0].size = 64*1024*1024;
-#else
+#else	// CONFIG_MACH_CANOPUS
 #if defined(CONFIG_VIDEO_SAMSUNG)
 	mi->bank[0].size = 49*1024*1024;
 #elif defined(CONFIG_PP_S3C2443)
@@ -742,7 +742,7 @@ static void __init smdk2416_fixup (struct machine_desc *desc, struct tag *tags,
 #else
 	mi->bank[0].size = 64*1024*1024;
 #endif
-#endif
+#endif	// CONFIG_MACH_CANOPUS
 	mi->bank[0].node = 0;
 
 	mi->nr_banks = 1;

@@ -240,24 +240,18 @@ static struct s3c2410_platform_nand smdk_nand_info = {
 
 static struct platform_device __initdata *smdk_devs[] = {
 	&s3c_device_nand,
-#if 0
+#ifndef CONFIG_MACH_CANOPUS
 	&s3c_device_onenand,
-#endif
-
-#if 0
 	&smdk_led4,
 	&smdk_led5,
 	&smdk_led6,
 	&smdk_led7,
 #else
 	&smdk_led_key_bl,
-#endif
+#endif	// CONFIG_MACH_CANOPUS
 };
 
-//#define WPU7800_EVM_GPIO
-#define WPU7800_WS_GPIO
-
-#ifdef WPU7800_WS_GPIO
+#ifdef CONFIG_MACH_CANOPUS
 #include <asm/arch/regs-lcd.h>
 #include <linux/delay.h>
 void Key_gpio_init(void)
@@ -447,9 +441,9 @@ void charger_red_led(bool flag)
 	}
 }
 
-void wpu7800_gpio_init(void)
+void canopus_gpio_init(void)
 {
-	printk("wpu7800_gpio_init\n");
+	printk("canopus_gpio_init\n");
 
 	// Speaker AMP
 	s3c2410_gpio_cfgpin(S3C2410_GPH8, S3C2410_GPH8_OUTP);
@@ -480,7 +474,7 @@ void wpu7800_gpio_init(void)
 	Key_gpio_init();
 	
 }
-#endif 
+#endif	// CONFIG_MACH_CANOPUS
 
 void __init smdk_machine_init(void)
 {
@@ -496,11 +490,11 @@ void __init smdk_machine_init(void)
 	s3c2410_gpio_setpin(S3C2410_GPF6, 1);
 	s3c2410_gpio_setpin(S3C2410_GPF7, 1);
 
-	wpu7800_gpio_init();
+	canopus_gpio_init();
 	
-#if 0
+#ifndef CONFIG_MACH_CANOPUS
 	s3c_device_nand.dev.platform_data = &smdk_nand_info;
-#endif
+#endif	// CONFIG_MACH_CANOPUS
 	
 	//For s3c nand partition
 	s3c_device_nand.dev.platform_data = &nand_mtd_info;
@@ -510,6 +504,7 @@ void __init smdk_machine_init(void)
 	s3c2410_pm_init();
 }
 
+#ifdef CONFIG_MACH_CANOPUS
 EXPORT_SYMBOL(gpio_wifi_power);
 EXPORT_SYMBOL(gpio_wifi_power_down);
 EXPORT_SYMBOL(gpio_wifi_reset);
@@ -520,4 +515,5 @@ EXPORT_SYMBOL(speaker_amp);
 EXPORT_SYMBOL(vibrator_control);
 EXPORT_SYMBOL(charger_green_led);
 EXPORT_SYMBOL(charger_red_led);
+#endif	// CONFIG_MACH_CANOPUS
 
