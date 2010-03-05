@@ -795,7 +795,11 @@ static struct clk init_clocks[] = {
 		.id		= -1,
 		.parent		= &clk_h,
 		.enable		= s3c2443_clkcon_enable_h,
+#ifdef CONFIG_MACH_CANOPUS
+		.ctrlbit	= S3C2443_HCLKCON_DISP,
+#else	// CONFIG_MACH_CANOPUS
 		.ctrlbit	= S3C2443_HCLKCON_LCDC,
+#endif	// CONFIG_MACH_CANOPUS
 	}, {
 		.name		= "gpio",
 		.id		= -1,

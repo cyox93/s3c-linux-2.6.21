@@ -60,13 +60,30 @@ static int backlight_level = DEFAULT_BACKLIGHT_LEVEL;
 static int backlight_power = 1;
 static int lcd_power	   = 1;
 
+#ifdef CONFIG_MACH_CANOPUS
+static struct clk      *lcd_clock;
+#endif
 
 static  void s3c_fb_lcd_power(int to)
 {
 	lcd_power = to;
 
+#ifdef CONFIG_MACH_CANOPUS
+	if (to) {
+		if (lcd_clock)
+			clk_enable(lcd_clock);
+		if (mach_info.lcd_power)
+			(mach_info.lcd_power)(to);
+	} else {
+		if (mach_info.lcd_power)
+			(mach_info.lcd_power)(to);
+		if (lcd_clock)
+			clk_disable(lcd_clock);
+	}
+#else	// CONFIG_MACH_CANOPUS
 	if (mach_info.lcd_power)
 		(mach_info.lcd_power)(to);
+#endif	// CONFIG_MACH_CANOPUS
 }
 
 static inline void s3c_fb_backlight_power(int to)
@@ -484,8 +501,9 @@ struct fb_monspecs monspecs __initdata = {
 	.vfmax	= 65,
 };
 
+#ifndef CONFIG_MACH_CANOPUS
 static struct clk      *lcd_clock;
-
+#endif
 
 void s3c_fb_init_fbinfo(struct s3c_fb_info *finfo, char *drv_name, int index) 
 {
