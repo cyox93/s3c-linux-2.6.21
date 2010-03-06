@@ -1253,11 +1253,6 @@ CONFIG_RTC_DRV_S3C=y
 # CONFIG_PWM is not set
 
 #
-# UDC Common Control Driver
-#
-CONFIG_UCC=y
-
-#
 # File systems
 #
 CONFIG_EXT2_FS=y
