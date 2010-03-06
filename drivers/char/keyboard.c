@@ -1140,7 +1140,7 @@ static void kbd_keycode(unsigned int keycode, int down, int hw_raw)
 	int opt;
 #define KBD_CODE_PRESS		0x01
 #define KBD_CODE_RELEASE	0x02
-	if (down == 1) opt = KBD_CODE_PRESS;
+	if (down) opt = KBD_CODE_PRESS;
 	else	  opt = KBD_CODE_RELEASE;
 
 	down = 1;
