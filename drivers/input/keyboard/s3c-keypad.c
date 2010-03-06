@@ -30,7 +30,10 @@
 #include <asm/arch/regs-irq.h>
 #include "s3c-keypad.h"
 
-#undef S3C_KEYPAD_DEBUG 
+#ifdef S3C_KEYPAD_DEBUG
+#undef S3C_KEYPAD_DEBUG
+#endif
+
 //#define S3C_KEYPAD_DEBUG 
 
 #ifdef S3C_KEYPAD_DEBUG
@@ -184,7 +187,7 @@ static int keypad_scan(struct s3c_keypad *pdata)
 			((rval_sum/4) != 0x3f)) {
 
 		input_report_key(dev, pdata->keycodes[value], 1);
-		printk("key pressed : %d\n", pdata->keycodes[value]);
+		DPRINTK("key pressed : %d\n", pdata->keycodes[value]);
 
 		key_value = value;
 		key_press = 1;
@@ -196,7 +199,7 @@ static int keypad_scan(struct s3c_keypad *pdata)
 	if (col_cnt && row_cnt && key_press && 
 			((rval_sum/4) != 0x3f) && (key_value != value)) {
 		input_report_key(dev, pdata->keycodes[key_value], 0);
-		printk("key released : %d\n", pdata->keycodes[key_value]);
+		DPRINTK("key released : %d\n", pdata->keycodes[key_value]);
 		key_press = 0;
 
 		return KEY_PRESS_STATE;
@@ -205,7 +208,7 @@ static int keypad_scan(struct s3c_keypad *pdata)
 	/* key release event */
 	if (!col_cnt && !row_cnt && ((rval_sum/4) == 0x3f)) {
 		input_report_key(dev, pdata->keycodes[key_value], 0);
-		printk("key released : %d\n", pdata->keycodes[key_value]);
+		DPRINTK("key released : %d\n", pdata->keycodes[key_value]);
 		key_press = 0;
 		
 		keypad_scan_gpio_data(false);
@@ -230,7 +233,7 @@ static int endkey_scan(struct s3c_keypad *pdata)
 		input_report_key(dev, pdata->keycodes[12], 1);
 		input_sync(dev);
 
-		printk("key Pressed : %d\n", pdata->keycodes[12]);
+		DPRINTK("key Pressed : %d\n", pdata->keycodes[12]);
 
 		return KEY_PRESS_STATE;
 	}
@@ -241,7 +244,7 @@ static int endkey_scan(struct s3c_keypad *pdata)
 		
 		endkey_press = 0;
 
-		printk("key Released : %d\n", pdata->keycodes[12]);
+		DPRINTK("key Released : %d\n", pdata->keycodes[12]);
 		
 		ret = KEY_RELEASE_STATE;
 	}
