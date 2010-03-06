@@ -332,6 +332,8 @@ void gpio_wifi_reset(void)
 
 void wifi_gpio_init (void)
 {	
+	unsigned long mask;
+
 	s3c2410_gpio_cfgpin(S3C2410_GPH6, S3C2410_GPH6_OUTP);
 	s3c2410_gpio_cfgpin(S3C2410_GPH7, S3C2410_GPH7_OUTP);
 	s3c2410_gpio_cfgpin(S3C2410_GPH12, S3C2410_GPH12_OUTP);
@@ -354,7 +356,15 @@ void wifi_gpio_init (void)
 
 	s3c2410_gpio_setpin(S3C2410_GPH6, 1);	
 	s3c2410_gpio_setpin(S3C2410_GPH7, 1);
-	
+
+	// set EXTINT4 for WOW
+	s3c2410_gpio_cfgpin(S3C2410_GPF4, S3C2410_GPF4_EINT4);
+	s3c2410_gpio_pullup(S3C2410_GPF4, 0);
+
+	// set rising edge triggered
+	mask = __raw_readl(S3C2410_EXTINT0) & ~(0x7<<16);
+	__raw_writel(mask | (0x4 << 16) , S3C2410_EXTINT0);
+
 	gpio_wifi_power(0); 
 }
 
