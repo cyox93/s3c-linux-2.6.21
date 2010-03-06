@@ -227,7 +227,7 @@ static int s3c_i2s_hw_params(struct snd_pcm_substream *substream,
 	s3c2410_gpio_cfgpin(S3C2443_GPH14, S3C2443_GPH14_CLKOUT1);
 #endif
 
-#if 0
+#ifndef CONFIG_MACH_CANOPUS
 	writel((readl(S3C2410_MISCCR) & ~(7<<8))|(1<<8), S3C2410_MISCCR);
 #endif
 
