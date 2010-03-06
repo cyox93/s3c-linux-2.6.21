@@ -695,6 +695,12 @@ static struct clk init_clocks_disable[] = {
 		.parent  	= &clk_h,
 		.enable  	= s3c2443_clkcon_enable_h,
 		.ctrlbit 	= S3C2443_HCLKCON_SSMC,
+	},{
+		.name    	= "hsmmc0",
+		.id	   	= -1,
+		.parent  	= &clk_h,
+		.enable  	= s3c2443_clkcon_enable_h,
+		.ctrlbit 	= S3C2443_HCLKCON_HSMMC0
 	}, {
 		.name    	= "irom",
 		.id	   	= -1,
