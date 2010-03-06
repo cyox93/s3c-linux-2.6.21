@@ -708,6 +708,12 @@ static struct clk init_clocks_disable[] = {
 		.enable  	= s3c2443_clkcon_enable_h,
 		.ctrlbit 	= S3C2443_HCLKCON_IROM,
 	}, {
+		.name		= "usb-device",
+		.id		= -1,
+		.parent		= &clk_h,
+		.enable		= s3c2443_clkcon_enable_h,
+		.ctrlbit	= S3C2443_HCLKCON_USBD,
+	}, {
 		.name		= "pcm",
 		.id		= -1,
 		.parent		= &clk_p,
@@ -818,12 +824,14 @@ static struct clk init_clocks[] = {
 		.parent		= &clk_h,
 		.enable		= s3c2443_clkcon_enable_h,
 		.ctrlbit	= S3C2443_HCLKCON_USBH,
+#ifndef CONFIG_MACH_CANOPUS
 	}, {
 		.name		= "usb-device",
 		.id		= -1,
 		.parent		= &clk_h,
 		.enable		= s3c2443_clkcon_enable_h,
 		.ctrlbit	= S3C2443_HCLKCON_USBD,
+#endif	// CONFIG_MACH_CANOPUS
 	}, {
 		.name		= "timers",
 		.id		= -1,

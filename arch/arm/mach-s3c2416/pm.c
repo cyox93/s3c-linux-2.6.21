@@ -41,11 +41,13 @@ static void s3c2450_cpu_suspend(void)
 {
 	//unsigned long tmp;
 
+#ifndef CONFIG_MACH_CANOPUS
 	/* USB Physical power */
 	__raw_writel(__raw_readl(S3C2443_PHYPWR) | 0xf, S3C2443_PHYPWR);
 
 	/* USB Suspend mode */
 	__raw_writel(__raw_readl(S3C2410_MISCCR)|(1<<12)|(1<<13), S3C2410_MISCCR);
+#endif	// CONFIG_MACH_CANOPUS
 
 	__raw_writel(0xffffffff, S3C2410_INTMSK);
 	__raw_writel(__raw_readl(S3C2410_SRCPND), S3C2410_SRCPND);

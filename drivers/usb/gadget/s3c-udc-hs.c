@@ -2018,10 +2018,45 @@ static int s3c_udc_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_MACH_CANOPUS
+#ifdef CONFIG_PM
+static int
+s3c_udc_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	struct s3c_udc *dev = platform_get_drvdata(pdev);
+
+	printk("usb device suspend\n");
+	udc_disable(dev);
+	clk_disable(udc_clock);
+
+	return 0;
+}
+
+static int
+s3c_udc_resume(struct platform_device *pdev)
+{
+	struct s3c_udc *dev = platform_get_drvdata(pdev);
+
+	printk("usb device resume\n");
+	clk_enable(udc_clock);
+	udc_enable(dev);
+
+	return 0;
+}
+#else
+#define s3c_udc_suspend		NULL
+#define s3c_udc_resume		NULL
+#endif
+#endif	// CONFIG_MACH_CANOPUS
+
 /*-------------------------------------------------------------------------*/
 static struct platform_driver s3c_udc_driver = {
 	.probe		= s3c_udc_probe,
 	.remove		= s3c_udc_remove,
+#ifdef CONFIG_MACH_CANOPUS
+	.suspend	= s3c_udc_suspend,
+	.resume		= s3c_udc_resume,
+#endif
 	.driver		= {
 		.owner	= THIS_MODULE,
 		.name	= "s3c2410-usbgadget",
