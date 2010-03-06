@@ -478,6 +478,7 @@ void canopus_gpio_init(void)
 
 void __init smdk_machine_init(void)
 {
+#ifndef CONFIG_MACH_CANOPUS
 	/* Configure the LEDs (even if we have no LED support)*/
 
 	s3c2410_gpio_cfgpin(S3C2410_GPF4, S3C2410_GPF4_OUTP);
@@ -490,10 +491,9 @@ void __init smdk_machine_init(void)
 	s3c2410_gpio_setpin(S3C2410_GPF6, 1);
 	s3c2410_gpio_setpin(S3C2410_GPF7, 1);
 
-	canopus_gpio_init();
-	
-#ifndef CONFIG_MACH_CANOPUS
 	s3c_device_nand.dev.platform_data = &smdk_nand_info;
+#else
+	canopus_gpio_init();
 #endif	// CONFIG_MACH_CANOPUS
 	
 	//For s3c nand partition
