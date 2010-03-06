@@ -88,4 +88,3 @@ obj-$(CONFIG_HID)		+= hid/
 obj-$(CONFIG_PPC_PS3)		+= ps3/
 obj-$(CONFIG_L3)		+= l3/
 obj-$(CONFIG_G3D)               += g3d/
-obj-$(CONFIG_UCC)		+= ucc/
