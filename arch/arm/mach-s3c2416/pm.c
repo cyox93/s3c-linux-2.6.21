@@ -47,7 +47,6 @@ static void s3c2450_cpu_suspend(void)
 
 	/* USB Suspend mode */
 	__raw_writel(__raw_readl(S3C2410_MISCCR)|(1<<12)|(1<<13), S3C2410_MISCCR);
-#endif	// CONFIG_MACH_CANOPUS
 
 	__raw_writel(0xffffffff, S3C2410_INTMSK);
 	__raw_writel(__raw_readl(S3C2410_SRCPND), S3C2410_SRCPND);
@@ -69,6 +68,31 @@ static void s3c2450_cpu_suspend(void)
 	__raw_writel(__raw_readl(S3C2410_SRCPND), S3C2410_SRCPND);
 
 	__raw_writel( (1<<15), S3C2443_PWRCFG);
+#else
+	u32 mask, mask1, mask2;
+
+	__raw_writel(0xffffffff, S3C2410_INTMSK);
+	__raw_writel(__raw_readl(S3C2410_SRCPND), S3C2410_SRCPND);
+	__raw_writel(__raw_readl(S3C2410_INTPND), S3C2410_INTPND);
+
+	__raw_writel(0xffffffff, S3C2410_EINTPEND);
+	__raw_writel(0xffffffff & ~(0xffff), S3C2410_EINTMASK);
+
+	__raw_writel(0xffffffff, S3C2410_SRCPND);
+	__raw_writel(0xffffffff, S3C2410_INTPND);
+
+	__raw_writel(0x60101, S3C2443_RSTCON);
+	__raw_writel(0x8000, S3C2443_OSCSET);
+	/* ack any outstanding external interrupts before we go to sleep */
+
+	__raw_writel((0xffffffff & ~(0x3f | (1<<7) | (1<<8) | (1<<30))) , S3C2410_INTMSK);
+
+	__raw_writel(__raw_readl(S3C2410_EINTPEND), S3C2410_EINTPEND);
+	__raw_writel(__raw_readl(S3C2410_INTPND), S3C2410_INTPND);
+	__raw_writel(__raw_readl(S3C2410_SRCPND), S3C2410_SRCPND);
+
+	__raw_writel(((1<<7) | (1<<8) | (1<<15)), S3C2443_PWRCFG);
+#endif
 
 	/* set our standby method to sleep */
 	__raw_writel(0x2BED, S3C2443_PWRMODE);
