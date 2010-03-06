@@ -1099,19 +1099,41 @@ static int s3c_fb_suspend(struct platform_device *dev, pm_message_t state)
 	 * before the clock goes off again (bjd) */
 
 	msleep(1);
+
+#ifdef CONFIG_MACH_CANOPUS
 	clk_disable(lcd_clock);
+
+	if (mach_info.backlight_power)
+		(mach_info.backlight_power)(0);
+
+	if (mach_info.lcd_power)
+			(mach_info.lcd_power)(0);
+#endif	// CONFIG_MACH_CANOPUS
 
 	return 0;
 }
 
 static int s3c_fb_resume(struct platform_device *dev)
 {
-	clk_enable(lcd_clock);
 	msleep(1);
 	s3c2410_pm_do_restore(lcd_save, ARRAY_SIZE(lcd_save));
         Init_LDI();
 
 	s3c_fb_start_lcd();
+
+#ifdef CONFIG_MACH_CANOPUS
+	if (lcd_power) {
+		clk_enable(lcd_clock);
+		if (mach_info.lcd_power)
+				(mach_info.lcd_power)(1);
+	}
+
+	if (backlight_power) {
+		if (mach_info.backlight_power)
+			(mach_info.backlight_power)(1);
+	}
+#endif	// CONFIG_MACH_CANOPUS
+
 	return 0;
 }
 
