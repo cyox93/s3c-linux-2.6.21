@@ -94,5 +94,4 @@ extern struct platform_device s3c_device_g3d;
 #if defined(CONFIG_CPU_S3C6410) || defined(CONFIG_CPU_S3C2450)|| defined(CONFIG_CPU_S3C2416)
 extern struct platform_device s3c_device_smc911x;
 extern struct platform_device s3c_device_keypad;
-extern struct platform_device s3c_device_ucc;
 #endif

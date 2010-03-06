@@ -1420,14 +1420,6 @@ static struct resource s3c_ucc_resource[] = {
 	}
 };
 
-struct platform_device s3c_device_ucc = {
-	.name		  = "ucc_dev",
-	.id		  = -1,
-	.num_resources	  = ARRAY_SIZE(s3c_ucc_resource),
-	.resource	  = s3c_ucc_resource,
-};
-EXPORT_SYMBOL(s3c_device_ucc);
-
 static struct resource s3c_smc911x_resources[] = {
       [0] = {
               .start  = S3C_PA_SMC9115,
