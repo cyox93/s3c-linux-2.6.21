@@ -1008,8 +1008,6 @@ source "drivers/rtc/Kconfig"
 
 source "drivers/pwm/Kconfig"
 
-source "drivers/ucc/Kconfig"
-
 if CPU_S3C6410
 source "drivers/g3d/Kconfig"
 endif

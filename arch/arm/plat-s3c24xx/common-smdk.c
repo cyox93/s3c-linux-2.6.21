@@ -396,48 +396,12 @@ void lcd_gpio_init(void)
 	s3c2410_gpio_pullup(S3C2410_GPD10, 0);
 }
 
-void audio_ext_clock(bool flag)
-{
-	if (flag) { 
-		s3c2410_gpio_setpin(S3C2410_GPE2, 1);
-	} else {
-		s3c2410_gpio_setpin(S3C2410_GPE2, 0);
-	}
-}
-
 void speaker_amp(bool flag)
 {
 	if (flag) { 
 		s3c2410_gpio_setpin(S3C2410_GPH8, 1);
 	} else {
 		s3c2410_gpio_setpin(S3C2410_GPH8, 0);
-	}
-}
-
-void vibrator_control(bool flag)
-{
-	if (flag) { 
-		s3c2410_gpio_setpin(S3C2410_GPH5, 1);
-	} else {
-		s3c2410_gpio_setpin(S3C2410_GPH5, 0);
-	}
-}
-
-void charger_green_led(bool flag)
-{
-	if (flag) { 
-		s3c2410_gpio_setpin(S3C2410_GPB3, 1);
-	} else {
-		s3c2410_gpio_setpin(S3C2410_GPB3, 0);
-	}
-}
-
-void charger_red_led(bool flag)
-{
-	if (flag) { 
-		s3c2410_gpio_setpin(S3C2410_GPB4, 1);
-	} else {
-		s3c2410_gpio_setpin(S3C2410_GPB4, 0);
 	}
 }
 
@@ -452,20 +416,6 @@ void canopus_gpio_init(void)
 	// key LED
 	s3c2410_gpio_cfgpin(S3C2410_GPD15, S3C2410_GPD15_OUTP);
 	s3c2410_gpio_setpin(S3C2410_GPD15, 0);
-
-	// Audio Ext Clock
-	s3c2410_gpio_cfgpin(S3C2410_GPE2, S3C2410_GPE2_CDCLK);
-	s3c2410_gpio_setpin(S3C2410_GPE2, 0);
-
-	// Vibrator
-	s3c2410_gpio_cfgpin(S3C2410_GPH5, S3C2410_GPH5_OUTP);
-	s3c2410_gpio_setpin(S3C2410_GPH5, 0);
-
-	// Charger LED
-	s3c2410_gpio_cfgpin(S3C2410_GPB3, S3C2410_GPB3_OUTP); // Green
-	s3c2410_gpio_cfgpin(S3C2410_GPB4, S3C2410_GPB4_OUTP); // Red
-	s3c2410_gpio_setpin(S3C2410_GPB3, 0);
-	s3c2410_gpio_setpin(S3C2410_GPB4, 0);
 
    	 // Wi-Fi
 	wifi_gpio_init();
@@ -510,10 +460,6 @@ EXPORT_SYMBOL(gpio_wifi_power_down);
 EXPORT_SYMBOL(gpio_wifi_reset);
 EXPORT_SYMBOL(lcd_reset);
 EXPORT_SYMBOL(lcd_gpio_init);
-EXPORT_SYMBOL(audio_ext_clock);
 EXPORT_SYMBOL(speaker_amp);
-EXPORT_SYMBOL(vibrator_control);
-EXPORT_SYMBOL(charger_green_led);
-EXPORT_SYMBOL(charger_red_led);
 #endif	// CONFIG_MACH_CANOPUS
 
