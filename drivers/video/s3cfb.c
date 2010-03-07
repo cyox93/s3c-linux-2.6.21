@@ -68,22 +68,9 @@ static  void s3c_fb_lcd_power(int to)
 {
 	lcd_power = to;
 
-#ifdef CONFIG_MACH_CANOPUS
-	if (to) {
-		if (lcd_clock)
-			clk_enable(lcd_clock);
-		if (mach_info.lcd_power)
-			(mach_info.lcd_power)(to);
-	} else {
-		if (mach_info.lcd_power)
-			(mach_info.lcd_power)(to);
-		if (lcd_clock)
-			clk_disable(lcd_clock);
-	}
-#else	// CONFIG_MACH_CANOPUS
 	if (mach_info.lcd_power)
 		(mach_info.lcd_power)(to);
-#endif	// CONFIG_MACH_CANOPUS
+
 }
 
 static inline void s3c_fb_backlight_power(int to)
@@ -1115,6 +1102,8 @@ static int s3c_fb_suspend(struct platform_device *dev, pm_message_t state)
 
 static int s3c_fb_resume(struct platform_device *dev)
 {
+	clk_enable(lcd_clock);
+
 	msleep(1);
 	s3c2410_pm_do_restore(lcd_save, ARRAY_SIZE(lcd_save));
         Init_LDI();
@@ -1123,11 +1112,12 @@ static int s3c_fb_resume(struct platform_device *dev)
 
 #ifdef CONFIG_MACH_CANOPUS
 	if (lcd_power) {
-		clk_enable(lcd_clock);
 		if (mach_info.lcd_power)
 				(mach_info.lcd_power)(1);
 	}
+#endif	// CONFIG_MACH_CANOPUS
 
+#ifdef CONFIG_MACH_CANOPUS
 	if (backlight_power) {
 		if (mach_info.backlight_power)
 			(mach_info.backlight_power)(1);

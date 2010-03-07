@@ -111,6 +111,7 @@ int osd_left_bottom_y = V_RESOLUTION_OSD -1;
 int display_brightness = DEF_DISPLAY_BRIGHTNESS;
 int backup_brightness = DEF_DISPLAY_BRIGHTNESS;
 int backlight_power_state = 1;
+int lcd_power_state = 1;
 
 void set_brightness(int);
 void backlight_power(int);
@@ -306,6 +307,8 @@ struct s3c_fb_mach_info mach_info = {
 
 	.backlight_power = backlight_power,
 	.set_brightness = set_brightness,
+
+	.lcd_power = lcd_ili9225b_power,
 };
 
 static void
@@ -1577,9 +1580,16 @@ void lcd_write_pixel(int color)
 	_lcd_i80_cmd(S3C_I80SIFCCON0_RS_CON_HIGH);
 }
 
+static void
+lcd_ili9225b_power(int set)
+{
+	lcd_power_state = set;
+}
+
 static void s3c_fb_change_fb(struct fb_info *info)
 {
-	__raw_writel((1<<0), S3C_CPUTRIGCON2);
+	if (lcd_power_state)
+		__raw_writel((1<<0), S3C_CPUTRIGCON2);
 }
 
 #define _LCD_PANEL_BYD		0
