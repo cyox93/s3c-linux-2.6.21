@@ -30,6 +30,10 @@
 #include <asm/arch/regs-irq.h>
 #include "s3c-keypad.h"
 
+#ifdef CONFIG_HAS_WAKELOCK
+#include <linux/wakelock.h>
+#endif
+
 #ifdef S3C_KEYPAD_DEBUG
 #undef S3C_KEYPAD_DEBUG
 #endif
@@ -49,6 +53,9 @@
 
 static struct timer_list keypad_scan_timer;
 static struct timer_list endkey_scan_timer;
+#ifdef CONFIG_HAS_WAKELOCK
+static struct wake_lock key_wake_lock;
+#endif
 
 static int curr_key_irq = 0;
 static int key_irq_press = 0;
@@ -265,6 +272,9 @@ static void keypad_scan_timer_handler(unsigned long data)
 		keypad_irq_ack();
 		keypad_irq_unmask();
 		key_irq_press = 0;
+#ifdef CONFIG_HAS_WAKELOCK
+		wake_lock_timeout(&key_wake_lock, 5*HZ);
+#endif
 	}
 }
 
@@ -281,11 +291,17 @@ static void endkey_scan_timer_handler(unsigned long data)
 		keypad_irq_ack();
 		keypad_irq_unmask();
 		key_irq_press = 0;
+#ifdef CONFIG_HAS_WAKELOCK
+		wake_lock_timeout(&key_wake_lock, 5*HZ);
+#endif
 	}
 }
 
 static void key_bh_handler(struct work_struct *work)
 {
+#ifdef CONFIG_HAS_WAKELOCK
+	wake_lock(&key_wake_lock);
+#endif
 	if (curr_key_irq == 16) {
 		endkey_scan_timer.expires = jiffies + msecs_to_jiffies(0);
 		add_timer(&endkey_scan_timer);
@@ -425,6 +441,10 @@ static int __init s3c_keypad_probe(struct platform_device *pdev)
 	init_timer(&endkey_scan_timer);
 	endkey_scan_timer.function = endkey_scan_timer_handler;
 	endkey_scan_timer.data = (unsigned long)s3c_keypad;
+
+#ifdef CONFIG_HAS_WAKELOCK
+	wake_lock_init(&key_wake_lock, WAKE_LOCK_SUSPEND, "s3c-keypad");
+#endif
 	
 	INIT_WORK(&s3c_keypad->work, key_bh_handler);
 	ret = s3c_keypad_request_irq(s3c_keypad);
@@ -444,6 +464,10 @@ out:
 static int s3c_keypad_remove(struct platform_device *pdev)
 {
 	struct s3c_keypad *s3c_keypad = platform_get_drvdata(pdev);
+
+#ifdef CONFIG_HAS_WAKELOCK
+	wake_lock_destroy(&key_wake_lock);
+#endif
 
 	input_unregister_device(s3c_keypad->dev);
 	kfree(pdev->dev.platform_data);
