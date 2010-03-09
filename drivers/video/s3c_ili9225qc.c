@@ -1583,7 +1583,31 @@ void lcd_write_pixel(int color)
 static void
 lcd_ili9225b_power(int set)
 {
-	lcd_power_state = set;
+
+	if (!set) {
+		lcd_power_state = set;
+		lcd_set_command_mode(1);
+
+		_lcd_ili9225b_reg_write(0x0007,0x0000);
+		mdelay(50);
+		_lcd_ili9225b_reg_write(0x0011,0x0007);
+		mdelay(50);
+		_lcd_ili9225b_reg_write(0x0010,0x0A01);
+
+		lcd_set_command_mode(0);
+	} else {
+		lcd_set_command_mode(1);
+
+		_lcd_ili9225b_reg_write(0x0010,0x0A00);
+		_lcd_ili9225b_reg_write(0x0011,0x1038);
+		mdelay(50);
+		_lcd_ili9225b_reg_write(0x0007,0x1017);
+		lcd_prepare_write(0, 0);
+
+		lcd_set_command_mode(0);
+		mdelay(2);
+		lcd_power_state = set;
+	}
 }
 
 static void s3c_fb_change_fb(struct fb_info *info)
