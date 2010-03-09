@@ -374,6 +374,12 @@ static struct regulator_init_data ldo1_data = {
 };
 
 /* Wifi 1.8V */
+static struct regulator_consumer_supply ldo2_consumers[] = {
+	{
+		.supply	= "wifi-io",
+	},
+};
+
 static struct regulator_init_data ldo2_data = {
 	.constraints = {
 		.min_uV = 1800000,
@@ -383,8 +389,8 @@ static struct regulator_init_data ldo2_data = {
 		.always_on = 1,
 		.boot_on = 1,
 	},
-//	.num_consumer_supplies = ARRAY_SIZE(ldo2_consumers),
-//	.consumer_supplies = ldo2_consumers,
+	.num_consumer_supplies = ARRAY_SIZE(ldo2_consumers),
+	.consumer_supplies = ldo2_consumers,
 };
 
 static struct regulator_consumer_supply ldo3_consumers[] = {
@@ -408,6 +414,12 @@ static struct regulator_init_data ldo3_data = {
 };
 
 /* Wifi 1.2V */
+static struct regulator_consumer_supply ldo4_consumers[] = {
+	{
+		.supply	= "wifi-core",
+	},
+};
+
 static struct regulator_init_data ldo4_data = {
 	.constraints = {
 		.min_uV = 1200000,
@@ -417,8 +429,8 @@ static struct regulator_init_data ldo4_data = {
 		.always_on = 1,
 		.boot_on = 1,
 	},
-//	.num_consumer_supplies = ARRAY_SIZE(ldo2_consumers),
-//	.consumer_supplies = ldo2_consumers,
+	.num_consumer_supplies = ARRAY_SIZE(ldo4_consumers),
+	.consumer_supplies = ldo4_consumers,
 };
 
 static struct platform_device wm8350_regulator_devices[] = {
@@ -894,3 +906,21 @@ struct s3c_hsmmc_cfg s3c_hsmmc1_platform = {
 	.clk_name[2] = "hsmmc-ext",			/* 3rd clock source */
 };
 
+#ifdef CONFIG_MACH_CANOPUS
+void
+gpio_wifi_core_power(bool flag)
+{
+	struct regulator *wifi_io = regulator_get(NULL, "wifi-io");
+	struct regulator *wifi_core = regulator_get(NULL, "wifi-core");
+
+	if (flag) {
+		if (wifi_core) regulator_enable(wifi_core);
+		if (wifi_io) regulator_enable(wifi_io);
+	} else {
+		if (wifi_io) regulator_disable(wifi_io);
+		if (wifi_core) regulator_disable(wifi_core);
+	}
+}
+
+EXPORT_SYMBOL(gpio_wifi_core_power);
+#endif	// CONFIG_MACH_CANOPUS

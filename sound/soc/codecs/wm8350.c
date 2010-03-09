@@ -68,12 +68,6 @@ struct wm8350_data {
 	struct wm8350_output out2;
 };
 
-#define WPU7800_UCC_I2C_CONTROL
-#ifdef WPU7800_UCC_I2C_CONTROL
-/* wm8350 handle copy */
-struct wm8350_data *_wm8350;
-#endif
-
 extern void speaker_amp(bool flag);
 
 static unsigned int wm8350_codec_cache_read(struct snd_soc_codec *codec,
@@ -1347,10 +1341,6 @@ static int wm8350_codec_init(struct snd_soc_codec *codec,
 	
 	snd_assert(wm8350 != NULL, return -EINVAL);
 
-#ifdef WPU7800_UCC_I2C_CONTROL
-	_wm8350 = wm8350;
-#endif
-
 	/* reset codec */
 	wm8350_clear_bits(wm8350, WM8350_POWER_MGMT_5, WM8350_CODEC_ENA);
 	wm8350_set_bits(wm8350, WM8350_POWER_MGMT_5, WM8350_CODEC_ENA);
@@ -1512,61 +1502,6 @@ prv_err:
 	snd_soc_free_codec(codec);
 	return ret;
 }
-
-#ifdef WPU7800_UCC_I2C_CONTROL
-u16 ucc_wm8350_reg_read(int reg)
-{
-	u16 data;
-	struct wm8350 *wm8350;
-
-	wm8350 = kzalloc(sizeof(struct wm8350_data), GFP_KERNEL);
-#if 0
-	wm8350 = _wm8350;
-	data = wm8350_reg_read(wm8350, reg);
-#else
-	memcpy(wm8350, _wm8350, sizeof(struct wm8350_data));
-	data = wm8350_reg_read(wm8350, reg);
-	kfree(wm8350);
-#endif
-
-	return data;
-}
-EXPORT_SYMBOL(ucc_wm8350_reg_read);
-
-int ucc_wm8350_reg_write(int reg, u16 val)
-{
-	int ret = 0;	
-	struct wm8350 *wm8350;
-
-	wm8350 = kzalloc(sizeof(struct wm8350_data), GFP_KERNEL);
-#if 0
-	wm8350 = _wm8350;
-	wm8350_reg_write(wm8350, reg, val);
-#else
-	memcpy(wm8350, _wm8350, sizeof(struct wm8350_data));	
-	wm8350_reg_write(wm8350, reg, val);
-	kfree(wm8350);
-#endif
-	return ret;
-}
-EXPORT_SYMBOL(ucc_wm8350_reg_write);
-
-void gpio_wifi_core_power(bool flag)
-{
-	if (flag) { 		
-		/* LDO4 1.2V On */	
-		ucc_wm8350_reg_write(0xd1, 0x0a); 
-		/* LDO2 1.8V On */
-		ucc_wm8350_reg_write(0xcb, 0x10);  
-	} else {		
-		/* LDO2 1.8V Off */
-		ucc_wm8350_reg_write(0xcb, 0);
-		/* LDO4 1.2V Off */	
-		ucc_wm8350_reg_write(0xd1, 0);		
-	}
-}
-EXPORT_SYMBOL(gpio_wifi_core_power);
-#endif
 
 static int wm8350_codec_remove(struct platform_device *pdev)
 {
