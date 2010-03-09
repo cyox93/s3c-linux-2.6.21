@@ -12,6 +12,7 @@
 #include <linux/string.h>
 #include <linux/ioctl.h>
 #include <linux/clk.h>
+#include <linux/platform_device.h>
 
 #include <asm/io.h>
 #include <asm/uaccess.h>
@@ -1509,16 +1510,6 @@ int s3c_fb_set_out_path(struct s3c_fb_info *fbi, int Path)
 extern void lcd_reset(void);
 extern void lcd_gpio_init(void);
 
-void lcd_set_command_mode (int set)
-{
-	if (set)
-		__raw_writel(S3C_I80SIFCCON0_COM_ENABLE
-				| S3C_I80SIFCCON0_RS_CON_HIGH,
-				S3C_SIFCCON0);
-	else
-		__raw_writel(S3C_I80SIFCCON0_COM_DISABLE, S3C_SIFCCON0);
-}
-
 static inline void
 _lcd_i80_cmd(int control)
 {
@@ -1535,6 +1526,33 @@ void _lcd_ili9225b_reg(int reg)
 	__raw_writel(reg, S3C_SIFCCON1);
 
 	_lcd_i80_cmd(S3C_I80SIFCCON0_RS_CON_HIGH);
+}
+
+int _lcd_ili9225b_reg_read(int reg)
+{
+	int data;
+
+	// set RS, CS0, WR
+	_lcd_i80_cmd(S3C_I80SIFCCON0_CS0_CON_ENABLE
+			| S3C_I80SIFCCON0_RS_CON_LOW
+			| S3C_I80SIFCCON0_WR_CON_ENABLE);
+
+	__raw_writel(reg, S3C_SIFCCON1);
+
+	// set CS0
+	_lcd_i80_cmd(S3C_I80SIFCCON0_CS0_CON_ENABLE
+			| S3C_I80SIFCCON0_RS_CON_HIGH);
+
+	// set CS0, OE
+	_lcd_i80_cmd(S3C_I80SIFCCON0_CS0_CON_ENABLE
+			| S3C_I80SIFCCON0_RS_CON_HIGH
+			| S3C_I80SIFCCON0_OE_CON_ENABLE);
+
+	data = __raw_readl(S3C_SIFCCON2);
+
+	_lcd_i80_cmd(S3C_I80SIFCCON0_RS_CON_HIGH);
+
+	return data & 0x3ffff;
 }
 
 void _lcd_ili9225b_reg_write(int reg, int data)
@@ -1578,6 +1596,18 @@ void lcd_write_pixel(int color)
 	__raw_writel(color, S3C_SIFCCON1);
 
 	_lcd_i80_cmd(S3C_I80SIFCCON0_RS_CON_HIGH);
+}
+
+void lcd_set_command_mode (int set)
+{
+	if (set)
+		__raw_writel(S3C_I80SIFCCON0_COM_ENABLE
+				| S3C_I80SIFCCON0_RS_CON_HIGH,
+				S3C_SIFCCON0);
+	else {
+		lcd_prepare_write(0, 0);
+		__raw_writel(S3C_I80SIFCCON0_COM_DISABLE, S3C_SIFCCON0);
+	}
 }
 
 static void
@@ -1786,27 +1816,26 @@ _lcd_panel_init(void)
 
 void lcd_module_init (void)
 {
-	lcd_reset();
-	lcd_set_command_mode(1);
-
-	_lcd_panel_init();
-
 	/* set window size */
 	int xs = 0;
 	int xe = 176 -1;
 	int ys = 0;
 	int ye = 220 -1;
+	int i = H_RESOLUTION * V_RESOLUTION;
+
+	lcd_reset();
+	lcd_set_command_mode(1);
+
+	_lcd_panel_init();
+
 	_lcd_ili9225b_reg_write (0x36, xs+xe);
 	_lcd_ili9225b_reg_write (0x37, xs);
         _lcd_ili9225b_reg_write (0x38, ys+ye);
         _lcd_ili9225b_reg_write (0x39, ys);
 
-	int i = H_RESOLUTION * V_RESOLUTION;
-	
 	lcd_prepare_write(0, 0);
-	while (i-- > 0) {
+	while (i-- > 0)
 		lcd_write_pixel(0);
-	}
 
 	lcd_set_command_mode(0);
 }
@@ -1822,3 +1851,146 @@ void Init_LDI(void)
 
 	SetLcdPort();
 }
+
+int
+_s3c_lcd_get_value(char *buf, int count)
+{
+	int value = 0, first = 1;
+	char *p;
+
+	if ((strlen(buf) > 3)
+			&& (buf[1] == 'x' || buf[1] == 'X')) {
+		p = &buf[2]; count -= 2;
+		while (*p && count) {
+			if (!first) value <<= 4;
+			else first = 0;
+
+			if (*p >= 'a' && *p <= 'f') {
+				value += (*p - 'a' + 10);
+			} else if (*p >= 'A' && *p <= 'F') {
+				value += (*p - 'A' + 10);
+			} else if (*p >= '0' && *p <= '9') {
+				value += (*p - '0');
+			} else
+				return -1;
+
+			count--; p++;
+		}
+	} else {
+		p = buf;
+
+		while (*p && count) {
+			if (!first) value *= 10;
+			else first = 0;
+
+			if (*p >= '0' && *p <= '9') {
+				value += (*p - '0');
+			} else
+				return -1;
+
+			count--; p++;
+		}
+	}
+
+	return value;
+}
+
+static int
+_s3c_lcd_get_param(char *buf, size_t len, int *param1, int *param2)
+{
+	char *breg, *bvalue = NULL;
+	int creg, cvalue = 0;
+	int reg, value;
+
+	breg = bvalue = buf;
+
+	if (len < 1) return -1;
+	if (buf[len-1] == '\n') {
+		buf[len-1] = '\0';
+		len--;
+	}
+
+	while (*bvalue) {
+		if (*bvalue == ' ') {
+			creg = bvalue - buf;
+			cvalue = strlen(buf) - creg - 1;
+			bvalue++;
+			break;
+		}
+
+		bvalue++;
+	}
+
+	if (creg) *param1 = _s3c_lcd_get_value(breg, creg);
+	if (cvalue) *param2 = _s3c_lcd_get_value(bvalue, cvalue);
+
+	return 0;
+}
+
+
+static int
+s3c_ili9225b_lcd_reg_read_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t len)
+{
+	int reg = 0, count = 0, value;
+	int i;
+
+	_s3c_lcd_get_param(buf, strlen(buf), &reg, &count);
+
+	if (reg < 0) {
+		printk("Invalid register\n");
+		return -1;
+	}
+
+	if (count <= 0) count = 1;
+
+	lcd_set_command_mode(1);
+	for (i = 0; i < count; i++) {
+		value = _lcd_ili9225b_reg_read(reg + i);
+		printk("Reg : %04X = %04X\n", reg + i, value);
+	}
+	lcd_set_command_mode(0);
+
+	return len;
+}
+
+static int
+s3c_ili9225b_lcd_reg_write_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t len)
+{
+	int reg = -1, value = -1;
+
+	_s3c_lcd_get_param(buf, strlen(buf), &reg, &value);
+
+	if (reg < 0 || value < 0) {
+		printk("Invalid param\n");
+	}
+
+	lcd_set_command_mode(1);
+	_lcd_ili9225b_reg_write(reg, value);
+	lcd_set_command_mode(0);
+
+	printk("Reg : %04X = %04X\n", reg, value);
+
+	return len;
+}
+
+static DEVICE_ATTR(lcd_reg_read, 0644,
+		   NULL,
+		   s3c_ili9225b_lcd_reg_read_store);
+
+static DEVICE_ATTR(lcd_reg_write, 0644,
+		   NULL,
+		   s3c_ili9225b_lcd_reg_write_store);
+
+int
+s3c_ili9225b_device_create_file(struct platform_device *pdev)
+{
+	int ret;
+
+	ret = device_create_file(&(pdev->dev), &dev_attr_lcd_reg_read);
+	if (ret < 0) return ret;
+
+	return device_create_file(&(pdev->dev), &dev_attr_lcd_reg_write);
+}
+

@@ -840,6 +840,14 @@ int __init s3c_fb_probe(struct platform_device *pdev)
 	if (ret < 0)
 		printk(KERN_WARNING "s3cfb: failed to add entries\n");
 
+#ifdef CONFIG_FB_ILI9225QC
+	extern int s3c_ili9225b_device_create_file(struct platform_device *pdev);
+
+	ret = s3c_ili9225b_device_create_file(pdev);
+	if (ret < 0)
+		printk(KERN_WARNING "s3cfb: failed to add lcd panel entries\n");
+#endif	// CONFIG_FB_ILI9225QC
+
 	printk(KERN_INFO "fb%d: %s frame buffer device\n",
 		info[index].fb.node, info[index].fb.fix.id);
 	return 0;
