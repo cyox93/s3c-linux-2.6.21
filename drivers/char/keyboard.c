@@ -1138,12 +1138,14 @@ static void kbd_keycode(unsigned int keycode, int down, int hw_raw)
 #define _UDP_
 #ifdef _UDP_
 	int opt;
-#define KBD_CODE_PRESS		0x01
-#define KBD_CODE_RELEASE	0x02
-	if (down) opt = KBD_CODE_PRESS;
+#define KBD_CODE_RELEASE	0x01
+#define KBD_CODE_PRESS		0x02
+#define KBD_CODE_REPEAT		0x03
+	if (down == 1) opt = KBD_CODE_PRESS;
+	else if (down == 2) opt = KBD_CODE_REPEAT;
 	else	  opt = KBD_CODE_RELEASE;
 
-	down = 1;
+	down += 1;
 #endif /* _UDP_ */
 
 	tty = vc->vc_tty;
@@ -1166,7 +1168,7 @@ static void kbd_keycode(unsigned int keycode, int down, int hw_raw)
 		sparc_l1_a_state = down;
 #endif
 
-	rep = (down == 2);
+	rep = (down == 3);
 
 #ifdef CONFIG_MAC_EMUMOUSEBTN
 	if (mac_hid_mouse_emulate_buttons(1, keycode, down))
