@@ -203,7 +203,20 @@ static int s3c_rtc_gettime(struct device *dev, struct rtc_time *rtc_tm)
 static int s3c_rtc_settime(struct device *dev, struct rtc_time *tm)
 {
 	void __iomem *base = s3c_rtc_base;
+#ifndef CONFIG_MACH_CANOPUS
 	int year = tm->tm_year - 100;
+
+#else	// CONFIG_MACH_CANOPUS
+	int year = 0;
+
+	if (tm->tm_year < 100) {
+		printk("%d is less then 2000, it is supported from 2000 to 2099\n",
+			 tm->tm_year + 1900);
+	} else {
+		year = tm->tm_year - 100;
+	}
+
+#endif	// CONFIG_MACH_CANOPUS
 
 	pr_debug("set time %02d.%02d.%02d %02d/%02d/%02d\n",
 		 tm->tm_year, tm->tm_mon, tm->tm_mday,
