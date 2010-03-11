@@ -907,6 +907,16 @@ static int s3c_nand_suspend(struct platform_device *dev, pm_message_t pm)
 
 static int s3c_nand_resume(struct platform_device *dev)
 {
+#ifdef CONFIG_MACH_CANOPUS
+	u_long nfcont;
+	void __iomem *regs = s3c_nand.regs;
+
+
+	/* Disable SoftLock */
+	nfcont = readl(regs + S3C2440_NFCONT);
+	nfcont &= ~(S3C2412_NFCONT_SOFTLOCK);
+	writel(nfcont, regs + S3C2440_NFCONT);
+#endif	// CONFIG_MACH_CANOPUS
 
 	return 0;
 }
