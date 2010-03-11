@@ -1094,16 +1094,7 @@ static int s3c_fb_suspend(struct platform_device *dev, pm_message_t state)
 	 * before the clock goes off again (bjd) */
 
 	msleep(1);
-
-#ifdef CONFIG_MACH_CANOPUS
 	clk_disable(lcd_clock);
-
-	if (mach_info.backlight_power)
-		(mach_info.backlight_power)(0);
-
-	if (mach_info.lcd_power)
-			(mach_info.lcd_power)(0);
-#endif	// CONFIG_MACH_CANOPUS
 
 	return 0;
 }
