@@ -650,6 +650,7 @@ static int s3c_rtc_suspend(struct platform_device *pdev, pm_message_t state)
 
 	time.tv_nsec = 0;
 
+#ifndef CONFIG_MACH_CANOPUS
 	/* save TICNT for anyone using periodic interrupts */
 
 	ticnt_save = readb(s3c_rtc_base + S3C2410_TICNT);
@@ -660,6 +661,11 @@ static int s3c_rtc_suspend(struct platform_device *pdev, pm_message_t state)
 	rtc_tm_to_time(&tm, &time.tv_sec);
 	save_time_delta(&s3c_rtc_delta, &time);
 	s3c_rtc_enable(pdev, 0);
+#else	// CONFIG_MACH_CANOPUS
+	s3c_rtc_gettime(&pdev->dev, &tm);
+	rtc_tm_to_time(&tm, &time.tv_sec);
+	save_time_delta(&s3c_rtc_delta, &time);
+#endif	// CONFIG_MACH_CANOPUS
 
 	return 0;
 }
@@ -671,12 +677,18 @@ static int s3c_rtc_resume(struct platform_device *pdev)
 
 	time.tv_nsec = 0;
 
+#ifndef CONFIG_MACH_CANOPUS
 	s3c_rtc_enable(pdev, 1);
 	s3c_rtc_gettime(&pdev->dev, &tm);
 	rtc_tm_to_time(&tm, &time.tv_sec);
 	restore_time_delta(&s3c_rtc_delta, &time);
 
 	writeb(ticnt_save, s3c_rtc_base + S3C2410_TICNT);
+#else	// CONFIG_MACH_CANOPUS
+	s3c_rtc_gettime(&pdev->dev, &tm);
+	rtc_tm_to_time(&tm, &time.tv_sec);
+	restore_time_delta(&s3c_rtc_delta, &time);
+#endif	// CONFIG_MACH_CANOPUS
 	return 0;
 }
 #else

@@ -91,7 +91,7 @@ static void s3c2450_cpu_suspend(void)
 	__raw_writel(__raw_readl(S3C2410_INTPND), S3C2410_INTPND);
 	__raw_writel(__raw_readl(S3C2410_SRCPND), S3C2410_SRCPND);
 
-	__raw_writel(((1<<7) | (1<<8) | (1<<15)), S3C2443_PWRCFG);
+	__raw_writel(0x01, S3C2443_PWRCFG);
 #endif
 
 	/* set our standby method to sleep */
