@@ -16,6 +16,7 @@
 #include <linux/delay.h>
 #include <linux/pm.h>
 #include <linux/platform_device.h>
+#include <linux/regulator/consumer.h>
 #include <linux/mfd/wm8350/audio.h>
 #include <linux/mfd/wm8350/core.h>
 #include <sound/driver.h>
@@ -66,6 +67,7 @@ struct wm8350_data {
 	struct snd_soc_dai *dai;
 	struct wm8350_output out1;
 	struct wm8350_output out2;
+	struct regulator *analog_supply;
 };
 
 extern void speaker_amp(bool flag);
@@ -1153,8 +1155,10 @@ static int wm8350_set_bias_level(struct snd_soc_codec *codec,
 				 enum snd_soc_dapm_bias_level level)
 {
 	struct wm8350 *wm8350 = codec->control_data;
+	struct wm8350_data *priv = codec->private_data;
 	struct wm8350_audio_platform_data *platform = codec->platform_data;
 	u16 pm1;
+	int ret;
 
 	snd_assert(wm8350 != NULL, return -EINVAL);
 	snd_assert(platform != NULL, return -EINVAL);
@@ -1167,6 +1171,9 @@ static int wm8350_set_bias_level(struct snd_soc_codec *codec,
 		wm8350_reg_write(wm8350, WM8350_POWER_MGMT_1,
 				 pm1 | WM8350_VMID_10K |
 				 platform->codec_current_on << 14);
+
+		/* speaker amp on */
+		speaker_amp(1);
 		break;
 	case SND_SOC_BIAS_PREPARE:	/* partial On */
 		/* set vmid to 40k for quick power up */
@@ -1174,11 +1181,9 @@ static int wm8350_set_bias_level(struct snd_soc_codec *codec,
 			/* D3hot --> D0 */
 			/* enable bias */
 			pm1 = wm8350_reg_read(wm8350, WM8350_POWER_MGMT_1);
+			pm1 &= ~WM8350_VMID_MASK;
 			wm8350_reg_write(wm8350, WM8350_POWER_MGMT_1,
-					 pm1 | WM8350_BIASEN);
-		
-			/* speaker amp on */
-			speaker_amp(1);
+					 pm1 | WM8350_VMID_10K);
 		}
 		else {
 			/* speaker amp off */
@@ -1187,7 +1192,14 @@ static int wm8350_set_bias_level(struct snd_soc_codec *codec,
 		break;
 	case SND_SOC_BIAS_STANDBY:	/* Off, with power */
 		if (codec->bias_level == SND_SOC_BIAS_OFF) {
-			/* D3cold --> D3hot */
+			ret = regulator_enable(priv->analog_supply);
+			if (ret != 0)
+				return ret;
+			
+			/* Enable the system clock */
+			wm8350_set_bits(wm8350, WM8350_POWER_MGMT_4,
+					WM8350_SYSCLK_ENA);
+
 			/* mute DAC & outputs */
 			wm8350_set_bits(wm8350, WM8350_DAC_MUTE,
 					WM8350_DAC_MUTE_ENA);
@@ -1223,10 +1235,13 @@ static int wm8350_set_bias_level(struct snd_soc_codec *codec,
 			/* turn on vmid 500k  */
 			pm1 = wm8350_reg_read(wm8350, WM8350_POWER_MGMT_1) &
 			    ~(WM8350_VMID_MASK | WM8350_CODEC_ISEL_MASK);
-			wm8350_reg_write(wm8350, WM8350_POWER_MGMT_1,
-					 pm1 | WM8350_VMID_500K |
-					 (platform->
-					  codec_current_standby << 14));
+			pm1 |= WM8350_VMID_500K |
+				(platform->codec_current_standby << 14);
+			wm8350_reg_write(wm8350, WM8350_POWER_MGMT_1, pm1);	
+			
+			/* enble analogue bias */
+			pm1 |= WM8350_BIASEN;
+			wm8350_reg_write(wm8350, WM8350_POWER_MGMT_1, pm1);
 
 			/* disable antipop */
 			wm8350_reg_write(wm8350, WM8350_ANTI_POP_CONTROL, 0);
@@ -1240,20 +1255,13 @@ static int wm8350_set_bias_level(struct snd_soc_codec *codec,
 					 pm1 | WM8350_VMID_500K |
 					 (platform->
 					  codec_current_standby << 14));
-			/* disable bias */
-			pm1 = wm8350_reg_read(wm8350, WM8350_POWER_MGMT_1) &
-			    ~WM8350_BIASEN;
-			wm8350_reg_write(wm8350, WM8350_POWER_MGMT_1, pm1);
 		}
-
 		break;
 	case SND_SOC_BIAS_OFF:	/* Off, without power */
+		speaker_amp(0);
+
 		/* mute DAC & enable outputs */
 		wm8350_set_bits(wm8350, WM8350_DAC_MUTE, WM8350_DAC_MUTE_ENA);
-
-		wm8350_set_bits(wm8350, WM8350_POWER_MGMT_3,
-				WM8350_OUT1L_ENA | WM8350_OUT1R_ENA |
-				WM8350_OUT2L_ENA | WM8350_OUT2R_ENA);
 
 		/* enable anti pop S curve */
 		wm8350_reg_write(wm8350, WM8350_ANTI_POP_CONTROL,
@@ -1286,6 +1294,9 @@ static int wm8350_set_bias_level(struct snd_soc_codec *codec,
 		schedule_timeout_interruptible(msecs_to_jiffies
 					       (platform->drain_msecs));
 
+		pm1 &= ~WM8350_BIASEN;
+		wm8350_reg_write(wm8350, WM8350_POWER_MGMT_1, pm1);
+
 		/* disable anti-pop */
 		wm8350_reg_write(wm8350, WM8350_ANTI_POP_CONTROL, 0);
 
@@ -1302,6 +1313,8 @@ static int wm8350_set_bias_level(struct snd_soc_codec *codec,
 		wm8350_clear_bits(wm8350, WM8350_POWER_MGMT_4,
 				  WM8350_SYSCLK_ENA);
 
+		regulator_disable(priv->analog_supply);
+
 		break;
 	}
 	codec->bias_level = level;
@@ -1313,6 +1326,7 @@ static int wm8350_suspend(struct platform_device *pdev, pm_message_t state)
 	struct snd_soc_codec *codec = platform_get_drvdata(pdev);
 
 	wm8350_set_bias_level(codec, SND_SOC_BIAS_OFF);
+
 	return 0;
 }
 
@@ -1345,9 +1359,6 @@ static int wm8350_codec_init(struct snd_soc_codec *codec,
 	wm8350_clear_bits(wm8350, WM8350_POWER_MGMT_5, WM8350_CODEC_ENA);
 	wm8350_set_bits(wm8350, WM8350_POWER_MGMT_5, WM8350_CODEC_ENA);
 	
-	/* enable clock gen - could probably be done later */
-	wm8350_set_bits(wm8350, WM8350_POWER_MGMT_4, WM8350_SYSCLK_ENA);
-
 	/* charge output caps */
 	codec->bias_level = SND_SOC_BIAS_OFF;
 	wm8350_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
@@ -1482,6 +1493,12 @@ static int __init wm8350_codec_probe(struct platform_device *pdev)
 	if (wm8350 == NULL)
 		goto prv_err;
 
+	wm8350->analog_supply = regulator_get(&pdev->dev, "codec_avdd");
+	if (IS_ERR(wm8350->analog_supply)) {
+		printk(KERN_ERR "%s: cant get regulator\n", __func__);
+		goto codec_err;
+	}
+
 	codec->private_data = wm8350;
 	INIT_DELAYED_WORK(&codec->delayed_work, wm8350_pga_work);
 	ret = snd_soc_register_codec(codec, &pdev->dev);
@@ -1507,6 +1524,9 @@ static int wm8350_codec_remove(struct platform_device *pdev)
 {
 	struct snd_soc_codec *codec = platform_get_drvdata(pdev);
 	struct wm8350_data *wm8350 = codec->private_data;
+
+	regulator_disable(wm8350->analog_supply);
+	regulator_put(wm8350->analog_supply);
 
 	snd_soc_unregister_codec_dai(wm8350->dai);
 	snd_soc_free_codec(codec);

@@ -395,7 +395,7 @@ static struct regulator_init_data ldo2_data = {
 
 static struct regulator_consumer_supply ldo3_consumers[] = {
 {
-	.dev	= &s3c_audio_device.dev,
+	.dev	= &s3c_wm8350_codec_device.dev,
 	.supply	= "codec_avdd",
 },};
 
@@ -489,13 +489,6 @@ static void init_wm8350_audio(void)
 {
 	int err;
 
-	err = platform_device_register(&s3c_wm8350_codec_device);
-	if (err < 0) {
-		dev_err(&s3c_wm8350_codec_device.dev,
-				"Unable to register WM8350 codec device\n");
-		return;
-	}
-
 	err = platform_device_register(&s3c_wm8350_pcm_device);
 	if (err < 0) {
 		dev_err(&s3c_wm8350_pcm_device.dev,
@@ -562,6 +555,15 @@ int s3c_wm8350_device_register(struct wm8350 *wm8350)
 				"Unable to register WM8350 Audio device\n");
 		return err;
 	}
+
+	platform_set_drvdata(&s3c_wm8350_codec_device, wm8350);
+	err = platform_device_register(&s3c_wm8350_codec_device);
+	if (err < 0) {
+		dev_err(&s3c_wm8350_codec_device.dev,
+				"Unable to register WM8350 codec device\n");
+		return err;
+	}
+
 
 	return err;
 }

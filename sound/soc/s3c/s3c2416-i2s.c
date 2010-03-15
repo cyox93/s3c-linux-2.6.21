@@ -84,7 +84,10 @@ static struct s3c24xx_pcm_dma_params s3c24xx_i2s_pcm_stereo_in = {
 struct s3c24xx_i2s_info {
 	void __iomem	*regs;
 	struct clk	*iis_clk;
-	int master;
+	u32		iiscon;
+	u32		iismod;
+	u32		iisfcon;
+	u32		iispsr;
 };
 static struct s3c24xx_i2s_info s3c24xx_i2s;
 
@@ -408,16 +411,31 @@ EXPORT_SYMBOL_GPL(s3c_i2s_get_clockrate);
 
 #ifdef CONFIG_PM
 static int s3c_i2s_suspend(struct platform_device *dev,
-	struct snd_soc_cpu_dai *dai)
+	pm_message_t state)
 {
 	s3cdbg("Entered %s\n", __FUNCTION__);
+
+	s3c24xx_i2s.iiscon = readl(s3c24xx_i2s.regs + S3C2410_IISCON);
+	s3c24xx_i2s.iismod = readl(s3c24xx_i2s.regs + S3C2410_IISMOD);
+	s3c24xx_i2s.iisfcon = readl(s3c24xx_i2s.regs + S3C2410_IISFCON);
+	s3c24xx_i2s.iispsr = readl(s3c24xx_i2s.regs + S3C2410_IISPSR);
+
+	clk_disable(s3c24xx_i2s.iis_clk);
+
 	return 0;
 }
 
-static int s3c_i2s_resume(struct platform_device *pdev,
-	struct snd_soc_cpu_dai *dai)
+static int s3c_i2s_resume(struct platform_device *pdev)
 {
 	s3cdbg("Entered %s\n", __FUNCTION__);
+
+	clk_enable(s3c24xx_i2s.iis_clk);
+
+	writel(s3c24xx_i2s.iiscon, s3c24xx_i2s.regs + S3C2410_IISCON);
+	writel(s3c24xx_i2s.iismod, s3c24xx_i2s.regs + S3C2410_IISMOD);
+	writel(s3c24xx_i2s.iisfcon, s3c24xx_i2s.regs + S3C2410_IISFCON);
+	writel(s3c24xx_i2s.iispsr, s3c24xx_i2s.regs + S3C2410_IISPSR);
+
 	return 0;
 }
 

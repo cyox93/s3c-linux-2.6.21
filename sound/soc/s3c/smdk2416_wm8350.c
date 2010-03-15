@@ -528,25 +528,13 @@ static int __init smdk2416_wm8350_audio_probe(struct platform_device *pdev)
 		goto ssi_err;
 	}
 
-	audio_data->analog_supply = regulator_get(&pdev->dev, "codec_avdd");
-	if (IS_ERR(audio_data->analog_supply)) {
-		printk(KERN_ERR "%s: cant get regulator\n", __func__);
-		goto ssi_err;
-	}
-
-	ret = regulator_enable(audio_data->analog_supply);
-	if (ret < 0) {
-		printk(KERN_ERR "%s: cant enable regulator\n", __func__);
-		goto reg_err;
-	}
-
 	soc_card = snd_soc_card_create("smdk2416", &pdev->dev,
 					 SNDRV_DEFAULT_IDX1,
 					 SNDRV_DEFAULT_STR1);
 
 	if (soc_card == NULL) {
 		ret = -ENOMEM;
-		goto reg_err;
+		goto ssi_err;
 	}
 
 	audio_data->wm8350 = wm8350;
@@ -567,8 +555,6 @@ static int __init smdk2416_wm8350_audio_probe(struct platform_device *pdev)
 
 err:
 	snd_soc_card_free(soc_card);
-reg_err:
-	regulator_put(audio_data->analog_supply);
 ssi_err:
 	kfree(audio_data);
 	put_iis_clk();
@@ -586,9 +572,6 @@ static int __devexit smdk2416_wm8350_audio_remove(struct platform_device *pdev)
 	wm8350_free_irq(wm8350, WM8350_IRQ_CODEC_JCK_DET_R);
 #endif
 	snd_soc_card_free(soc_card);
-
-	regulator_disable(audio_data->analog_supply);
-	regulator_put(audio_data->analog_supply);
 	kfree(audio_data);
 	put_iis_clk();
 	return 0;

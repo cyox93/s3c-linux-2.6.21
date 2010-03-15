@@ -934,6 +934,7 @@ static int __init i2c_adap_s3c_init(void)
 
 	return ret;
 }
+subsys_initcall(i2c_adap_s3c_init);
 
 static void __exit i2c_adap_s3c_exit(void)
 {
@@ -941,7 +942,6 @@ static void __exit i2c_adap_s3c_exit(void)
 	platform_driver_unregister(&s3c2440_i2c_driver);
 }
 
-module_init(i2c_adap_s3c_init);
 module_exit(i2c_adap_s3c_exit);
 
 MODULE_DESCRIPTION("S3C24XX I2C Bus driver");

@@ -48,7 +48,7 @@ typedef struct {
 } register_info;
 
 #define WM8350_CDEV_REG_READ		_IOWR('P', 0xa0, register_info*)
-#define WM8350_CDEV_REG_WRITE		_IOWR('p', 0Xa1, register_info*)
+#define WM8350_CDEV_REG_WRITE		_IOWR('P', 0xa1, register_info*)
 #define WM8350_CDEV_NOTIFY_USER		_IOR('P', 0xa2, int)
 #define WM8350_CDEV_GET_NOTIFY		_IOR('P', 0xa3, int)
 #define WM8350_CDEV_SUBSCRIBE		_IOR('P', 0xa4, int)

@@ -166,12 +166,11 @@ static int __init wm8350_i2c_init(void)
 {
 	return i2c_add_driver(&wm8350_i2c_driver);
 }
+subsys_initcall(wm8350_i2c_init);
 
 static void __exit wm8350_i2c_exit(void)
 {
 	i2c_del_driver(&wm8350_i2c_driver);
 }
-
-module_init(wm8350_i2c_init);
 module_exit(wm8350_i2c_exit);
 

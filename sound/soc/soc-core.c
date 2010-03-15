@@ -735,7 +735,12 @@ int snd_soc_card_resume_pcms(struct snd_soc_card *soc_card)
 			codec_dai->ops->digital_mute(codec_dai, 0);
 	}
 
+#ifndef CONFIG_SND_S3C_SOC
 	snd_power_change_state(soc_card->card, SNDRV_CTL_POWER_D3hot);
+#else
+	snd_power_change_state(soc_card->card, SNDRV_CTL_POWER_D0);
+#endif
+
 	return 0;
 }
 
