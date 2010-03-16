@@ -605,6 +605,10 @@ static int s3c_rtc_probe(struct platform_device *pdev)
 
 	s3c_rtc_setfreq(s3c_rtc_freq);
 
+#ifdef CONFIG_MACH_CANOPUS
+	device_init_wakeup(&pdev->dev, 1);
+#endif
+
 	/* register RTC and exit */
 
 	rtc = rtc_device_register("s3c", &pdev->dev, &s3c_rtcops,
@@ -643,6 +647,10 @@ static struct timespec s3c_rtc_delta;
 
 static int ticnt_save;
 
+#ifdef CONFIG_RTC_WAKERS
+extern int wakers_set_alarm(struct class_device *dev);
+#endif
+
 static int s3c_rtc_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	struct rtc_time tm;
@@ -662,6 +670,12 @@ static int s3c_rtc_suspend(struct platform_device *pdev, pm_message_t state)
 	save_time_delta(&s3c_rtc_delta, &time);
 	s3c_rtc_enable(pdev, 0);
 #else	// CONFIG_MACH_CANOPUS
+
+#ifdef CONFIG_RTC_WAKERS
+	struct rtc_device *rtc_dev = platform_get_drvdata(pdev);
+	if (wakers_set_alarm(&rtc_dev->class_dev))
+		s3c_rtc_setaie(1);
+#endif
 	s3c_rtc_gettime(&pdev->dev, &tm);
 	rtc_tm_to_time(&tm, &time.tv_sec);
 	save_time_delta(&s3c_rtc_delta, &time);

@@ -163,6 +163,10 @@ static inline int rtc_does_wakealarm(struct class_device *class_dev)
 	return rtc->ops->set_alarm != NULL;
 }
 
+#ifdef CONFIG_RTC_WAKERS
+extern int wakers_register(struct class_device *dev);
+extern void wakers_unregister(struct class_device *dev);
+#endif
 
 static int rtc_sysfs_add_device(struct class_device *class_dev,
 					struct class_interface *class_intf)
@@ -184,6 +188,16 @@ static int rtc_sysfs_add_device(struct class_device *class_dev,
 					"alarm attribute");
 			sysfs_remove_group(&class_dev->kobj, &rtc_attr_group);
 		}
+
+#ifdef CONFIG_RTC_WAKERS
+		err = wakers_register(class_dev);
+		if (err) {
+			dev_err(class_dev->dev, "failed to create %s\n",
+					"alarm attribute");
+			sysfs_remove_group(&class_dev->kobj, &rtc_attr_group);
+		}
+#endif
+
 	}
 
 	return err;
@@ -195,6 +209,10 @@ static void rtc_sysfs_remove_device(struct class_device *class_dev,
 	if (rtc_does_wakealarm(class_dev))
 		class_device_remove_file(class_dev,
 				&class_device_attr_wakealarm);
+#ifdef CONFIG_RTC_WAKERS
+	if (rtc_does_wakealarm(class_dev))
+		wakers_unregister(class_dev);
+#endif
 	sysfs_remove_group(&class_dev->kobj, &rtc_attr_group);
 }
 
