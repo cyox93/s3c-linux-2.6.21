@@ -22,6 +22,7 @@
 #include <linux/module.h>
 #include <linux/rtc.h>
 #include <linux/err.h>
+#include <linux/wakelock.h>
 
 /*_____________________ Constants Definitions _______________________________*/
 struct waker {
@@ -41,6 +42,7 @@ struct waker {
 /*_____________________ Local Declarations __________________________________*/
 static DEFINE_SPINLOCK(list_lock);
 static LIST_HEAD(list_wakers);
+static struct wake_lock wakers_wake_lock;
 
 static ssize_t rtc_sysfs_show_wakers(struct class_device *dev, char *buf);
 static ssize_t rtc_sysfs_store_wakers(struct class_device *dev, const char *buf, size_t n);
@@ -48,7 +50,20 @@ static ssize_t rtc_sysfs_store_wakers(struct class_device *dev, const char *buf,
 static const CLASS_DEVICE_ATTR(wakers, S_IRUGO | S_IWUSR,
 		rtc_sysfs_show_wakers, rtc_sysfs_store_wakers);
 
+static void alarm_triggered_func(void *p);
+static struct rtc_task alarm_rtc_task = {
+	.func = alarm_triggered_func
+};
+
 /*_____________________ internal functions __________________________________*/
+static void alarm_triggered_func(void *p)
+{
+	struct rtc_device *rtc = (struct rtc_device *)p;
+	if (!(rtc->irq_data & RTC_AF))
+		return;
+	wake_lock_timeout(&wakers_wake_lock, 1 * HZ);
+}
+
 static int print_waker(char *buf, struct waker *waker)
 {
 	return sprintf(buf, "%s\t%d\t%d/%d/%d %02d:%02d:%02d\t%d/%d/%d %02d:%02d:%02d\n",
@@ -258,13 +273,29 @@ EXPORT_SYMBOL(wakers_set_alarm);
 
 int wakers_register(struct class_device *dev)
 {
+	int err;
+	struct rtc_device *rtc = to_rtc_device(dev);
+
+	wake_lock_init(&wakers_wake_lock, WAKE_LOCK_SUSPEND, "wakers");
+
+	alarm_rtc_task.private_data = rtc;
+	err = rtc_irq_register(dev, &alarm_rtc_task);
+	if (err) {
+		dev_err(dev->dev, "failed to register rtc irq\n");
+		wake_lock_destroy(&wakers_wake_lock);
+
+		return err;
+	}
+
 	return class_device_create_file(dev, &class_device_attr_wakers);
 }
 EXPORT_SYMBOL(wakers_register);
 
 void wakers_unregister(struct class_device *dev)
 {
+	rtc_irq_unregister(dev, &alarm_rtc_task);
 	class_device_remove_file(dev, &class_device_attr_wakers);
+	wake_lock_destroy(&wakers_wake_lock);
 }
 EXPORT_SYMBOL(wakers_unregister);
 
