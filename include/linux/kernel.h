@@ -214,6 +214,10 @@ static inline int __attribute__ ((format (printf, 1, 2))) pr_debug(const char * 
 
 #define pr_info(fmt,arg...) \
 	printk(KERN_INFO fmt,##arg)
+#define pr_err(fmt, arg...) \
+	printk(KERN_ERR fmt, ##arg)
+#define pr_warning(fmt, arg...) \
+	printk(KERN_WARNING fmt, ##arg)
 
 /*
  *      Display an IP address in readable format.
