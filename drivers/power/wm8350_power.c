@@ -1095,6 +1095,23 @@ static struct file_operations wm8350_bat_fos = {
 	.fasync		= wm8350_bat_fasync,
 };
 
+#ifdef CONFIG_MACH_CANOPUS
+static struct wm8350 *_wm8350;
+
+void wm8350_power_off(void)
+{
+	if (!_wm8350) return ;
+
+	if (wm8350_get_supplies(_wm8350) & WM8350_LINE_SUPPLY) {
+		kernel_restart(NULL);
+	} else {
+		u16 val = wm8350_reg_read(_wm8350, 0x3);
+		val &= ~(1<<15);
+		wm8350_reg_write(_wm8350, 0x3, val);
+	}
+}
+#endif
+
 static int __init wm8350_power_probe(struct platform_device *pdev)
 {
 	int ret;
@@ -1218,6 +1235,10 @@ static int __init wm8350_power_probe(struct platform_device *pdev)
 		}
 	}
 
+#ifdef CONFIG_MACH_CANOPUS
+	_wm8350 = wm8350;
+	pm_power_off = wm8350_power_off;
+#endif
 	return ret;
 
 buf_failed:
@@ -1239,6 +1260,9 @@ static int __devexit wm8350_power_remove(struct platform_device *pdev)
 	struct wm8350 *wm8350 = platform_get_drvdata(pdev);
 	struct wm8350_power *power = &wm8350->power;
 	
+#ifdef CONFIG_MACH_CANOPUS
+	_wm8350 = NULL;
+#endif
 	if (power->charger_enabled) {
 		wm8350_charger_enable(wm8350, 0);
 		free_charger_irq(wm8350);
