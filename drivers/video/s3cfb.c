@@ -64,6 +64,12 @@ static int lcd_power	   = 1;
 static struct clk      *lcd_clock;
 #endif
 
+#ifdef CONFIG_HAS_WAKELOCK
+#include <linux/wakelock.h>
+
+static struct wake_lock _lcd_wake_lock;
+#endif
+
 static  void s3c_fb_lcd_power(int to)
 {
 	lcd_power = to;
@@ -79,6 +85,12 @@ static inline void s3c_fb_backlight_power(int to)
 
 	if (mach_info.backlight_power)
 		(mach_info.backlight_power)(to);
+
+#ifdef CONFIG_HAS_WAKELOCK
+	if (to) wake_lock(&_lcd_wake_lock);
+	else wake_unlock(&_lcd_wake_lock);
+#endif
+
 }
 
  void s3c_fb_backlight_level(int to)
@@ -1144,10 +1156,16 @@ static struct platform_driver s3c_fb_driver = {
 
 int __devinit s3c_fb_init(void)
 {
+#ifdef CONFIG_HAS_WAKELOCK
+	wake_lock_init(&_lcd_wake_lock, WAKE_LOCK_SUSPEND, "lcd");
+#endif
 	return platform_driver_register(&s3c_fb_driver);
 }
 static void __exit s3c_fb_cleanup(void)
 {
+#ifdef CONFIG_HAS_WAKELOCK
+	wake_lock_destroy(&_lcd_wake_lock);
+#endif
 	platform_driver_unregister(&s3c_fb_driver);
 }
 

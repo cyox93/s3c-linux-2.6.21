@@ -22,7 +22,9 @@
 #include <linux/module.h>
 #include <linux/rtc.h>
 #include <linux/err.h>
+#ifdef CONFIG_HAS_WAKELOCK
 #include <linux/wakelock.h>
+#endif
 
 /*_____________________ Constants Definitions _______________________________*/
 struct waker {
@@ -61,7 +63,9 @@ static void alarm_triggered_func(void *p)
 	struct rtc_device *rtc = (struct rtc_device *)p;
 	if (!(rtc->irq_data & RTC_AF))
 		return;
-	wake_lock_timeout(&wakers_wake_lock, 1 * HZ);
+#ifdef CONFIG_HAS_WAKELOCK
+	wake_lock_timeout(&wakers_wake_lock, 5 * HZ);
+#endif
 }
 
 static int print_waker(char *buf, struct waker *waker)
@@ -276,13 +280,17 @@ int wakers_register(struct class_device *dev)
 	int err;
 	struct rtc_device *rtc = to_rtc_device(dev);
 
+#ifdef CONFIG_HAS_WAKELOCK
 	wake_lock_init(&wakers_wake_lock, WAKE_LOCK_SUSPEND, "wakers");
+#endif
 
 	alarm_rtc_task.private_data = rtc;
 	err = rtc_irq_register(dev, &alarm_rtc_task);
 	if (err) {
 		dev_err(dev->dev, "failed to register rtc irq\n");
+#ifdef CONFIG_HAS_WAKELOCK
 		wake_lock_destroy(&wakers_wake_lock);
+#endif
 
 		return err;
 	}
@@ -295,7 +303,9 @@ void wakers_unregister(struct class_device *dev)
 {
 	rtc_irq_unregister(dev, &alarm_rtc_task);
 	class_device_remove_file(dev, &class_device_attr_wakers);
+#ifdef CONFIG_HAS_WAKELOCK
 	wake_lock_destroy(&wakers_wake_lock);
+#endif
 }
 EXPORT_SYMBOL(wakers_unregister);
 

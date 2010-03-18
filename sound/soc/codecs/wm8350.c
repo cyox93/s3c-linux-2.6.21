@@ -72,6 +72,12 @@ struct wm8350_data {
 
 extern void speaker_amp(bool flag);
 
+#ifdef CONFIG_HAS_WAKELOCK
+#include <linux/wakelock.h>
+
+static struct wake_lock _codec_wake_lock;
+#endif
+
 static unsigned int wm8350_codec_cache_read(struct snd_soc_codec *codec,
 					    unsigned int reg)
 {
@@ -1165,6 +1171,9 @@ static int wm8350_set_bias_level(struct snd_soc_codec *codec,
 
 	switch (level) {
 	case SND_SOC_BIAS_ON:	/* full On */
+#ifdef CONFIG_HAS_WAKELOCK
+		wake_lock(&_codec_wake_lock);
+#endif
 		/* set vmid to 10k and current to 1.0x */
 		pm1 = wm8350_reg_read(wm8350, WM8350_POWER_MGMT_1) &
 		    ~(WM8350_VMID_MASK | WM8350_CODEC_ISEL_MASK);
@@ -1255,6 +1264,9 @@ static int wm8350_set_bias_level(struct snd_soc_codec *codec,
 					 pm1 | WM8350_VMID_500K |
 					 (platform->
 					  codec_current_standby << 14));
+#ifdef CONFIG_HAS_WAKELOCK
+		wake_lock_timeout(&_codec_wake_lock, 1*HZ);
+#endif
 		}
 		break;
 	case SND_SOC_BIAS_OFF:	/* Off, without power */
@@ -1547,11 +1559,17 @@ static struct platform_driver wm8350_codec_driver = {
 
 static __init int wm8350_init(void)
 {
+#ifdef CONFIG_HAS_WAKELOCK
+	wake_lock_init(&_codec_wake_lock, WAKE_LOCK_SUSPEND, "codec");
+#endif
 	return  platform_driver_register(&wm8350_codec_driver);
 }
 
 static __exit void wm8350_exit(void)
 {
+#ifdef CONFIG_HAS_WAKELOCK
+	wake_lock_destroy(&_codec_wake_lock);
+#endif
 	platform_driver_unregister(&wm8350_codec_driver);
 }
 
