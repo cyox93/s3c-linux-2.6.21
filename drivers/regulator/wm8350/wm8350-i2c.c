@@ -34,6 +34,11 @@
 #include <linux/interrupt.h>
 #include <linux/irq.h>
 #include <linux/fb.h>
+#ifdef CONFIG_HAS_WAKELOCK
+#include <linux/wakelock.h>
+
+static struct wake_lock _wm8350_wake_lock;
+#endif
 
 #define WM8350_I2C_VERSION "0.7"
 
@@ -46,7 +51,14 @@ static struct i2c_client client_template;
 
 static void wm8350_irq_work(struct work_struct *work)
 {
+#ifdef CONFIG_HAS_WAKELOCK
+	wake_lock(&_wm8350_wake_lock);
+#endif
 	wm8350_irq_worker(work);
+
+#ifdef CONFIG_HAS_WAKELOCK
+	wake_lock_timeout(&_wm8350_wake_lock, 1*HZ);
+#endif
 }
 
 static irqreturn_t wm8350_irq_handler(int irq, void *data)
@@ -164,12 +176,20 @@ static struct i2c_client client_template = {
 
 static int __init wm8350_i2c_init(void)
 {
+#ifdef CONFIG_HAS_WAKELOCK
+	wake_lock_init(&_wm8350_wake_lock, WAKE_LOCK_SUSPEND, "wm8350-irq");
+#endif
+
 	return i2c_add_driver(&wm8350_i2c_driver);
 }
 subsys_initcall(wm8350_i2c_init);
 
 static void __exit wm8350_i2c_exit(void)
 {
+#ifdef CONFIG_HAS_WAKELOCK
+	wake_lock_destroy(&_wm8350_wake_lock);
+#endif
+
 	i2c_del_driver(&wm8350_i2c_driver);
 }
 module_exit(wm8350_i2c_exit);
