@@ -766,200 +766,209 @@ void wm8350_irq_worker(struct work_struct *work)
 {
 	u16 level_one, status1, status2, comp, oc, gpio, uv;
 	struct wm8350 *wm8350 = container_of(work, struct wm8350, work);
+	int timeout = 0;
 
-	/* read this in 1 block read */
-	/* read 1st level irq sources and then read required 2nd sources */
-	level_one = wm8350_reg_read(wm8350, WM8350_SYSTEM_INTERRUPTS)
-	    & ~wm8350_reg_read(wm8350, WM8350_SYSTEM_INTERRUPTS_MASK);
-	uv = wm8350_reg_read(wm8350, WM8350_UNDER_VOLTAGE_INT_STATUS)
-	    & ~wm8350_reg_read(wm8350, WM8350_UNDER_VOLTAGE_INT_STATUS_MASK);
-	oc = wm8350_reg_read(wm8350, WM8350_OVER_CURRENT_INT_STATUS)
-	    & ~wm8350_reg_read(wm8350, WM8350_OVER_CURRENT_INT_STATUS_MASK);
-	status1 = wm8350_reg_read(wm8350, WM8350_INT_STATUS_1)
-	    & ~wm8350_reg_read(wm8350, WM8350_INT_STATUS_1_MASK);
-	status2 = wm8350_reg_read(wm8350, WM8350_INT_STATUS_2)
-	    & ~wm8350_reg_read(wm8350, WM8350_INT_STATUS_2_MASK);
-	comp = wm8350_reg_read(wm8350, WM8350_COMPARATOR_INT_STATUS)
-	    & ~wm8350_reg_read(wm8350, WM8350_COMPARATOR_INT_STATUS_MASK);
-	gpio = wm8350_reg_read(wm8350, WM8350_GPIO_INT_STATUS)
-	    & ~wm8350_reg_read(wm8350, WM8350_GPIO_INT_STATUS_MASK);
+	while (timeout++ < 1000) {
+		/* read this in 1 block read */
+		/* read 1st level irq sources and then read required 2nd sources */
+		level_one = wm8350_reg_read(wm8350, WM8350_SYSTEM_INTERRUPTS)
+		    & ~wm8350_reg_read(wm8350, WM8350_SYSTEM_INTERRUPTS_MASK);
+		uv = wm8350_reg_read(wm8350, WM8350_UNDER_VOLTAGE_INT_STATUS)
+		    & ~wm8350_reg_read(wm8350, WM8350_UNDER_VOLTAGE_INT_STATUS_MASK);
+		oc = wm8350_reg_read(wm8350, WM8350_OVER_CURRENT_INT_STATUS)
+		    & ~wm8350_reg_read(wm8350, WM8350_OVER_CURRENT_INT_STATUS_MASK);
+		status1 = wm8350_reg_read(wm8350, WM8350_INT_STATUS_1)
+		    & ~wm8350_reg_read(wm8350, WM8350_INT_STATUS_1_MASK);
+		status2 = wm8350_reg_read(wm8350, WM8350_INT_STATUS_2)
+		    & ~wm8350_reg_read(wm8350, WM8350_INT_STATUS_2_MASK);
+		comp = wm8350_reg_read(wm8350, WM8350_COMPARATOR_INT_STATUS)
+		    & ~wm8350_reg_read(wm8350, WM8350_COMPARATOR_INT_STATUS_MASK);
+		gpio = wm8350_reg_read(wm8350, WM8350_GPIO_INT_STATUS)
+		    & ~wm8350_reg_read(wm8350, WM8350_GPIO_INT_STATUS_MASK);
 
-	/* over current */
-	if (level_one & WM8350_OC_INT) {
-		if (oc & WM8350_OC_LS_EINT)	/* limit switch */
-			wm8350_irq_call_worker(wm8350, WM8350_IRQ_OC_LS);
-	}
+		if (!level_one && !uv && !oc && !status1 && !status2 && !comp && !gpio)
+			break;
 
-	/* under voltage */
-	if (level_one & WM8350_UV_INT) {
-		if (uv & WM8350_UV_DC1_EINT)
-			wm8350_irq_call_worker(wm8350, WM8350_IRQ_UV_DC1);
-		if (uv & WM8350_UV_DC2_EINT)
-			wm8350_irq_call_worker(wm8350, WM8350_IRQ_UV_DC2);
-		if (uv & WM8350_UV_DC3_EINT)
-			wm8350_irq_call_worker(wm8350, WM8350_IRQ_UV_DC3);
-		if (uv & WM8350_UV_DC4_EINT)
-			wm8350_irq_call_worker(wm8350, WM8350_IRQ_UV_DC4);
-		if (uv & WM8350_UV_DC5_EINT)
-			wm8350_irq_call_worker(wm8350, WM8350_IRQ_UV_DC5);
-		if (uv & WM8350_UV_DC6_EINT)
-			wm8350_irq_call_worker(wm8350, WM8350_IRQ_UV_DC6);
-		if (uv & WM8350_UV_LDO1_EINT)
-			wm8350_irq_call_worker(wm8350, WM8350_IRQ_UV_LDO1);
-		if (uv & WM8350_UV_LDO2_EINT)
-			wm8350_irq_call_worker(wm8350, WM8350_IRQ_UV_LDO2);
-		if (uv & WM8350_UV_LDO3_EINT)
-			wm8350_irq_call_worker(wm8350, WM8350_IRQ_UV_LDO3);
-		if (uv & WM8350_UV_LDO4_EINT)
-			wm8350_irq_call_worker(wm8350, WM8350_IRQ_UV_LDO4);
-	}
-
-	/* battery status clear */
-	wm8350_clear_bat_status();
-
-	/* charger, RTC */
-	if (status1) {
-		if (status1 & WM8350_CHG_BAT_HOT_EINT) {
-			wm8350_set_bat_status(WM8350_CHG_BAT_HOT_EINT);
-			wm8350_irq_call_worker(wm8350, WM8350_IRQ_CHG_BAT_HOT);
+		/* over current */
+		if (level_one & WM8350_OC_INT) {
+			if (oc & WM8350_OC_LS_EINT)	/* limit switch */
+				wm8350_irq_call_worker(wm8350, WM8350_IRQ_OC_LS);
 		}
-		if (status1 & WM8350_CHG_BAT_COLD_EINT) {
-			wm8350_set_bat_status(WM8350_CHG_BAT_COLD_EINT);
-			wm8350_irq_call_worker(wm8350, WM8350_IRQ_CHG_BAT_COLD);
-		}
-		if (status1 & WM8350_CHG_BAT_FAIL_EINT) {
-			wm8350_set_bat_status(WM8350_CHG_BAT_COLD_EINT);
-			wm8350_irq_call_worker(wm8350, WM8350_IRQ_CHG_BAT_FAIL);
-		}
-		if (status1 & WM8350_CHG_TO_EINT) {
-			wm8350_set_bat_status(WM8350_CHG_TO_EINT);
-			wm8350_irq_call_worker(wm8350, WM8350_IRQ_CHG_TO);
-		}
-		if (status1 & WM8350_CHG_END_EINT) {
-			wm8350_set_bat_status(WM8350_CHG_END_EINT);
-			wm8350_irq_call_worker(wm8350, WM8350_IRQ_CHG_END);
-		}
-		if (status1 & WM8350_CHG_START_EINT) {
-			wm8350_set_bat_status(WM8350_CHG_START_EINT);
-			wm8350_irq_call_worker(wm8350, WM8350_IRQ_CHG_START);
-		}
-		if (status1 & WM8350_CHG_FAST_RDY_EINT) {
-			wm8350_set_bat_status(WM8350_CHG_FAST_RDY_EINT);
-			wm8350_irq_call_worker(wm8350, WM8350_IRQ_CHG_FAST_RDY);
-		}
-		if (status1 & WM8350_CHG_VBATT_LT_3P9_EINT) {
-			wm8350_set_bat_status(WM8350_CHG_VBATT_LT_3P9_EINT);
-			wm8350_irq_call_worker(wm8350,
-					       WM8350_IRQ_CHG_VBATT_LT_3P9);
-		}
-		if (status1 & WM8350_CHG_VBATT_LT_3P1_EINT) {
-			wm8350_set_bat_status(WM8350_CHG_VBATT_LT_3P1_EINT);
-			wm8350_irq_call_worker(wm8350,
-					       WM8350_IRQ_CHG_VBATT_LT_3P1);
-		}
-		if (status1 & WM8350_CHG_VBATT_LT_2P85_EINT) {
-			wm8350_set_bat_status(WM8350_CHG_VBATT_LT_2P85_EINT);
-			wm8350_irq_call_worker(wm8350,
-					       WM8350_IRQ_CHG_VBATT_LT_2P85);
-		}
-		if (status1 & WM8350_RTC_ALM_EINT)
-			wm8350_irq_call_worker(wm8350, WM8350_IRQ_RTC_ALM);
-		if (status1 & WM8350_RTC_SEC_EINT)
-			wm8350_irq_call_worker(wm8350, WM8350_IRQ_RTC_SEC);
-		if (status1 & WM8350_RTC_PER_EINT)
-			wm8350_irq_call_worker(wm8350, WM8350_IRQ_RTC_PER);
-	}
 
-	/* current sink, system, aux adc */
-	if (status2) {
-		if (status2 & WM8350_CS1_EINT)
-			wm8350_irq_call_worker(wm8350, WM8350_IRQ_CS1);
-		if (status2 & WM8350_CS2_EINT)
-			wm8350_irq_call_worker(wm8350, WM8350_IRQ_CS2);
+		/* under voltage */
+		if (level_one & WM8350_UV_INT) {
+			if (uv & WM8350_UV_DC1_EINT)
+				wm8350_irq_call_worker(wm8350, WM8350_IRQ_UV_DC1);
+			if (uv & WM8350_UV_DC2_EINT)
+				wm8350_irq_call_worker(wm8350, WM8350_IRQ_UV_DC2);
+			if (uv & WM8350_UV_DC3_EINT)
+				wm8350_irq_call_worker(wm8350, WM8350_IRQ_UV_DC3);
+			if (uv & WM8350_UV_DC4_EINT)
+				wm8350_irq_call_worker(wm8350, WM8350_IRQ_UV_DC4);
+			if (uv & WM8350_UV_DC5_EINT)
+				wm8350_irq_call_worker(wm8350, WM8350_IRQ_UV_DC5);
+			if (uv & WM8350_UV_DC6_EINT)
+				wm8350_irq_call_worker(wm8350, WM8350_IRQ_UV_DC6);
+			if (uv & WM8350_UV_LDO1_EINT)
+				wm8350_irq_call_worker(wm8350, WM8350_IRQ_UV_LDO1);
+			if (uv & WM8350_UV_LDO2_EINT)
+				wm8350_irq_call_worker(wm8350, WM8350_IRQ_UV_LDO2);
+			if (uv & WM8350_UV_LDO3_EINT)
+				wm8350_irq_call_worker(wm8350, WM8350_IRQ_UV_LDO3);
+			if (uv & WM8350_UV_LDO4_EINT)
+				wm8350_irq_call_worker(wm8350, WM8350_IRQ_UV_LDO4);
+		}
 
-		if (status2 & WM8350_SYS_HYST_COMP_FAIL_EINT)
-			wm8350_irq_call_worker(wm8350,
-					       WM8350_IRQ_SYS_HYST_COMP_FAIL);
-		if (status2 & WM8350_SYS_CHIP_GT115_EINT)
-			wm8350_irq_call_worker(wm8350,
-					       WM8350_IRQ_SYS_CHIP_GT115);
-		if (status2 & WM8350_SYS_CHIP_GT140_EINT)
-			wm8350_irq_call_worker(wm8350,
-					       WM8350_IRQ_SYS_CHIP_GT140);
-		if (status2 & WM8350_SYS_WDOG_TO_EINT)
-			wm8350_irq_call_worker(wm8350, WM8350_IRQ_SYS_WDOG_TO);
+		/* battery status clear */
+		wm8350_clear_bat_status();
 
-		if (status2 & WM8350_AUXADC_DATARDY_EINT)
-			wm8350_irq_call_worker(wm8350,
-					       WM8350_IRQ_AUXADC_DATARDY);
-		if (status2 & WM8350_AUXADC_DCOMP4_EINT)
-			wm8350_irq_call_worker(wm8350,
-					       WM8350_IRQ_AUXADC_DCOMP4);
-		if (status2 & WM8350_AUXADC_DCOMP3_EINT)
-			wm8350_irq_call_worker(wm8350,
-					       WM8350_IRQ_AUXADC_DCOMP3);
-		if (status2 & WM8350_AUXADC_DCOMP2_EINT)
-			wm8350_irq_call_worker(wm8350,
-					       WM8350_IRQ_AUXADC_DCOMP2);
-		if (status2 & WM8350_AUXADC_DCOMP1_EINT)
-			wm8350_irq_call_worker(wm8350,
-					       WM8350_IRQ_AUXADC_DCOMP1);
-
-		if (status2 & WM8350_USB_LIMIT_EINT)
-			wm8350_irq_call_worker(wm8350, WM8350_IRQ_USB_LIMIT);
-	}
-
-	/* wake, codec, ext */
-	if (comp) {
-		if (comp & WM8350_WKUP_OFF_STATE_EINT)
-			wm8350_irq_call_worker(wm8350,
-					       WM8350_IRQ_WKUP_OFF_STATE);
-		if (comp & WM8350_WKUP_HIB_STATE_EINT)
-			wm8350_irq_call_worker(wm8350,
-					       WM8350_IRQ_WKUP_HIB_STATE);
-		if (comp & WM8350_WKUP_CONV_FAULT_EINT)
-			wm8350_irq_call_worker(wm8350,
-					       WM8350_IRQ_WKUP_CONV_FAULT);
-		if (comp & WM8350_WKUP_WDOG_RST_EINT)
-			wm8350_irq_call_worker(wm8350,
-					       WM8350_IRQ_WKUP_WDOG_RST);
-		if (comp & WM8350_WKUP_GP_PWR_ON_EINT)
-			wm8350_irq_call_worker(wm8350,
-					       WM8350_IRQ_WKUP_GP_PWR_ON);
-		if (comp & WM8350_WKUP_ONKEY_EINT)
-			wm8350_irq_call_worker(wm8350, WM8350_IRQ_WKUP_ONKEY);
-		if (comp & WM8350_WKUP_GP_WAKEUP_EINT)
-			wm8350_irq_call_worker(wm8350,
-					       WM8350_IRQ_WKUP_GP_WAKEUP);
-
-		if (comp & WM8350_CODEC_JCK_DET_L_EINT)
-			wm8350_irq_call_worker(wm8350,
-					       WM8350_IRQ_CODEC_JCK_DET_L);
-		if (comp & WM8350_CODEC_JCK_DET_R_EINT)
-			wm8350_irq_call_worker(wm8350,
-					       WM8350_IRQ_CODEC_JCK_DET_R);
-		if (comp & WM8350_CODEC_MICSCD_EINT)
-			wm8350_irq_call_worker(wm8350, WM8350_IRQ_CODEC_MICSCD);
-		if (comp & WM8350_CODEC_MICD_EINT)
-			wm8350_irq_call_worker(wm8350, WM8350_IRQ_CODEC_MICD);
-
-		if (comp & WM8350_EXT_USB_FB_EINT)
-			wm8350_irq_call_worker(wm8350, WM8350_IRQ_EXT_USB_FB);
-		if (comp & WM8350_EXT_WALL_FB_EINT)
-			wm8350_irq_call_worker(wm8350, WM8350_IRQ_EXT_WALL_FB);
-		if (comp & WM8350_EXT_BAT_FB_EINT)
-			wm8350_irq_call_worker(wm8350, WM8350_IRQ_EXT_BAT_FB);
-	}
-
-	if (level_one & WM8350_GP_INT) {
-		int i;
-
-		for (i = 0; i < 12; i++) {
-			if (gpio & (1 << i))
+		/* charger, RTC */
+		if (status1) {
+			if (status1 & WM8350_CHG_BAT_HOT_EINT) {
+				wm8350_set_bat_status(WM8350_CHG_BAT_HOT_EINT);
+				wm8350_irq_call_worker(wm8350, WM8350_IRQ_CHG_BAT_HOT);
+			}
+			if (status1 & WM8350_CHG_BAT_COLD_EINT) {
+				wm8350_set_bat_status(WM8350_CHG_BAT_COLD_EINT);
+				wm8350_irq_call_worker(wm8350, WM8350_IRQ_CHG_BAT_COLD);
+			}
+			if (status1 & WM8350_CHG_BAT_FAIL_EINT) {
+				wm8350_set_bat_status(WM8350_CHG_BAT_COLD_EINT);
+				wm8350_irq_call_worker(wm8350, WM8350_IRQ_CHG_BAT_FAIL);
+			}
+			if (status1 & WM8350_CHG_TO_EINT) {
+				wm8350_set_bat_status(WM8350_CHG_TO_EINT);
+				wm8350_irq_call_worker(wm8350, WM8350_IRQ_CHG_TO);
+			}
+			if (status1 & WM8350_CHG_END_EINT) {
+				wm8350_set_bat_status(WM8350_CHG_END_EINT);
+				wm8350_irq_call_worker(wm8350, WM8350_IRQ_CHG_END);
+			}
+			if (status1 & WM8350_CHG_START_EINT) {
+				wm8350_set_bat_status(WM8350_CHG_START_EINT);
+				wm8350_irq_call_worker(wm8350, WM8350_IRQ_CHG_START);
+			}
+			if (status1 & WM8350_CHG_FAST_RDY_EINT) {
+				wm8350_set_bat_status(WM8350_CHG_FAST_RDY_EINT);
+				wm8350_irq_call_worker(wm8350, WM8350_IRQ_CHG_FAST_RDY);
+			}
+			if (status1 & WM8350_CHG_VBATT_LT_3P9_EINT) {
+				wm8350_set_bat_status(WM8350_CHG_VBATT_LT_3P9_EINT);
 				wm8350_irq_call_worker(wm8350,
-						       WM8350_IRQ_GPIO(i));
+						       WM8350_IRQ_CHG_VBATT_LT_3P9);
+			}
+			if (status1 & WM8350_CHG_VBATT_LT_3P1_EINT) {
+				wm8350_set_bat_status(WM8350_CHG_VBATT_LT_3P1_EINT);
+				wm8350_irq_call_worker(wm8350,
+						       WM8350_IRQ_CHG_VBATT_LT_3P1);
+			}
+			if (status1 & WM8350_CHG_VBATT_LT_2P85_EINT) {
+				wm8350_set_bat_status(WM8350_CHG_VBATT_LT_2P85_EINT);
+				wm8350_irq_call_worker(wm8350,
+						       WM8350_IRQ_CHG_VBATT_LT_2P85);
+			}
+			if (status1 & WM8350_RTC_ALM_EINT)
+				wm8350_irq_call_worker(wm8350, WM8350_IRQ_RTC_ALM);
+			if (status1 & WM8350_RTC_SEC_EINT)
+				wm8350_irq_call_worker(wm8350, WM8350_IRQ_RTC_SEC);
+			if (status1 & WM8350_RTC_PER_EINT)
+				wm8350_irq_call_worker(wm8350, WM8350_IRQ_RTC_PER);
+		}
+
+		/* current sink, system, aux adc */
+		if (status2) {
+			if (status2 & WM8350_CS1_EINT)
+				wm8350_irq_call_worker(wm8350, WM8350_IRQ_CS1);
+			if (status2 & WM8350_CS2_EINT)
+				wm8350_irq_call_worker(wm8350, WM8350_IRQ_CS2);
+
+			if (status2 & WM8350_SYS_HYST_COMP_FAIL_EINT)
+				wm8350_irq_call_worker(wm8350,
+						       WM8350_IRQ_SYS_HYST_COMP_FAIL);
+			if (status2 & WM8350_SYS_CHIP_GT115_EINT)
+				wm8350_irq_call_worker(wm8350,
+						       WM8350_IRQ_SYS_CHIP_GT115);
+			if (status2 & WM8350_SYS_CHIP_GT140_EINT)
+				wm8350_irq_call_worker(wm8350,
+						       WM8350_IRQ_SYS_CHIP_GT140);
+			if (status2 & WM8350_SYS_WDOG_TO_EINT)
+				wm8350_irq_call_worker(wm8350, WM8350_IRQ_SYS_WDOG_TO);
+
+			if (status2 & WM8350_AUXADC_DATARDY_EINT)
+				wm8350_irq_call_worker(wm8350,
+						       WM8350_IRQ_AUXADC_DATARDY);
+			if (status2 & WM8350_AUXADC_DCOMP4_EINT)
+				wm8350_irq_call_worker(wm8350,
+						       WM8350_IRQ_AUXADC_DCOMP4);
+			if (status2 & WM8350_AUXADC_DCOMP3_EINT)
+				wm8350_irq_call_worker(wm8350,
+						       WM8350_IRQ_AUXADC_DCOMP3);
+			if (status2 & WM8350_AUXADC_DCOMP2_EINT)
+				wm8350_irq_call_worker(wm8350,
+						       WM8350_IRQ_AUXADC_DCOMP2);
+			if (status2 & WM8350_AUXADC_DCOMP1_EINT)
+				wm8350_irq_call_worker(wm8350,
+						       WM8350_IRQ_AUXADC_DCOMP1);
+
+			if (status2 & WM8350_USB_LIMIT_EINT)
+				wm8350_irq_call_worker(wm8350, WM8350_IRQ_USB_LIMIT);
+		}
+
+		/* wake, codec, ext */
+		if (comp) {
+			if (comp & WM8350_WKUP_OFF_STATE_EINT)
+				wm8350_irq_call_worker(wm8350,
+						       WM8350_IRQ_WKUP_OFF_STATE);
+			if (comp & WM8350_WKUP_HIB_STATE_EINT)
+				wm8350_irq_call_worker(wm8350,
+						       WM8350_IRQ_WKUP_HIB_STATE);
+			if (comp & WM8350_WKUP_CONV_FAULT_EINT)
+				wm8350_irq_call_worker(wm8350,
+						       WM8350_IRQ_WKUP_CONV_FAULT);
+			if (comp & WM8350_WKUP_WDOG_RST_EINT)
+				wm8350_irq_call_worker(wm8350,
+						       WM8350_IRQ_WKUP_WDOG_RST);
+			if (comp & WM8350_WKUP_GP_PWR_ON_EINT)
+				wm8350_irq_call_worker(wm8350,
+						       WM8350_IRQ_WKUP_GP_PWR_ON);
+			if (comp & WM8350_WKUP_ONKEY_EINT)
+				wm8350_irq_call_worker(wm8350, WM8350_IRQ_WKUP_ONKEY);
+			if (comp & WM8350_WKUP_GP_WAKEUP_EINT)
+				wm8350_irq_call_worker(wm8350,
+						       WM8350_IRQ_WKUP_GP_WAKEUP);
+
+			if (comp & WM8350_CODEC_JCK_DET_L_EINT)
+				wm8350_irq_call_worker(wm8350,
+						       WM8350_IRQ_CODEC_JCK_DET_L);
+			if (comp & WM8350_CODEC_JCK_DET_R_EINT)
+				wm8350_irq_call_worker(wm8350,
+						       WM8350_IRQ_CODEC_JCK_DET_R);
+			if (comp & WM8350_CODEC_MICSCD_EINT)
+				wm8350_irq_call_worker(wm8350, WM8350_IRQ_CODEC_MICSCD);
+			if (comp & WM8350_CODEC_MICD_EINT)
+				wm8350_irq_call_worker(wm8350, WM8350_IRQ_CODEC_MICD);
+
+			if (comp & WM8350_EXT_USB_FB_EINT)
+				wm8350_irq_call_worker(wm8350, WM8350_IRQ_EXT_USB_FB);
+			if (comp & WM8350_EXT_WALL_FB_EINT)
+				wm8350_irq_call_worker(wm8350, WM8350_IRQ_EXT_WALL_FB);
+			if (comp & WM8350_EXT_BAT_FB_EINT)
+				wm8350_irq_call_worker(wm8350, WM8350_IRQ_EXT_BAT_FB);
+		}
+
+		if (level_one & WM8350_GP_INT) {
+			int i;
+
+			for (i = 0; i < 12; i++) {
+				if (gpio & (1 << i))
+					wm8350_irq_call_worker(wm8350,
+							       WM8350_IRQ_GPIO(i));
+			}
 		}
 	}
+
+	if (timeout >= 1000)
+		printk(KERN_ERR, "%s : interrupt is halted\n", __func__);
 }
 EXPORT_SYMBOL(wm8350_irq_worker);
 

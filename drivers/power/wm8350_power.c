@@ -1285,9 +1285,35 @@ static int __devexit wm8350_power_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_MACH_CANOPUS
+static int wm8350_power_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	struct wm8350 *wm8350 = platform_get_drvdata(pdev);
+	struct wm8350_power *power = &wm8350->power;
+
+	mutex_lock(&power->charger_mutex);
+
+	return 0;
+}
+
+static int wm8350_power_resume(struct platform_device *pdev)
+{
+	struct wm8350 *wm8350 = platform_get_drvdata(pdev);
+	struct wm8350_power *power = &wm8350->power;
+
+	mutex_unlock(&power->charger_mutex);
+
+	return 0;
+}
+#endif
+
 struct platform_driver wm8350_power_driver = {
 	.probe = wm8350_power_probe,
 	.remove = __devexit(wm8350_power_remove),
+#ifdef CONFIG_MACH_CANOPUS
+	.suspend = wm8350_power_suspend,
+	.resume = wm8350_power_resume,
+#endif
 	.driver = {
 		.name = "wm8350-power",
 	},
