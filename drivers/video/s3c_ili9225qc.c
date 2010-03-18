@@ -1637,6 +1637,8 @@ lcd_ili9225b_power(int set)
 		lcd_set_command_mode(0);
 		mdelay(2);
 		lcd_power_state = set;
+
+		__raw_writel((1<<0), S3C_CPUTRIGCON2);
 	}
 }
 
