@@ -30,3 +30,16 @@ extern  int s3c2443_baseclk_add(void);
 #define s3c2416_map_io NULL
 #define s3c2416_init NULL
 #endif
+
+#ifdef CONFIG_MACH_CANOPUS
+#define q_hw_ver( model )	( q_hw_ver_is_##model() )
+
+#define q_hw_ver_is_7800()	( (q_hw_version() == 0xff || !(q_hw_version() & 0x80)) ? 1 : 0 )
+#define q_hw_ver_is_7800_ES1()	( (q_hw_version() == 0xff) ? 1 : 0 )
+#define q_hw_ver_is_7800_ES2()	( (q_hw_version() == 0x00) ? 1 : 0 )
+#define q_hw_ver_is_7800_TP()	( (q_hw_version() == 0x01) ? 1 : 0 )
+
+#define q_hw_ver_is_SKBB()	( !q_hw_ver_is_7800() )
+
+extern int q_hw_version(void);
+#endif

@@ -43,6 +43,7 @@
 #include <asm/plat-s3c24xx/common-smdk.h>
 #include <asm/plat-s3c24xx/devs.h>
 #include <asm/plat-s3c24xx/pm.h>
+#include <asm/plat-s3c24xx/s3c2416.h>
 
 /* LED devices */
 
@@ -254,6 +255,9 @@ static struct platform_device __initdata *smdk_devs[] = {
 #ifdef CONFIG_MACH_CANOPUS
 #include <asm/arch/regs-lcd.h>
 #include <linux/delay.h>
+
+static int _hw_version;
+
 void Key_gpio_init(void)
 {
 	u32 mask, mask1, mask2;
@@ -301,32 +305,28 @@ void Key_gpio_init(void)
 /* 3.3V LDO  */
 void gpio_wifi_power(bool flag)
 {
-	unsigned long val;
-	
-	if (flag) { 		
-		val = __raw_readl(S3C2410_GPHDAT);
-		__raw_writel((val |= 0x1000), S3C2410_GPHDAT);
-	} else {
-		val = __raw_readl(S3C2410_GPHDAT);		
-		__raw_writel((val&0xefff), S3C2410_GPHDAT);		
-	}
+	// not used
 }
 
 void gpio_wifi_power_down(bool flag)
 {
-	if (flag) { 
-		s3c2410_gpio_setpin(S3C2410_GPH7, 1);
-	} else {
-		s3c2410_gpio_setpin(S3C2410_GPH7, 0);
-	}
+	if (q_hw_ver(7800_ES1) || q_hw_ver(SKBB))
+		s3c2410_gpio_setpin(S3C2410_GPH7, (flag ? 1 : 0));
+	else
+		s3c2410_gpio_setpin(S3C2410_GPF7, (flag ? 1 : 0));
 }
 
 void gpio_wifi_reset(void)
 {
+	unsigned int pin;
+
+	if (q_hw_ver(7800_ES1) || q_hw_ver(SKBB)) pin = S3C2410_GPH6;
+	else pin = S3C2410_GPF6;
+
 	mdelay(1);
-	s3c2410_gpio_setpin(S3C2410_GPH6, 0);
+	s3c2410_gpio_setpin(pin, 0);
 	mdelay(10);
-	s3c2410_gpio_setpin(S3C2410_GPH6, 1);
+	s3c2410_gpio_setpin(pin, 1);
 	mdelay(1);
 }
 
@@ -334,9 +334,23 @@ void wifi_gpio_init (void)
 {	
 	unsigned long mask;
 
-	s3c2410_gpio_cfgpin(S3C2410_GPH6, S3C2410_GPH6_OUTP);
-	s3c2410_gpio_cfgpin(S3C2410_GPH7, S3C2410_GPH7_OUTP);
-	s3c2410_gpio_cfgpin(S3C2410_GPH12, S3C2410_GPH12_OUTP);
+	if (q_hw_ver(7800_ES1) || q_hw_ver(SKBB)) {
+		// wifi reset
+		s3c2410_gpio_setpin(S3C2410_GPH6, 1);
+		s3c2410_gpio_cfgpin(S3C2410_GPH6, S3C2410_GPH6_OUTP);
+
+		// wifi power down
+		s3c2410_gpio_setpin(S3C2410_GPH7, 1);
+		s3c2410_gpio_cfgpin(S3C2410_GPH7, S3C2410_GPH7_OUTP);
+	} else {
+		// wifi reset
+		s3c2410_gpio_setpin(S3C2410_GPF6, 1);	
+		s3c2410_gpio_cfgpin(S3C2410_GPF6, S3C2410_GPF6_OUTP);
+
+		// wifi power down
+		s3c2410_gpio_setpin(S3C2410_GPF7, 1);
+		s3c2410_gpio_cfgpin(S3C2410_GPF7, S3C2410_GPF7_OUTP);
+	}
 
 	s3c2410_gpio_cfgpin(S3C2410_GPL0, S3C2410_GPL0_SD0_DAT0);
 	s3c2410_gpio_cfgpin(S3C2410_GPL1, S3C2410_GPL1_SD0_DAT1);
@@ -346,16 +360,12 @@ void wifi_gpio_init (void)
 	s3c2410_gpio_cfgpin(S3C2410_GPL8, S3C2410_GPL8_SD0_CMD);
 	s3c2410_gpio_cfgpin(S3C2410_GPL9, S3C2410_GPL9_SD0_CLK);
 
-	s3c2410_gpio_pullup(S3C2410_GPH6, 2); /* WiFi Reset pull-up enable */
 
 	s3c2410_gpio_pullup(S3C2410_GPL0, 2); /* SD DAT0 pull-up enable */
 	s3c2410_gpio_pullup(S3C2410_GPL1, 2); /* SD DAT1 pull-up enable */
 	s3c2410_gpio_pullup(S3C2410_GPL2, 2); /* SD DAT2 pull-up enable */
 	s3c2410_gpio_pullup(S3C2410_GPL3, 2); /* SD DAT3 pull-up enable */
 	s3c2410_gpio_pullup(S3C2410_GPL8, 2); /* SD CMD pull-up enable */
-
-	s3c2410_gpio_setpin(S3C2410_GPH6, 1);	
-	s3c2410_gpio_setpin(S3C2410_GPH7, 1);
 
 	// set EXTINT4 for WOW
 	s3c2410_gpio_cfgpin(S3C2410_GPF4, S3C2410_GPF4_EINT4);
@@ -370,11 +380,16 @@ void wifi_gpio_init (void)
 
 void lcd_reset(void)
 {
+	unsigned int pin;
+
+	if (q_hw_ver(7800_ES1) || q_hw_ver(SKBB)) pin = S3C2410_GPB1;
+	else pin = S3C2410_GPG6;
+
 	mdelay(10);
-	s3c2410_gpio_setpin(S3C2410_GPB1, 0);
+	s3c2410_gpio_setpin(pin, 0);
 	//mdelay(10);
 	mdelay(20);
-	s3c2410_gpio_setpin(S3C2410_GPB1, 1);
+	s3c2410_gpio_setpin(pin, 1);
 	//mdelay(50);
 	mdelay(150);
 }
@@ -384,8 +399,13 @@ void lcd_gpio_init(void)
 	u32 val;
 
 	// set gpio out for lcd reset 
-	s3c2410_gpio_cfgpin(S3C2410_GPB1, S3C2410_GPB1_OUTP);
-	s3c2410_gpio_setpin(S3C2410_GPB1, 1);
+	if (q_hw_ver(7800_ES1) || q_hw_ver(SKBB)) {
+		s3c2410_gpio_setpin(S3C2410_GPB1, 1);
+		s3c2410_gpio_cfgpin(S3C2410_GPB1, S3C2410_GPB1_OUTP);
+	} else {
+		s3c2410_gpio_setpin(S3C2410_GPG6, 1);
+		s3c2410_gpio_cfgpin(S3C2410_GPG6, S3C2410_GPG6_OUTP);
+	}
 
 	// set lcd interface
 	val = __raw_readl(S3C2410_GPCCON) & 0x0fcc0;
@@ -415,9 +435,44 @@ void speaker_amp(bool flag)
 	}
 }
 
+int q_hw_version(void) { return _hw_version; }
+
+static void _get_hw_version(void)
+{
+	_hw_version = 0;
+
+	// set version bit to input pullup
+	s3c2410_gpio_cfgpin(S3C2410_GPE7, S3C2410_GPE7_INP);
+	s3c2410_gpio_pullup(S3C2410_GPE7, 2);
+
+	s3c2410_gpio_cfgpin(S3C2410_GPE8, S3C2410_GPE8_INP);
+	s3c2410_gpio_pullup(S3C2410_GPE8, 2);
+
+	s3c2410_gpio_cfgpin(S3C2410_GPE9, S3C2410_GPE9_INP);
+	s3c2410_gpio_pullup(S3C2410_GPE9, 2);
+
+	s3c2410_gpio_cfgpin(S3C2410_GPE10, S3C2410_GPE9_INP);
+	s3c2410_gpio_pullup(S3C2410_GPE10, 2);
+
+	_hw_version += (s3c2410_gpio_getpin(S3C2410_GPE7) ? 1 << 0 : 0);
+	_hw_version += (s3c2410_gpio_getpin(S3C2410_GPE8) ? 1 << 1 : 0);
+	_hw_version += (s3c2410_gpio_getpin(S3C2410_GPE9) ? 1 << 2 : 0);
+	_hw_version += (s3c2410_gpio_getpin(S3C2410_GPE10) ? 1 << 3 : 0);
+
+	// set version bit to disable pullup
+	s3c2410_gpio_pullup(S3C2410_GPE7, 0);
+	s3c2410_gpio_pullup(S3C2410_GPE8, 0);
+	s3c2410_gpio_pullup(S3C2410_GPE9, 0);
+	s3c2410_gpio_pullup(S3C2410_GPE10, 0);
+
+	printk("CANOPUS H/W ver. 0x%x\n", _hw_version);
+}
+
 void canopus_gpio_init(void)
 {
 	printk("canopus_gpio_init\n");
+
+	_get_hw_version();
 
 	// Speaker AMP
 	s3c2410_gpio_cfgpin(S3C2410_GPH8, S3C2410_GPH8_OUTP);
@@ -471,5 +526,6 @@ EXPORT_SYMBOL(gpio_wifi_reset);
 EXPORT_SYMBOL(lcd_reset);
 EXPORT_SYMBOL(lcd_gpio_init);
 EXPORT_SYMBOL(speaker_amp);
+EXPORT_SYMBOL(q_hw_version);
 #endif	// CONFIG_MACH_CANOPUS
 
