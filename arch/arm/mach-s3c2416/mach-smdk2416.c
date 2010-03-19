@@ -510,13 +510,13 @@ static inline void s3c_init_wm8350(void)
 }
 
 struct wm8350_charger_policy wm8350_charger = {
-	.eoc_mA			= 50,/* end of charge current (mA)  */
-	.charge_mV		= WM8350_CHG_4_05V, /* charge voltage */
+	.eoc_mA			= 90,/* end of charge current (mA)  */
+	.charge_mV		= WM8350_CHG_4_20V, /* charge voltage */
 	.fast_limit_mA		= 750,/* fast charge current limit */
 	.fast_limit_USB_mA	= 400,/* USB fast charge current limit */
 	.charge_timeout		= 300,	/* charge timeout (mins) */
 	.trickle_start_mV	= WM8350_CHG_TRICKLE_3_1V, /* trickle charge starts at mV */
-	.trickle_charge_mA	= WM8350_CHG_TRICKLE_50mA, /* trickle charge current */
+	.trickle_charge_mA	= WM8350_CHG_TRICKLE_100mA, /* trickle charge current */
 };
 
 int s3c_wm8350_device_register(struct wm8350 *wm8350)
@@ -657,6 +657,7 @@ static int config_s3c_wm8350_gpio(struct wm8350 *wm8350)
 int wm8350_dev_init(struct wm8350 *wm8350)
 {
 	int i, ret;
+	u16 data;
 
 #if 0
 	/* dont assert RTS when hibernating */
@@ -669,8 +670,13 @@ int wm8350_dev_init(struct wm8350 *wm8350)
 
 	s3c2410_gpio_pullup(S3C2410_GPF1, 0);
 	s3c2410_gpio_cfgpin(S3C2410_GPF1, S3C2410_GPF1_EINT1);
-	set_irq_type(IRQ_EINT1, IRQT_RISING);
 	set_irq_type(IRQ_EINT1, IRQT_BOTHEDGE);
+
+	/* Shutdown threshold value */
+	wm8350_reg_unlock(wm8350);
+	data = wm8350_reg_read(wm8350, WM8350_POWER_CHECK_COMPARATOR) & ~(WM8350_PCCMP_OFF_THR_MASK);
+	wm8350_reg_write(wm8350, WM8350_POWER_CHECK_COMPARATOR, data | 0x50);
+	wm8350_reg_lock(wm8350);
 
 	config_s3c_wm8350_gpio(wm8350);
 

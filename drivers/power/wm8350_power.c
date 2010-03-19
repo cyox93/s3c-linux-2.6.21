@@ -561,9 +561,14 @@ void wm8350_bat_fault_work(struct work_struct *work)
 {
 	int event = 0;
 	struct list_head *p;
+	struct wm8350 *wm8350 = wm8350_bat;
 	wm8350_bat_event_callback_list_t *temp = NULL;
 
 	event = WM8350_BAT_EVENT_FAULT;
+
+	printk("battery fault ...\n");
+	wm8350_gpio_set_status(wm8350, 10, 0);
+	wm8350_gpio_set_status(wm8350, 11, 0);
 
 	if (!list_empty(&wm8350_bat_events[event])) {
 		list_for_each(p, &wm8350_bat_events[event]) {
