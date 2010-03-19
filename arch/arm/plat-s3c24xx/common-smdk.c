@@ -311,9 +311,9 @@ void gpio_wifi_power(bool flag)
 void gpio_wifi_power_down(bool flag)
 {
 	if (q_hw_ver(7800_ES1) || q_hw_ver(SKBB))
-		s3c2410_gpio_setpin(S3C2410_GPH7, (flag ? 1 : 0));
+		s3c2410_gpio_setpin(S3C2410_GPH7, (flag ? 0 : 1));
 	else
-		s3c2410_gpio_setpin(S3C2410_GPF7, (flag ? 1 : 0));
+		s3c2410_gpio_setpin(S3C2410_GPF7, (flag ? 0 : 1));
 }
 
 void gpio_wifi_reset(void)
