@@ -305,7 +305,10 @@ void Key_gpio_init(void)
 /* 3.3V LDO  */
 void gpio_wifi_power(bool flag)
 {
-	// not used
+	if (q_hw_ver(7800_ES1) || q_hw_ver(SKBB))
+		s3c2410_gpio_setpin(S3C2410_GPH12, (flag ? 1 : 0));
+	// esle
+	// 	not used
 }
 
 void gpio_wifi_power_down(bool flag)
@@ -342,6 +345,10 @@ void wifi_gpio_init (void)
 		// wifi power down
 		s3c2410_gpio_setpin(S3C2410_GPH7, 1);
 		s3c2410_gpio_cfgpin(S3C2410_GPH7, S3C2410_GPH7_OUTP);
+
+		// wifi LDO enable
+		s3c2410_gpio_setpin(S3C2410_GPH12, 0);
+		s3c2410_gpio_cfgpin(S3C2410_GPH12, S3C2410_GPH12_OUTP);
 	} else {
 		// wifi reset
 		s3c2410_gpio_setpin(S3C2410_GPF6, 1);	
