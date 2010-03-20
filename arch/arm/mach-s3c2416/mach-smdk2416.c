@@ -274,13 +274,6 @@ static struct platform_device s3c_wm8350_iis_device = {
 	},
 };
 
-static struct platform_device wm8350_cdev_device = {
-	.name = "wm8350-cdev",
-	.dev = {
-		.release = s3c_nop_release,
-	},
-};
-
 static struct platform_device wm8350_power_device = {
 	.name = "wm8350-power",
 	.dev = {
@@ -516,14 +509,6 @@ struct wm8350_charger_policy wm8350_charger = {
 int s3c_wm8350_device_register(struct wm8350 *wm8350)
 {
 	int err;
-
-	platform_set_drvdata(&wm8350_cdev_device, wm8350);
-	err = platform_device_register(&wm8350_cdev_device);
-	if (err < 0) {
-		dev_err(&wm8350_cdev_device.dev,
-				"Unable to register WM8350 CDEV device\n");
-		return err;
-	}
 
 	platform_set_drvdata(&wm8350_power_device, wm8350);
 	wm8350->power.policy = &wm8350_charger;

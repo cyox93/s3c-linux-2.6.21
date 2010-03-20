@@ -100,129 +100,6 @@ static DEFINE_MUTEX(io_mutex);
 static DEFINE_MUTEX(reg_lock_mutex);
 static DEFINE_MUTEX(auxadc_mutex);
 
-/*
- * WM8350 event 
- */
-typedef struct {
-	// keeps a list of subsecibed clients to an event.
-	struct list_head list;
-
-	// Callback function with parameter, called when event occurs
-	wm8350_event_callback_t callback;
-} wm8350_event_callback_list_t;
-
-static DECLARE_MUTEX(event_mutex);
-static struct list_head wm8350_events[WM8350_NUM_IRQ];
-
-/*
- * initializes event list for WM8350 event handling
- */
-void wm8350_event_list_init(void)
-{
-	int i;
-
-	for (i=0; i < WM8350_NUM_IRQ; i++) {
-		INIT_LIST_HEAD(&wm8350_events[i]);
-	}
-
-	sema_init(&event_mutex, 1);
-
-	return;
-}
-EXPORT_SYMBOL(wm8350_event_list_init);
-
-/*
- * This function is used to subsecribe on an event
- */
-int wm8350_event_subscribe(type_event event,
-			wm8350_event_callback_t callback)
-{
-	wm8350_event_callback_list_t *new = NULL;
-
-	pr_debug("Event:%d Subscribe\n", event);
-
-	/* Check whether the event & callback are valid? */
-	if (event >= WM8350_NUM_IRQ) {
-		pr_debug("Invalid Event:%d\n", event);
-		return -EINVAL;
-	}
-	if (NULL == callback.func) {
-		pr_debug("Null or Invalid Callback\n");
-		return -EINVAL;
-	}
-
-	/* Create a new linked list entry */
-	new = kmalloc(sizeof(wm8350_event_callback_list_t), GFP_KERNEL);
-	if (NULL == new) {
-		return -ENOMEM;
-	}
-	/* Initialize the list node fields */
-	new->callback.func = callback.func;
-	new->callback.param = callback.param;
-	INIT_LIST_HEAD(&new->list);
-
-	/* Obtain the lock to access the list */
-	if (down_interruptible(&event_mutex)) {
-		kfree(new);
-		return -EINTR;
-	}
-
-	/* Add this entry to the event list */
-	list_add_tail(&new->list, &wm8350_events[event]);
-
-	/* Release the lock */
-	up(&event_mutex);
-
-	return 0;
-}
-EXPORT_SYMBOL(wm8350_event_subscribe);
-
-int wm8350_event_unsubscribe(type_event event,
-				   wm8350_event_callback_t callback)
-{
-	struct list_head *p;
-	struct list_head *n;
-	wm8350_event_callback_list_t *temp = NULL;
-	int ret = -1;
-
-	pr_debug("Event:%d Unsubscribe\n", event);
-
-	/* Check whether the event & callback are valid? */
-	if (event >= WM8350_NUM_IRQ) {
-		pr_debug("Invalid Event:%d\n", event);
-		return -EINVAL;
-	}
-
-	if (NULL == callback.func) {
-		pr_debug("Null or Invalid Callback\n");
-		return -EINVAL;
-	}
-
-	/* Obtain the lock to access the list */
-	if (down_interruptible(&event_mutex)) {
-		return -EINTR;
-	}
-
-	/* Find the entry in the list */
-	list_for_each_safe(p, n, &wm8350_events[event]) {
-		temp = list_entry(p, wm8350_event_callback_list_t, list);
-		if (temp->callback.func == callback.func
-		    && temp->callback.param == callback.param) {
-			/* Remove the entry from the list */
-			list_del(p);
-			kfree(temp);
-			ret = 0;
-			break;
-		}
-	}
-
-	/* Release the lock */
-	up(&event_mutex);
-
-	return ret;
-}
-EXPORT_SYMBOL(wm8350_event_unsubscribe);
-
 #ifdef CONFIG_I2C
 static int wm8350_read_i2c_device(struct wm8350 *wm8350, char reg,
 				  int bytes, char *dest)
@@ -705,21 +582,10 @@ EXPORT_SYMBOL(wm8350_create_cache);
 
 static void wm8350_irq_call_worker(struct wm8350 *wm8350, int irq)
 {
-	struct list_head *p;
-	wm8350_event_callback_list_t *temp = NULL;
-
 	mutex_lock(&wm8350->work_mutex);
 
-	if (wm8350->irq[irq].handler) {
+	if (wm8350->irq[irq].handler)
 		wm8350->irq[irq].handler(wm8350, irq, wm8350->irq[irq].data);
-
-		if (!list_empty(&wm8350_events[irq])) {
-			list_for_each(p, &wm8350_events[irq]) {
-				temp = list_entry(p, wm8350_event_callback_list_t, list);
-				temp->callback.func(temp->callback.param);
-			}
-		}
-	}
 	else {
 		mutex_unlock(&wm8350->work_mutex);
 		printk(KERN_ERR "wm8350: irq %d nobody cared. now masked.\n",

@@ -33,19 +33,11 @@ config S3C24XX_WM8350_PMU
 	depends on REGULATOR
 	select REGULATOR_WM8350
 	select PMIC_WM8351_MODE_0
-	---help---
+	help
 	  If you say yes here you get support for the
 	  Wolfon WM8350 PMIC chip on the Freescale S3C24XX.
 
 	  This driver can also be built as a module. If so, the module
 	  will be called imx32ads-wm8350.
-
-config S3C24XX_WM8350_CHARDEV
-	tristate "WM8350 device interface"
-	depends on REGULATOR_WM8350
-	help
-	   Say Y here to us "wm8350" device files, found in ther /dev directory
-	   on the system. They make it possible to have user-space progrms use
-	   or control WM8350.
 
 endmenu
