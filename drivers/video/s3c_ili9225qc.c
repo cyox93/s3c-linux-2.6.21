@@ -1816,6 +1816,8 @@ _lcd_panel_init(void)
 	}
 }
 
+#include "unidata-logo.h"
+
 void lcd_module_init (void)
 {
 	/* set window size */
@@ -1824,6 +1826,7 @@ void lcd_module_init (void)
 	int ys = 0;
 	int ye = 220 -1;
 	int i = H_RESOLUTION * V_RESOLUTION;
+	u16 *logo = (u16 *)&_logo[12];
 
 	lcd_reset();
 	lcd_set_command_mode(1);
@@ -1836,8 +1839,10 @@ void lcd_module_init (void)
         _lcd_ili9225b_reg_write (0x39, ys);
 
 	lcd_prepare_write(0, 0);
-	while (i-- > 0)
-		lcd_write_pixel(0);
+	while (i-- > 0) {
+		lcd_write_pixel(*logo);
+		logo++;
+	}
 
 	lcd_set_command_mode(0);
 }
