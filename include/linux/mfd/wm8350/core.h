@@ -711,6 +711,5 @@ int wm8350_mask_irq(struct wm8350 *wm8350, int irq);
 int wm8350_unmask_irq(struct wm8350 *wm8350, int irq);
 void wm8350_irq_worker(struct work_struct *work);
 
-unsigned int wm8350_get_bat_status(void);
 extern int wm8350_dev_init(struct wm8350 *wm8350); 
 #endif

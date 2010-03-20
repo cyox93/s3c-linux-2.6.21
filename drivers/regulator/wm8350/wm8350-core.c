@@ -65,23 +65,6 @@
 #define BYTE_SWAP16(x) (x >> 8 | x << 8)	/*lg replace with generic */
 
 /*
- * WM8350 Battery Interrupt Status 
- *
- * CHG_BATT_HOT_EINT			0x8000	
- * CHG_BATT_COLD_EINT			0x4000	
- * CHG_BATT_FAIL_EINT			0x2000	
- * CHG_BATT_TO_EINT				0x1000	
- * CHG_BATT_END_EINT			0x0800	
- * CHG_BATT_START_EINT			0x0400	
- * CHG_BATT_FAST_RDY_EINT		0x0200	
- * CHG_VBATT_3P9_EINT			0x0004	
- * CHG_VBATT_3P1_EINT			0x0002	
- * CHG_VBATT_2P85_EINT			0x0001	
- *
-*/
-unsigned int wm8350_bat_status = 0;
-
-/*
  * WM8350 can run in 1 of 4 configuration modes.
  * Each mode has different default register values.
  */
@@ -720,21 +703,6 @@ out:
 }
 EXPORT_SYMBOL(wm8350_create_cache);
 
-void wm8350_clear_bat_status(void)
-{
-	wm8350_bat_status = 0;
-}
-
-void wm8350_set_bat_status(unsigned int status)
-{
-	wm8350_bat_status |= status;
-}
-unsigned int wm8350_get_bat_status(void)
-{	
-	return wm8350_bat_status;
-}
-EXPORT_SYMBOL(wm8350_get_bat_status);
-
 static void wm8350_irq_call_worker(struct wm8350 *wm8350, int irq)
 {
 	struct list_head *p;
@@ -819,54 +787,31 @@ void wm8350_irq_worker(struct work_struct *work)
 				wm8350_irq_call_worker(wm8350, WM8350_IRQ_UV_LDO4);
 		}
 
-		/* battery status clear */
-		wm8350_clear_bat_status();
-
 		/* charger, RTC */
 		if (status1) {
-			if (status1 & WM8350_CHG_BAT_HOT_EINT) {
-				wm8350_set_bat_status(WM8350_CHG_BAT_HOT_EINT);
+			if (status1 & WM8350_CHG_BAT_HOT_EINT)
 				wm8350_irq_call_worker(wm8350, WM8350_IRQ_CHG_BAT_HOT);
-			}
-			if (status1 & WM8350_CHG_BAT_COLD_EINT) {
-				wm8350_set_bat_status(WM8350_CHG_BAT_COLD_EINT);
+			if (status1 & WM8350_CHG_BAT_COLD_EINT)
 				wm8350_irq_call_worker(wm8350, WM8350_IRQ_CHG_BAT_COLD);
-			}
-			if (status1 & WM8350_CHG_BAT_FAIL_EINT) {
-				wm8350_set_bat_status(WM8350_CHG_BAT_COLD_EINT);
+			if (status1 & WM8350_CHG_BAT_FAIL_EINT)
 				wm8350_irq_call_worker(wm8350, WM8350_IRQ_CHG_BAT_FAIL);
-			}
-			if (status1 & WM8350_CHG_TO_EINT) {
-				wm8350_set_bat_status(WM8350_CHG_TO_EINT);
+			if (status1 & WM8350_CHG_TO_EINT)
 				wm8350_irq_call_worker(wm8350, WM8350_IRQ_CHG_TO);
-			}
-			if (status1 & WM8350_CHG_END_EINT) {
-				wm8350_set_bat_status(WM8350_CHG_END_EINT);
+			if (status1 & WM8350_CHG_END_EINT)
 				wm8350_irq_call_worker(wm8350, WM8350_IRQ_CHG_END);
-			}
-			if (status1 & WM8350_CHG_START_EINT) {
-				wm8350_set_bat_status(WM8350_CHG_START_EINT);
+			if (status1 & WM8350_CHG_START_EINT)
 				wm8350_irq_call_worker(wm8350, WM8350_IRQ_CHG_START);
-			}
-			if (status1 & WM8350_CHG_FAST_RDY_EINT) {
-				wm8350_set_bat_status(WM8350_CHG_FAST_RDY_EINT);
+			if (status1 & WM8350_CHG_FAST_RDY_EINT)
 				wm8350_irq_call_worker(wm8350, WM8350_IRQ_CHG_FAST_RDY);
-			}
-			if (status1 & WM8350_CHG_VBATT_LT_3P9_EINT) {
-				wm8350_set_bat_status(WM8350_CHG_VBATT_LT_3P9_EINT);
+			if (status1 & WM8350_CHG_VBATT_LT_3P9_EINT)
 				wm8350_irq_call_worker(wm8350,
 						       WM8350_IRQ_CHG_VBATT_LT_3P9);
-			}
-			if (status1 & WM8350_CHG_VBATT_LT_3P1_EINT) {
-				wm8350_set_bat_status(WM8350_CHG_VBATT_LT_3P1_EINT);
+			if (status1 & WM8350_CHG_VBATT_LT_3P1_EINT)
 				wm8350_irq_call_worker(wm8350,
 						       WM8350_IRQ_CHG_VBATT_LT_3P1);
-			}
-			if (status1 & WM8350_CHG_VBATT_LT_2P85_EINT) {
-				wm8350_set_bat_status(WM8350_CHG_VBATT_LT_2P85_EINT);
+			if (status1 & WM8350_CHG_VBATT_LT_2P85_EINT)
 				wm8350_irq_call_worker(wm8350,
 						       WM8350_IRQ_CHG_VBATT_LT_2P85);
-			}
 			if (status1 & WM8350_RTC_ALM_EINT)
 				wm8350_irq_call_worker(wm8350, WM8350_IRQ_RTC_ALM);
 			if (status1 & WM8350_RTC_SEC_EINT)

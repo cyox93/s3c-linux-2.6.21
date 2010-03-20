@@ -52,14 +52,7 @@ config BATTERY_WM8350
 	tristate "WM8350 Battery"
 	depends on REGULATOR_WM8350
 	help
-	  Say Y here to enable support for battery status on smdk2416 with
-	  wm8350.
-
-config ADC_WM8350
-	tristate "WM8350 ADC"
-	depends on REGULATOR_WM8350
-	help
-	  Say Y here to enable support for adc status on smdk2416 with
+	  Say Y here to enable support for battery status on mx31ads with
 	  wm8350.
 
 endif # POWER_SUPPLY
