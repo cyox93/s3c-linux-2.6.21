@@ -56,13 +56,20 @@
 	}							\
 	up(&event_mutex);
 
-#define WM8350_BAT_STATUS			_IOWR('P', 0xa7, int)
+typedef struct {
+	int reg;
+	int value;
+} wm8350_reg_info;
+
+#define WM8350_BAT_STATUS		_IOWR('P', 0xa7, int)
 #define WM8350_BAT_NOTIFY_USER		_IOR('P', 0xa8, int)
 #define WM8350_BAT_GET_NOTIFY		_IOR('P', 0xa9, int)
 #define WM8350_BAT_SUBSCRIBE		_IOR('P', 0xaa, int)
 #define WM8350_BAT_UNSUBSCRIBE		_IOR('P', 0xab, int)
 #define WM8350_BAT_REMOVE_USER		_IOR('P', 0xac, int)
 #define WM8350_BAT_LED_CONTROL		_IOWR('P', 0xab, int)
+#define WM8350_REG_READ			_IOWR('P', 0xac, wm8350_reg_info*)
+#define WM8350_REG_WRITE		_IOWR('P', 0xad, wm8350_reg_info*)
 
 #define CHG_MODE_STATUS		0x3000
 
@@ -829,6 +836,7 @@ static int wm8350_bat_ioctl(struct inode *inode, struct file *file,
 	struct wm8350 *wm8350 = wm8350_bat;
 	wm8350_bat_event_callback_t event_sub;
 	type_bat_event event;
+	wm8350_reg_info reg_info;
 
 	if (_IOC_TYPE(cmd) != 'P')
 		return -ENOTTY;
@@ -885,6 +893,38 @@ static int wm8350_bat_ioctl(struct inode *inode, struct file *file,
 			event_sub.func = wm8350_bat_user_notify_callback;
 			event_sub.param = (void *)event;
 			ret = wm8350_bat_event_unsubscribe(event, event_sub);
+			break;
+		case WM8350_REG_READ:
+			if (copy_from_user(&reg_info, (wm8350_reg_info *) arg,
+					   sizeof(wm8350_reg_info))) {
+				return -EFAULT;
+			}
+
+			reg_info.value = wm8350_reg_read(wm8350, reg_info.reg);
+			pr_debug("read reg %d %x\n", reg_info.reg, reg_info.value);
+
+			if (copy_to_user((wm8350_reg_info *) arg, &reg_info,
+					 sizeof(wm8350_reg_info))) {
+				return -EFAULT;
+			}
+
+			ret = 0;
+			break;
+
+		case WM8350_REG_WRITE:
+			if (copy_from_user(&reg_info, (wm8350_reg_info *) arg,
+					   sizeof(wm8350_reg_info))) {
+				return -EFAULT;
+			}
+
+			ret = wm8350_reg_write(wm8350, reg_info.reg, reg_info.value);
+			pr_debug("write reg %d %x\n", reg_info.reg, reg_info.value);
+
+			if (copy_to_user((wm8350_reg_info *) arg, &reg_info,
+					 sizeof(wm8350_reg_info))) {
+				return -EFAULT;
+			}
+
 			break;
 
 		default:
