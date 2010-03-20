@@ -112,22 +112,19 @@ static struct circ_buf wm8350_event;
 static struct list_head wm8350_bat_events[WM8350_BAT_EVENT_NUM];
 static struct wm8350 *wm8350_bat = NULL;
 
-static struct timer_list bat_chg_timer;
-static struct timer_list bat_det_timer; 
-static struct timer_list bat_fault_timer;
-
 static int bat_detect = 0;
-static int bat_count = 0;
 
 static DECLARE_MUTEX(event_mutex);
 
-void wm8350_bat_det_work(struct work_struct *work);
-void wm8350_bat_chg_work(struct work_struct *work);
-void wm8350_bat_fault_work(struct work_struct *work);
+static void _wm8350_bat_detect_work(struct work_struct *work);
+static void _wm8350_bat_full_work(struct work_struct *work);
+static void _wm8350_bat_fault_work(struct work_struct *work);
+static void _wm8350_bat_timeout_work(struct work_struct *work);
 
-DECLARE_WORK(bat_det, wm8350_bat_det_work);
-DECLARE_WORK(bat_chg, wm8350_bat_chg_work);
-DECLARE_WORK(bat_fault, wm8350_bat_fault_work);
+DECLARE_DELAYED_WORK(_bat_timeout, _wm8350_bat_timeout_work);
+DECLARE_DELAYED_WORK(_bat_full, _wm8350_bat_full_work);
+DECLARE_DELAYED_WORK(_bat_fault, _wm8350_bat_fault_work);
+DECLARE_DELAYED_WORK(_bat_detect, _wm8350_bat_detect_work);
 
 static int wm8350_bat_green_led_show(struct device *dev, struct device_attribute *attr, 
 					char *buf)
@@ -405,31 +402,31 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 	case WM8350_IRQ_CHG_BAT_FAIL:
 		printk(KERN_ERR "wm8350-power: battery failed\n");
 
-		del_timer(&bat_fault_timer);
-		bat_fault_timer.expires = jiffies + msecs_to_jiffies(1000);
-		add_timer(&bat_fault_timer);
+		cancel_delayed_work(&_bat_full);
+		cancel_delayed_work(&_bat_timeout);
+		cancel_delayed_work(&_bat_fault);
+
+		schedule_delayed_work(&_bat_fault, msecs_to_jiffies(1000));
 		break;
 	case WM8350_IRQ_CHG_TO:
 		printk(KERN_INFO "wm8350-power: charger timeout\n");
 
-		bat_count = 0;
-		del_timer(&bat_chg_timer);
-		bat_chg_timer.expires = jiffies + msecs_to_jiffies(2000);
-		add_timer(&bat_chg_timer);
+		cancel_delayed_work(&_bat_full);
+		cancel_delayed_work(&_bat_fault);
+		cancel_delayed_work(&_bat_timeout);
+
+		schedule_delayed_work(&_bat_timeout, msecs_to_jiffies(2000));
 		break;
 	case WM8350_IRQ_CHG_END:
 		printk(KERN_INFO "wm8350-power: charger stopped\n");
 
-		bat_count = 0;
-		del_timer(&bat_chg_timer);
-		bat_chg_timer.expires = jiffies + msecs_to_jiffies(2000);
-		add_timer(&bat_chg_timer);
+		cancel_delayed_work(&_bat_full);
+		schedule_delayed_work(&_bat_full, msecs_to_jiffies(2000));
 		break;
 	case WM8350_IRQ_CHG_START:
 		printk(KERN_INFO "wm8350-power: charger started\n");
 
-		bat_count = 0;
-		del_timer(&bat_chg_timer);
+		cancel_delayed_work(&_bat_full);
 		break;
 	case WM8350_IRQ_CHG_FAST_RDY:
 		/* we are ready to fast charge */
@@ -464,12 +461,13 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 		power->is_usb_supply = 0;
 		wm8350_charger_config(wm8350, policy);
 		wm8350_charger_enable(wm8350, 1);
-		
-		bat_count = 0;
-		del_timer(&bat_chg_timer);
-		del_timer(&bat_det_timer);
-		bat_det_timer.expires = jiffies + msecs_to_jiffies(1000);
-		add_timer(&bat_det_timer);
+
+		cancel_delayed_work(&_bat_fault);
+		cancel_delayed_work(&_bat_detect);
+		cancel_delayed_work(&_bat_full);
+		cancel_delayed_work(&_bat_timeout);
+
+		schedule_delayed_work(&_bat_detect, msecs_to_jiffies(1000));
 		break;
 	case WM8350_IRQ_EXT_BAT_FB:
 		printk(KERN_INFO "wm8350-power: Battery is now supply\n");
@@ -489,7 +487,7 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 /*********************************************************************
  *		Timer Driver	
  *********************************************************************/
-void wm8350_bat_det_work(struct work_struct *work)
+static void _wm8350_bat_detect_work(struct work_struct *work)
 {
 	int event = 0;
 	int state, uvolt;
@@ -528,7 +526,7 @@ void wm8350_bat_det_work(struct work_struct *work)
 	}
 }
 
-void wm8350_bat_chg_work(struct work_struct *work)
+static void _wm8350_bat_full_work(struct work_struct *work)
 {
 	int event = 0;
 	int line, batt;
@@ -536,7 +534,6 @@ void wm8350_bat_chg_work(struct work_struct *work)
 	struct wm8350 *wm8350 = wm8350_bat;
 	wm8350_bat_event_callback_list_t *temp = NULL;
 
-	bat_count = 0;
 	line = wm8350_get_supplies(wm8350) & WM8350_LINE_SUPPLY;
 	batt = wm8350_batt_status(wm8350);
 
@@ -557,7 +554,7 @@ void wm8350_bat_chg_work(struct work_struct *work)
 	}
 }
 
-void wm8350_bat_fault_work(struct work_struct *work)
+static void _wm8350_bat_fault_work(struct work_struct *work)
 {
 	int event = 0;
 	struct list_head *p;
@@ -578,28 +575,34 @@ void wm8350_bat_fault_work(struct work_struct *work)
 	}
 }
 
-static void bat_chg_timer_handler(unsigned long data)
+static void _wm8350_bat_timeout_work(struct work_struct *work)
 {
-	if (bat_count < 24) {  // bat charging check to 5 Mintue
-		bat_count++;
+	int event = 0, uVolt;
+	struct list_head *p;
+	struct wm8350 *wm8350 = wm8350_bat;
+	wm8350_bat_event_callback_list_t *temp = NULL;
 
-		del_timer(&bat_chg_timer);
-		bat_chg_timer.expires = jiffies + msecs_to_jiffies(2000);
-		add_timer(&bat_chg_timer);
+	uVolt = wm8350_read_battery_uvolts(wm8350);
+	if (uVolt < 4100000 ) {
+		printk("battery timeout [%d] -> full ...\n", uVolt);
+		event = WM8350_BAT_EVENT_FULL_CHG;
+
+		wm8350_gpio_set_status(wm8350, 10, 0);
+		wm8350_gpio_set_status(wm8350, 11, 1);
+	} else {
+		printk("battery timeout [%d] -> fault ...\n", uVolt);
+		event = WM8350_BAT_EVENT_FAULT;
+
+		wm8350_gpio_set_status(wm8350, 10, 0);
+		wm8350_gpio_set_status(wm8350, 11, 0);
 	}
-	else {
-		schedule_work(&bat_chg);
+
+	if (!list_empty(&wm8350_bat_events[event])) {
+		list_for_each(p, &wm8350_bat_events[event]) {
+			temp = list_entry(p, wm8350_bat_event_callback_list_t, list);
+			temp->callback.func(temp->callback.param);
+		}
 	}
-}
-
-static void bat_det_timer_handler(unsigned long data)
-{
-	schedule_work(&bat_det);
-}
-
-static void bat_fault_timer_handler(unsigned long data)
-{
-	schedule_work(&bat_fault);
 }
 
 /*********************************************************************
@@ -1102,6 +1105,7 @@ static struct file_operations wm8350_bat_fos = {
 
 #ifdef CONFIG_MACH_CANOPUS
 static struct wm8350 *_wm8350;
+extern void kernel_restart(char *cmd);
 
 void wm8350_power_off(void)
 {
@@ -1193,18 +1197,6 @@ static int __init wm8350_power_probe(struct platform_device *pdev)
 	wm8350_bat_event_list_init();
 	wm8350_event.head = wm8350_event.tail = 0;
 
-	/* battery charging timer */
-	init_timer(&bat_chg_timer);
-	bat_chg_timer.function = bat_chg_timer_handler;
-
-	/* battery detection timer */
-	init_timer(&bat_det_timer);
-	bat_det_timer.function = bat_det_timer_handler;
-
-	/* battery fault timer */
-	init_timer(&bat_fault_timer);
-	bat_fault_timer.function = bat_fault_timer_handler;
-
 	ret = device_create_file(&pdev->dev, &dev_attr_supply_state);
 	if (ret < 0)
 		printk(KERN_WARNING "wm8350: failed to add supply sysfs\n");
@@ -1284,9 +1276,10 @@ static int __devexit wm8350_power_remove(struct platform_device *pdev)
 	class_destroy(wm8350_dev_class);
 	unregister_chrdev(wm8350_bat_major, DEV_NAME);
 
-	del_timer(&bat_chg_timer);
-	del_timer(&bat_det_timer);
-	del_timer(&bat_fault_timer);
+	cancel_delayed_work(&_bat_fault);
+	cancel_delayed_work(&_bat_full);
+	cancel_delayed_work(&_bat_detect);
+	cancel_delayed_work(&_bat_timeout);
 	return 0;
 }
 
