@@ -23,6 +23,10 @@
 #include <linux/mfd/wm8350/gpio.h>
 #include <linux/mfd/wm8350/comparator.h>
 
+#ifdef CONFIG_HAS_WAKELOCK
+#include <linux/wakelock.h>
+#endif
+
 #define WM8350_POWER_VERSION	"0.5"
 
 #define WM8350_BATT_SUPPLY	1
@@ -113,6 +117,10 @@ static struct list_head wm8350_bat_events[WM8350_BAT_EVENT_NUM];
 static struct wm8350 *wm8350_bat = NULL;
 
 static int bat_detect = 0;
+
+#ifdef CONFIG_HAS_WAKELOCK
+static struct wake_lock _bat_wake_lock;
+#endif
 
 static DECLARE_MUTEX(event_mutex);
 
@@ -390,7 +398,11 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 {
 	struct wm8350_power *power = &wm8350->power;
 	struct wm8350_charger_policy *policy = power->policy;
-	
+
+#ifdef CONFIG_HAS_WAKELOCK
+	wake_lock_timeout(&_bat_wake_lock, 5 * HZ);
+#endif
+
 	mutex_lock(&power->charger_mutex);
 	switch (irq) {
 	case WM8350_IRQ_CHG_BAT_HOT:
@@ -1232,6 +1244,10 @@ static int __init wm8350_power_probe(struct platform_device *pdev)
 		}
 	}
 
+#ifdef CONFIG_HAS_WAKELOCK
+	wake_lock_init(&_bat_wake_lock, WAKE_LOCK_SUSPEND, "wm8350-power");
+#endif
+
 #ifdef CONFIG_MACH_CANOPUS
 	_wm8350 = wm8350;
 	pm_power_off = wm8350_power_off;
@@ -1280,6 +1296,11 @@ static int __devexit wm8350_power_remove(struct platform_device *pdev)
 	cancel_delayed_work(&_bat_full);
 	cancel_delayed_work(&_bat_detect);
 	cancel_delayed_work(&_bat_timeout);
+
+#ifdef CONFIG_HAS_WAKELOCK
+	wake_lock_destroy(&_bat_wake_lock);
+#endif
+
 	return 0;
 }
 
