@@ -61,6 +61,9 @@ typedef struct {
 	int value;
 } wm8350_reg_info;
 
+#define WM8350_BATTERY_VOLTAGE		_IOR('P', 0xa4, int)
+#define WM8350_AC_ONLINE		_IOR('P', 0xa5, int)
+#define WM8350_USB_ONLINE		_IOR('P', 0xa6, int)
 #define WM8350_BAT_STATUS		_IOWR('P', 0xa7, int)
 #define WM8350_BAT_NOTIFY_USER		_IOR('P', 0xa8, int)
 #define WM8350_BAT_GET_NOTIFY		_IOR('P', 0xa9, int)
@@ -832,7 +835,7 @@ static int wm8350_bat_ioctl(struct inode *inode, struct file *file,
 				unsigned int cmd, unsigned long arg)
 {
 	
-	int ret = 0;
+	int ret = 0, online;
 	struct wm8350 *wm8350 = wm8350_bat;
 	wm8350_bat_event_callback_t event_sub;
 	type_bat_event event;
@@ -842,6 +845,27 @@ static int wm8350_bat_ioctl(struct inode *inode, struct file *file,
 		return -ENOTTY;
 
 	switch (cmd) {
+		case WM8350_BATTERY_VOLTAGE:
+			online = wm8350_read_battery_uvolts(wm8350);
+			if (copy_to_user((int *) arg, &online, sizeof(int))) {
+				return -EFAULT;
+			}
+			break;
+
+		case WM8350_AC_ONLINE:
+			online = !!(wm8350_get_supplies(wm8350) & WM8350_LINE_SUPPLY);
+			if (copy_to_user((int *) arg, &online, sizeof(int))) {
+				return -EFAULT;
+			}
+			break;
+
+		case WM8350_USB_ONLINE:
+			online = !!(wm8350_get_supplies(wm8350) & WM8350_USB_SUPPLY);
+			if (copy_to_user((int *) arg, &online, sizeof(int))) {
+				return -EFAULT;
+			}
+			break;
+
 		case WM8350_BAT_STATUS:
 			ret = wm8350_bat_get_status(wm8350, arg);
 			break;
