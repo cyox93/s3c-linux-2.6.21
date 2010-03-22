@@ -646,7 +646,7 @@ int wm8350_dev_init(struct wm8350 *wm8350)
 	/* Shutdown threshold value */
 	wm8350_reg_unlock(wm8350);
 	data = wm8350_reg_read(wm8350, WM8350_POWER_CHECK_COMPARATOR) & ~(WM8350_PCCMP_OFF_THR_MASK);
-	wm8350_reg_write(wm8350, WM8350_POWER_CHECK_COMPARATOR, data | 0x50);
+	wm8350_reg_write(wm8350, WM8350_POWER_CHECK_COMPARATOR, data | 0x40);
 	wm8350_reg_lock(wm8350);
 
 	config_s3c_wm8350_gpio(wm8350);
