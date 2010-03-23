@@ -30,6 +30,10 @@
 #include <asm/arch/regs-irq.h>
 #include "s3c-keypad.h"
 
+#include <asm/uaccess.h>
+#include <linux/proc_fs.h>
+
+
 #ifdef CONFIG_HAS_WAKELOCK
 #include <linux/wakelock.h>
 #endif
@@ -62,6 +66,29 @@ static int key_irq_press = 0;
 static int key_press = 0;
 static int key_value = 0;
 static int endkey_press = 0;
+
+
+/* for the proc file system */
+#define S3C_KEYPAD_PROC_DIR	"s3c-keypad"
+#define S3C_KEYPAD_PROC_VALUE	"value"
+#define S3C_KEYPAD_MAX_LENGTH	10
+
+#define atoi(str) simple_strtoul(((str != NULL) ? str : ""), NULL, 0)
+
+int key_code = 0;
+int key_state = 0;
+
+struct s3c_keypad *proc_s3c_keypad = NULL;
+struct proc_dir_entry *proc_s3c_keypad_dir = NULL;
+struct proc_dir_entry *proc_s3c_keypad_value = NULL;
+
+static int s3c_keypad_proc_init(struct s3c_keypad *s3c_keypad);
+static int s3c_keypad_proc_clear(int level);
+static int s3c_keypad_proc_vaule_read(char *buf, char **start, off_t offset, int count,
+			 int *eof, void *data);
+static int s3c_keypad_proc_vaule_write(struct file *file, const char __user *buffer,
+			  unsigned long count, void *data);
+
 
 static void key_bh_handler(struct work_struct *work);
 
@@ -196,6 +223,9 @@ static int keypad_scan(struct s3c_keypad *pdata)
 		input_report_key(dev, pdata->keycodes[value], 1);
 		DPRINTK("key pressed : %d\n", pdata->keycodes[value]);
 
+		key_code = pdata->keycodes[value];
+		key_state = 1;
+
 		key_value = value;
 		key_press = 1;
 		
@@ -207,6 +237,10 @@ static int keypad_scan(struct s3c_keypad *pdata)
 			((rval_sum/4) != 0x3f) && (key_value != value)) {
 		input_report_key(dev, pdata->keycodes[key_value], 0);
 		DPRINTK("key released : %d\n", pdata->keycodes[key_value]);
+
+		key_code = pdata->keycodes[key_value];
+		key_state = 0;
+
 		key_press = 0;
 
 		return KEY_PRESS_STATE;
@@ -216,6 +250,10 @@ static int keypad_scan(struct s3c_keypad *pdata)
 	if (!col_cnt && !row_cnt && ((rval_sum/4) == 0x3f)) {
 		input_report_key(dev, pdata->keycodes[key_value], 0);
 		DPRINTK("key released : %d\n", pdata->keycodes[key_value]);
+
+		key_code = pdata->keycodes[key_value];
+		key_state = 0;
+
 		key_press = 0;
 		
 		keypad_scan_gpio_data(false);
@@ -240,6 +278,9 @@ static int endkey_scan(struct s3c_keypad *pdata)
 		input_report_key(dev, pdata->keycodes[12], 1);
 		input_sync(dev);
 
+		key_code = pdata->keycodes[12];
+		key_state = 1;
+
 		DPRINTK("key Pressed : %d\n", pdata->keycodes[12]);
 
 		return KEY_PRESS_STATE;
@@ -249,6 +290,9 @@ static int endkey_scan(struct s3c_keypad *pdata)
 		input_report_key(dev, pdata->keycodes[12], 0);
 		input_sync(dev);
 		
+		key_code = pdata->keycodes[12];
+		key_state = 0;
+
 		endkey_press = 0;
 
 		DPRINTK("key Released : %d\n", pdata->keycodes[12]);
@@ -385,6 +429,100 @@ static int s3c_keypad_free_irq(struct s3c_keypad *keypad)
 	return 0;
 }
 
+
+static int s3c_keypad_proc_init(struct s3c_keypad *s3c_keypad) 
+{
+	if (!s3c_keypad) {
+		return -ENOMEM;
+	}
+
+	proc_s3c_keypad = s3c_keypad;
+
+	/* start make proc dir and files */
+	proc_s3c_keypad_dir = proc_mkdir(S3C_KEYPAD_PROC_DIR, NULL);
+	if (!proc_s3c_keypad_dir) {
+		return -ENOMEM;
+	}
+
+	/* read only key value file in proc dir */
+	proc_s3c_keypad_value = create_proc_entry(S3C_KEYPAD_PROC_VALUE, 0644, proc_s3c_keypad_dir);
+	if (!proc_s3c_keypad_value) {
+		s3c_keypad_proc_clear(1);
+		return -ENOMEM;
+	}
+
+	proc_s3c_keypad_value->read_proc = s3c_keypad_proc_vaule_read;
+	proc_s3c_keypad_value->write_proc = s3c_keypad_proc_vaule_write;
+	proc_s3c_keypad_value->owner = THIS_MODULE;
+	/* End make proc dir and files */
+
+	return 0;
+}
+
+static int s3c_keypad_proc_clear(int level) 
+{
+	if (proc_s3c_keypad_dir == NULL) 
+		return -1;
+
+	switch (level) {
+		case 0:
+			remove_proc_entry(S3C_KEYPAD_PROC_VALUE, proc_s3c_keypad_dir);
+		case 1:
+			remove_proc_entry(S3C_KEYPAD_PROC_DIR, NULL);
+		default:
+			break;
+	}
+	return 0;
+}
+
+static int s3c_keypad_proc_vaule_read(char *buf, char **start, off_t offset, int count,
+			 int *eof, void *data)
+{
+	int len;
+
+	len = sprintf(buf, "%d:%d\n", key_code, key_state);
+	return len;
+}
+
+static int s3c_keypad_proc_vaule_write(struct file *file, const char __user *buffer,
+			  unsigned long count, void *data)
+{
+	struct input_dev *input_dev;
+	char *buf = NULL, *buf_end;
+
+	if (count > S3C_KEYPAD_MAX_LENGTH)
+		count = S3C_KEYPAD_MAX_LENGTH;
+
+	buf = kmalloc(sizeof(char) * (count + 1), GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+
+	if (copy_from_user(buf, buffer, count)) {
+		kfree(buf);
+		return -EFAULT;
+	}
+
+	buf[count] = '\0';
+
+	/* work around \n when echo'ing into proc */
+	if (buf[count - 1] == '\n')
+		buf[count - 1] = '\0';
+
+
+	key_code = (int)simple_strtoul(buf, &buf_end, 0);
+	key_state = (int)simple_strtoul(buf_end+1, NULL, 0);
+	
+	if (proc_s3c_keypad) {
+		input_dev = proc_s3c_keypad->dev;
+		input_report_key(input_dev, key_code, key_state);
+	}
+
+	kfree(buf);
+
+	return count;
+}
+
+
 static int __init s3c_keypad_probe(struct platform_device *pdev)
 {
 	int ret = 0;
@@ -398,6 +536,11 @@ static int __init s3c_keypad_probe(struct platform_device *pdev)
 	if (!s3c_keypad || !input_dev) {
 		kfree(s3c_keypad);
 		input_free_device(input_dev);
+		return -ENOMEM;
+	}
+
+	/* start make proc dir and files */
+	if (s3c_keypad_proc_init(s3c_keypad) != 0) {
 		return -ENOMEM;
 	}
 
@@ -468,6 +611,8 @@ static int s3c_keypad_remove(struct platform_device *pdev)
 #ifdef CONFIG_HAS_WAKELOCK
 	wake_lock_destroy(&key_wake_lock);
 #endif
+
+	s3c_keypad_proc_clear(0);
 
 	input_unregister_device(s3c_keypad->dev);
 	kfree(pdev->dev.platform_data);
