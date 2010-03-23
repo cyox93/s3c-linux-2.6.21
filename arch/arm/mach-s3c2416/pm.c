@@ -94,8 +94,13 @@ static void s3c2450_cpu_suspend(void)
 	__raw_writel(0x01, S3C2443_PWRCFG);
 #endif
 
+#if 0
 	/* set our standby method to sleep */
 	__raw_writel(0x2BED, S3C2443_PWRMODE);
+#else
+extern void (*s3c24xx_idle)(void);
+	s3c24xx_idle();
+#endif
 }
 
 static void s3c2450_pm_prepare(void)
