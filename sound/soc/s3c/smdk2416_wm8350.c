@@ -86,27 +86,26 @@ struct _wm8350_audio {
 
 /* in order of power consumption per rate (lowest first) */
 static const struct _wm8350_audio wm8350_audio[] = {
-	/* 16bit mono modes */
-	{1, SNDRV_PCM_FORMAT_S16_LE, 8000, 12288000 >> 1,
-	 WM8350_BCLK_DIV_48, WM8350_DACDIV_3, 16, 24,},
-
 	/* 16 bit stereo modes */
 	{2, SNDRV_PCM_FORMAT_S16_LE, 8000, 12288000,
-	 WM8350_BCLK_DIV_48, WM8350_DACDIV_6, 32, 24,},
+	 WM8350_BCLK_DIV_48, WM8350_DACDIV_3, 32, 24,},
 	{2, SNDRV_PCM_FORMAT_S16_LE, 16000, 12288000,
 	 WM8350_BCLK_DIV_24, WM8350_DACDIV_3, 32, 12,},
 	{2, SNDRV_PCM_FORMAT_S16_LE, 32000, 12288000,
-	 WM8350_BCLK_DIV_12, WM8350_DACDIV_1_5, 32, 6,},
+	 WM8350_BCLK_DIV_12, WM8350_DACDIV_3, 32, 6,},
+#if 0
 	{2, SNDRV_PCM_FORMAT_S16_LE, 48000, 12288000,
-	 WM8350_BCLK_DIV_8, WM8350_DACDIV_1, 32, 4,},
+	 WM8350_BCLK_DIV_8, WM8350_DACDIV_3, 32, 4,},
 	{2, SNDRV_PCM_FORMAT_S16_LE, 96000, 24576000,
 	 WM8350_BCLK_DIV_8, WM8350_DACDIV_1, 32, 2,},
 	{2, SNDRV_PCM_FORMAT_S16_LE, 11025, 11289600,
 	 WM8350_BCLK_DIV_32, WM8350_DACDIV_4, 32, 32,},
 	{2, SNDRV_PCM_FORMAT_S16_LE, 22050, 11289600,
 	 WM8350_BCLK_DIV_16, WM8350_DACDIV_2, 32, 16,},
+#endif
 	{2, SNDRV_PCM_FORMAT_S16_LE, 44100, 11289600,
-	 WM8350_BCLK_DIV_8, WM8350_DACDIV_1, 32, 8,},
+	 WM8350_BCLK_DIV_8, WM8350_DACDIV_3, 32, 8,},
+#if 0
 	{2, SNDRV_PCM_FORMAT_S16_LE, 88200, 22579200,
 	 WM8350_BCLK_DIV_8, WM8350_DACDIV_1, 32, 4,},
 
@@ -119,6 +118,7 @@ static const struct _wm8350_audio wm8350_audio[] = {
 	 WM8350_BCLK_DIV_4, WM8350_DACDIV_1, 64, 8,},
 	{2, SNDRV_PCM_FORMAT_S24_LE, 88200, 22579200,
 	 WM8350_BCLK_DIV_4, WM8350_DACDIV_1, 64, 4,},
+#endif
 };
 
 static int smdk2416_hifi_hw_params(struct snd_pcm_substream *substream,
@@ -209,8 +209,8 @@ static int smdk2416_hifi_hw_params(struct snd_pcm_substream *substream,
 		return ret;
 
 	/* set the codec system clock for DAC and ADC */
-	ret = snd_soc_dai_set_sysclk(codec_dai, WM8350_MCLK_SEL_PLL_MCLK, 
-		wm8350_audio[i].sysclk, SND_SOC_CLOCK_IN);
+	ret = snd_soc_dai_set_sysclk(codec_dai, WM8350_MCLK_SEL_MCLK, 
+		wm8350_audio[i].sysclk, SND_SOC_CLOCK_OUT);
 	if (ret < 0)
 		return ret;
 
