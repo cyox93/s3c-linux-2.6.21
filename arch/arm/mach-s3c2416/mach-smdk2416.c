@@ -121,6 +121,24 @@ static struct s3c2410_uartcfg smdk2416_uartcfgs[] __initdata = {
 	}
 };
 
+#ifdef CONFIG_MACH_CANOPUS
+// for atheros power maangement driver
+static struct resource wlan_ar6000_pm_dev_resource[] = {
+	[0] = {
+		.start = IRQ_EINT4,
+		.end   = IRQ_EINT4,
+		.flags = IORESOURCE_IRQ,
+	}
+};
+
+static struct platform_device wlan_ar6000_pm_dev = {
+	.name			= "wlan_ar6000_pm_dev",
+	.id			= -1,
+	.num_resources		= ARRAY_SIZE(wlan_ar6000_pm_dev_resource),
+	.resource		= wlan_ar6000_pm_dev_resource,
+};
+#endif
+
 static struct platform_device *smdk2416_devices[] __initdata = {
 	&s3c_device_spi0,
 	&s3c_device_spi1,
@@ -134,7 +152,11 @@ static struct platform_device *smdk2416_devices[] __initdata = {
 	&s3c_device_usb,
 	//&s3c_device_hsmmc0,
 	&s3c_device_hsmmc1,
-	&s3c_device_smc911x,
+#ifndef CONFIG_MACH_CANOPUS
+  	&s3c_device_smc911x,
+#else
+	&wlan_ar6000_pm_dev,
+#endif
 	&s3c_device_keypad,
 
 };
