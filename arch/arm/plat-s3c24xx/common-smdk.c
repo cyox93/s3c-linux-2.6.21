@@ -165,22 +165,52 @@ static struct mtd_partition smdk_default_nand_part[] = {
 };
 
 /* ----------------S3C NAND partition information ---------------------*/
+#ifdef CONFIG_MACH_CANOPUS
+struct mtd_partition s3c_partition_info[] = {
+        {
+                .name		= "Bootloader",
+                .offset		= 0,
+                .size		= (384*SZ_1K),		/* 384 KBytes */
+        },
+        {
+                .name		= "Kernel",
+                .offset		= MTDPART_OFS_APPEND,
+                .size		= (5*SZ_1M),		/* 5 MBytes */
+        },
+        {
+                .name		= "Kernel2",
+                .offset		= MTDPART_OFS_APPEND,
+                .size		= (5*SZ_1M),		/* 5 MBytes */
+        },
+        {
+                .name		= "Image",
+                .offset		= MTDPART_OFS_APPEND,
+                .size		= (40*SZ_1M),		/* 40 MBytes*/
+        },
+        {
+                .name		= "Rootfs",
+                .offset		= MTDPART_OFS_APPEND,
+                .size		= (79360*SZ_1K),	/* 77.5 Mbytes */
+        },
+        {
+                .name		= "Param",
+                .offset		= MTDPART_OFS_APPEND,
+                .size		= (128*SZ_1K),		/* 128 KBytes */
+        }
+};
+#else	/* ! CONFIG_MACH_CANOPUS*/
 struct mtd_partition s3c_partition_info[] = {
         {
                 .name		= "Bootloader",
                 .offset		= 0,
                 .size		= (256*SZ_1K),
-#if 0
                 .mask_flags	= MTD_CAP_NANDFLASH,
-#endif
         },
         {
                 .name		= "Kernel",
                 .offset		= (256*SZ_1K),    /* Block number is 0x10 */
                 .size		= (2*SZ_1M) - (256*SZ_1K),
-#if 0
                 .mask_flags	= MTD_CAP_NANDFLASH,
-#endif
         },
 #ifdef CONFIG_SPLIT_ROOT_FILESYSTEM
         {
@@ -195,6 +225,8 @@ struct mtd_partition s3c_partition_info[] = {
                 .size		= MTDPART_SIZ_FULL,
         }
 };
+#endif
+
 
 struct s3c_nand_mtd_info nand_mtd_info = {
 	.chip_nr = 1,
