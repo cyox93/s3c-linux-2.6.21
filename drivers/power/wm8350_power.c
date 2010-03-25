@@ -127,6 +127,7 @@ static struct list_head wm8350_bat_events[WM8350_BAT_EVENT_NUM];
 static struct wm8350 *wm8350_bat = NULL;
 
 static int bat_detect = 0;
+static bool vbatt_event = false;
 
 #ifdef CONFIG_HAS_WAKELOCK
 static struct wake_lock _bat_wake_lock;
@@ -443,11 +444,13 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 		printk(KERN_INFO "wm8350-power: charger stopped\n");
 
 		cancel_delayed_work(&_bat_full);
+		cancel_delayed_work(&_bat_timeout);
 		schedule_delayed_work(&_bat_full, msecs_to_jiffies(2000));
 		break;
 	case WM8350_IRQ_CHG_START:
 		printk(KERN_INFO "wm8350-power: charger started\n");
 
+		vbatt_event = false;
 		cancel_delayed_work(&_bat_full);
 		break;
 	case WM8350_IRQ_CHG_FAST_RDY:
@@ -471,6 +474,7 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 	case WM8350_IRQ_CHG_VBATT_LT_2P85:
 		printk(KERN_WARNING "wm8350-power: battery < 2.85V\n");
 		wm8350_charger_enable(wm8350, 1);
+		vbatt_event = true;
 		break;
 	case WM8350_IRQ_EXT_USB_FB:
 		printk(KERN_INFO "wm8350-power: USB is now supply\n");
@@ -521,7 +525,15 @@ static void _wm8350_bat_detect_work(struct work_struct *work)
 	uvolt = wm8350_read_battery_uvolts(wm8350);
 	
 	/* LED Control */
-	if (state) {
+	if (vbatt_event || !state) {
+		printk("battery not detect...\n");
+		wm8350_gpio_set_status(wm8350, 10, 1);
+		wm8350_gpio_set_status(wm8350, 11, 1);
+
+		event		= WM8350_BAT_EVENT_NOTDETECT;
+		bat_detect	= WM8350_BAT_EVENT_NOTDETECT;
+	}
+	else {
 		printk("battery detect...\n");
 		wm8350_gpio_set_status(wm8350, 10, 1);
 		wm8350_gpio_set_status(wm8350, 11, 0);
@@ -530,15 +542,7 @@ static void _wm8350_bat_detect_work(struct work_struct *work)
 		bat_detect	= WM8350_BAT_EVENT_DETECT;
 	}
 
-	if (!state) {
-		printk("battery not detect...\n");
-		wm8350_gpio_set_status(wm8350, 10, 1);
-		wm8350_gpio_set_status(wm8350, 11, 1);
-
-		event		= WM8350_BAT_EVENT_NOTDETECT;
-		bat_detect	= WM8350_BAT_EVENT_NOTDETECT;
-	}
-	
+	vbatt_event = false;
 
 	if (!list_empty(&wm8350_bat_events[event])) {
 		list_for_each(p, &wm8350_bat_events[event]) {
