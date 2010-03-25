@@ -1135,16 +1135,8 @@ static void kbd_keycode(unsigned int keycode, int down, int hw_raw)
 	unsigned char type, raw_mode;
 	struct tty_struct *tty;
 	int shift_final;
-#define _UDP_
-#ifdef _UDP_
-	int opt;
-#define KBD_CODE_RELEASE	0x01
-#define KBD_CODE_PRESS		0x02
-#define KBD_CODE_REPEAT		0x03
-	if (down == 1) opt = KBD_CODE_PRESS;
-	else if (down == 2) opt = KBD_CODE_REPEAT;
-	else	  opt = KBD_CODE_RELEASE;
-
+#define __UDP__
+#ifdef __UDP__
 	down += 1;
 #endif /* _UDP_ */
 
@@ -1155,8 +1147,8 @@ static void kbd_keycode(unsigned int keycode, int down, int hw_raw)
 		tty->driver_data = vc;
 	}
 
-#ifdef _UDP_
-	put_queue(vc, opt);
+#ifdef __UDP__
+	put_queue(vc, down);
 #endif /* __UDP__ */
 
 	kbd = kbd_table + fg_console;
