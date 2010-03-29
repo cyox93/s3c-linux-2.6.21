@@ -1299,8 +1299,10 @@ static int wm8350_set_bias_level(struct snd_soc_codec *codec,
 		/* turn off VBuf and drain */
 		pm1 = wm8350_reg_read(wm8350, WM8350_POWER_MGMT_1) &
 		    ~(WM8350_VBUFEN | WM8350_VMID_MASK);
+#if 0
 		wm8350_reg_write(wm8350, WM8350_POWER_MGMT_1,
 				 pm1 | WM8350_OUTPUT_DRAIN_EN);
+#endif
 
 		/* wait */
 		schedule_timeout_interruptible(msecs_to_jiffies
