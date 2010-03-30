@@ -37,6 +37,10 @@
 
 #include <asm/plat-s3c24xx/s3c2450.h>
 
+#ifdef CONFIG_MACH_CANOPUS
+#include <asm/plat-s3c24xx/s3c2416.h>
+#endif
+
 static void s3c2450_cpu_suspend(void)
 {
 	//unsigned long tmp;
@@ -68,6 +72,9 @@ static void s3c2450_cpu_suspend(void)
 	__raw_writel(__raw_readl(S3C2410_SRCPND), S3C2410_SRCPND);
 
 	__raw_writel( (1<<15), S3C2443_PWRCFG);
+
+	/* set our standby method to sleep */
+	__raw_writel(0x2BED, S3C2443_PWRMODE);
 #else
 	u32 mask, mask1, mask2;
 
@@ -92,14 +99,14 @@ static void s3c2450_cpu_suspend(void)
 	__raw_writel(__raw_readl(S3C2410_SRCPND), S3C2410_SRCPND);
 
 	__raw_writel(0x01, S3C2443_PWRCFG);
-#endif
 
-#if 0
-	/* set our standby method to sleep */
-	__raw_writel(0x2BED, S3C2443_PWRMODE);
-#else
-extern void (*s3c24xx_idle)(void);
-	s3c24xx_idle();
+	if (q_hw_ver(7800_ES1) || q_hw_ver(SKBB)) {
+		extern void (*s3c24xx_idle)(void);
+		s3c24xx_idle();
+	} else {
+		/* set our standby method to sleep */
+		__raw_writel(0x2BED, S3C2443_PWRMODE);
+	}
 #endif
 }
 
