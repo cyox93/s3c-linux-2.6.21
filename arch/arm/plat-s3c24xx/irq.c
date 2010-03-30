@@ -379,6 +379,13 @@ s3c_irqext_type(unsigned int irq, unsigned int type)
 	value = (value & ~(7 << extint_offset)) | (newvalue << extint_offset);
 	__raw_writel(value, extint_reg);
 
+#ifdef CONFIG_MACH_CANOPUS
+	if (type & (IRQT_LOW | IRQT_HIGH))
+		set_irq_handler(irq, handle_level_irq);
+	else
+		set_irq_handler(irq, handle_edge_irq);
+#endif
+
 	return 0;
 }
 
