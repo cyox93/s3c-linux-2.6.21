@@ -637,7 +637,7 @@ static int config_s3c_wm8350_gpio(struct wm8350 *wm8350)
 	wm8350_gpio_config(wm8350, 12, WM8350_GPIO_DIR_OUT,
 			   WM8350_GPIO12_LINE_EN_OUT, WM8350_GPIO_ACTIVE_LOW,
 			   WM8350_GPIO_PULL_NONE, WM8350_GPIO_INVERT_OFF,
-			   WM8350_GPIO_DEBOUNCE_OFF);
+			   WM8350_GPIO_DEBOUNCE_ON);
 
 	/* Chager LED initial */
 	wm8350_gpio_set_status(wm8350, 10, 1);
@@ -663,7 +663,7 @@ int wm8350_dev_init(struct wm8350 *wm8350)
 
 	s3c2410_gpio_pullup(S3C2410_GPF1, 0);
 	s3c2410_gpio_cfgpin(S3C2410_GPF1, S3C2410_GPF1_EINT1);
-	set_irq_type(IRQ_EINT1, IRQT_BOTHEDGE);
+//	set_irq_type(IRQ_EINT1, IRQT_BOTHEDGE);
 
 	/* Shutdown threshold value */
 	wm8350_reg_unlock(wm8350);

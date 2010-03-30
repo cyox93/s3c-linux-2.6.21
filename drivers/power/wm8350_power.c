@@ -525,7 +525,7 @@ static void _wm8350_bat_detect_work(struct work_struct *work)
 	uvolt = wm8350_read_battery_uvolts(wm8350);
 	
 	/* LED Control */
-	if (vbatt_event || !state) {
+	if (vbatt_event && !state) {
 		printk("battery not detect...\n");
 		wm8350_gpio_set_status(wm8350, 10, 1);
 		wm8350_gpio_set_status(wm8350, 11, 1);
@@ -540,6 +540,13 @@ static void _wm8350_bat_detect_work(struct work_struct *work)
 
 		event		= WM8350_BAT_EVENT_DETECT;
 		bat_detect	= WM8350_BAT_EVENT_DETECT;
+
+		if (wm8350_batt_status(wm8350) == 
+				POWER_SUPPLY_STATUS_DISCHARGING) {
+			cancel_delayed_work(&_bat_full);
+			cancel_delayed_work(&_bat_timeout);
+			schedule_delayed_work(&_bat_full, msecs_to_jiffies(60000));
+		}
 	}
 
 	vbatt_event = false;
@@ -1170,6 +1177,10 @@ static int wm8350_fast_charger_mode(struct wm8350 *wm8350)
 		wm8350_gpio_set_status(wm8350, 11, 0);
 
 		bat_detect = WM8350_BAT_EVENT_DETECT;
+
+		cancel_delayed_work(&_bat_full);
+		cancel_delayed_work(&_bat_timeout);
+		schedule_delayed_work(&_bat_full, msecs_to_jiffies(60000));
 	}
 
 	return 0;	

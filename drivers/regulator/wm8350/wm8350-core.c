@@ -779,7 +779,7 @@ void wm8350_irq_worker(struct work_struct *work)
 	}
 
 	if (timeout >= 1000)
-		printk(KERN_ERR, "%s : interrupt is halted\n", __func__);
+		printk(KERN_ERR "%s : interrupt is halted\n", __func__);
 }
 EXPORT_SYMBOL(wm8350_irq_worker);
 

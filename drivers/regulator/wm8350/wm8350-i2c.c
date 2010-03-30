@@ -117,7 +117,7 @@ static int wm8350_i2c_probe(struct i2c_adapter *adapter, int addr, int kind)
 
 	INIT_WORK(&wm8350->work, wm8350_irq_work);
 	ret = request_irq(IRQ_EINT1, wm8350_irq_handler,
-			IRQF_DISABLED, "wm8350", wm8350);
+			SA_INTERRUPT|SA_TRIGGER_RISING, "wm8350", wm8350);
 
 	/* unmask all & clear sticky */
 	wm8350_reg_write(wm8350, WM8350_SYSTEM_INTERRUPTS_MASK, 0x0);
