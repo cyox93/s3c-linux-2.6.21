@@ -81,6 +81,7 @@ int get_expired_time(struct wake_lock *lock, ktime_t *expire_time)
 }
 
 
+#ifndef CONFIG_MACH_CANOPUS
 static int print_lock_stat(char *buf, struct wake_lock *lock)
 {
 	int lock_count = lock->stat.count;
@@ -149,6 +150,55 @@ static int wakelocks_read_proc(char *page, char **start, off_t off,
 
 	return len < count ? len  : count;
 }
+#else	// CONFIG_MACH_CANOPUS
+static int print_lock_stat(char *buf, struct wake_lock *lock)
+{
+	int expired = 0;
+
+	if (lock->flags & WAKE_LOCK_AUTO_EXPIRE) {
+		expired = lock->expires - jiffies;
+		expired = jiffies_to_msecs(expired);
+	}
+
+	return sprintf(buf, "\"%s\"\t%d\n", lock->name, expired >= 0 ? expired : -1);
+}
+
+static int wakelocks_read_proc(char *page, char **start, off_t off,
+			       int count, int *eof, void *data)
+{
+	unsigned long irqflags;
+	struct wake_lock *lock;
+	int len = 0;
+	char *p = page;
+	int type;
+
+	spin_lock_irqsave(&list_lock, irqflags);
+
+	p += sprintf(p, "------------------- ACTIVATED ---\n");
+	p += sprintf(p, "name\texpire\n");
+	for (type = 0; type < WAKE_LOCK_TYPE_COUNT; type++) {
+		list_for_each_entry(lock, &active_wake_locks[type], link)
+			p += print_lock_stat(p, lock);
+	}
+	p += sprintf(p, "----------------- INACTIVATED ---\n");
+	p += sprintf(p, "name\texpire\n");
+	list_for_each_entry(lock, &inactive_locks, link) {
+		p += print_lock_stat(p, lock);
+	}
+	p += sprintf(p, "---------------------------------\n");
+	spin_unlock_irqrestore(&list_lock, irqflags);
+
+	*start = page + off;
+
+	len = p - page;
+	if (len > off)
+		len -= off;
+	else
+		len = 0;
+
+	return len < count ? len  : count;
+}
+#endif	// CONFIG_MACH_CANOPUS
 
 static void wake_unlock_stat_locked(struct wake_lock *lock, int expired)
 {
