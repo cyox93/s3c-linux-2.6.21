@@ -70,7 +70,14 @@ struct wm8350_data {
 	struct regulator *analog_supply;
 };
 
+typedef struct audio_mixer_control {
+	int playback_active;
+	int capture_active;
+} audio_mixer_control_t;
+
 extern void speaker_amp(bool flag);
+
+audio_mixer_control_t audio_mixer_control;
 
 #ifdef CONFIG_HAS_WAKELOCK
 #include <linux/wakelock.h>
@@ -973,6 +980,17 @@ static int wm8350_pcm_trigger(struct snd_pcm_substream *substream,
 	    WM8350_BCLK_MSTR;
 	int enabled = 0;
 
+	if (cmd == SNDRV_PCM_TRIGGER_STOP) {
+		if (substream->stream == SNDRV_PCM_STREAM_CAPTURE)
+			audio_mixer_control.capture_active = 0;
+		else
+			audio_mixer_control.playback_active = 0;
+
+		if (!audio_mixer_control.capture_active &&
+				!audio_mixer_control.playback_active) {
+			speaker_amp(0);
+		}
+	}
 	/* Check that the DACs or ADCs are enabled since they are
 	 * required for LRC in master mode. The DACs or ADCs need a
 	 * valid audio path i.e. pin -> ADC or DAC -> pin before
@@ -981,9 +999,13 @@ static int wm8350_pcm_trigger(struct snd_pcm_substream *substream,
 		return 0;
 
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
+		audio_mixer_control.capture_active = 1;
+		speaker_amp(1);
 		enabled = wm8350_codec_cache_read(codec, WM8350_POWER_MGMT_4) &
 		    (WM8350_ADCR_ENA | WM8350_ADCL_ENA);
 	} else {
+		audio_mixer_control.playback_active = 1;
+		speaker_amp(1);
 		enabled = wm8350_codec_cache_read(codec, WM8350_POWER_MGMT_4) &
 		    (WM8350_DACR_ENA | WM8350_DACL_ENA);
 	}
@@ -1178,8 +1200,9 @@ static int wm8350_set_bias_level(struct snd_soc_codec *codec,
 				 pm1 | WM8350_VMID_10K |
 				 platform->codec_current_on << 14);
 
-		/* speaker amp on */
-		speaker_amp(1);
+		/* mute DAC & outputs */
+		wm8350_clear_bits(wm8350, WM8350_DAC_MUTE,
+				WM8350_DAC_MUTE_ENA);
 		break;
 	case SND_SOC_BIAS_PREPARE:	/* partial On */
 		/* set vmid to 40k for quick power up */
@@ -1190,10 +1213,6 @@ static int wm8350_set_bias_level(struct snd_soc_codec *codec,
 			pm1 &= ~WM8350_VMID_MASK;
 			wm8350_reg_write(wm8350, WM8350_POWER_MGMT_1,
 					 pm1 | WM8350_VMID_10K);
-		}
-		else {
-			/* speaker amp off */
-			speaker_amp(0);
 		}
 		break;
 	case SND_SOC_BIAS_STANDBY:	/* Off, with power */
@@ -1253,6 +1272,10 @@ static int wm8350_set_bias_level(struct snd_soc_codec *codec,
 			wm8350_reg_write(wm8350, WM8350_ANTI_POP_CONTROL, 0);
 
 		} else {
+			/* mute DAC & outputs */
+			wm8350_set_bits(wm8350, WM8350_DAC_MUTE,
+					WM8350_DAC_MUTE_ENA);
+
 			/* D1,D2 --> D3hot */
 			/* turn on vmid 500k and reduce current */
 			pm1 = wm8350_reg_read(wm8350, WM8350_POWER_MGMT_1) &
@@ -1261,14 +1284,13 @@ static int wm8350_set_bias_level(struct snd_soc_codec *codec,
 					 pm1 | WM8350_VMID_500K |
 					 (platform->
 					  codec_current_standby << 14));
+
 #ifdef CONFIG_HAS_WAKELOCK
 		wake_lock_timeout(&_codec_wake_lock, 1*HZ);
 #endif
 		}
 		break;
 	case SND_SOC_BIAS_OFF:	/* Off, without power */
-		speaker_amp(0);
-
 		/* mute DAC & enable outputs */
 		wm8350_set_bits(wm8350, WM8350_DAC_MUTE, WM8350_DAC_MUTE_ENA);
 
@@ -1325,7 +1347,6 @@ static int wm8350_set_bias_level(struct snd_soc_codec *codec,
 				  WM8350_SYSCLK_ENA);
 
 		regulator_disable(priv->analog_supply);
-
 		break;
 	}
 	codec->bias_level = level;
@@ -1393,6 +1414,9 @@ static int wm8350_codec_init(struct snd_soc_codec *codec,
 	wm8350_reg_write(wm8350, WM8350_LOUT2_VOLUME, 0);
 	wm8350_reg_write(wm8350, WM8350_ROUT2_VOLUME, 0);
 	wm8350_set_bits(wm8350, WM8350_LOUT2_VOLUME, WM8350_OUT2_VU);
+
+	audio_mixer_control.capture_active = 0;
+	audio_mixer_control.playback_active = 0;
 
 	return 0;
 }
