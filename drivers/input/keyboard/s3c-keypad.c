@@ -148,7 +148,7 @@ static int keypad_scan_gpio_configure(int port)
 
 	/* GPDDAT */
 	dat = __raw_readl(S3C2410_GPDDAT) & ~(0x00007800);
-	__raw_writel(dat | ~(0x01 << (11 + port)), S3C2410_GPDDAT);
+	__raw_writel(dat | (~(0x01 << (11 + port)) & 0x00007800), S3C2410_GPDDAT);
 	
 	udelay(KEYPAD_DELAY);
 
