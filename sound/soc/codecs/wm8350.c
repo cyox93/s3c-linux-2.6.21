@@ -1116,9 +1116,6 @@ static int wm8350_set_fll(struct snd_soc_dai *codec_dai,
 	ret = fll_factors(&fll_div, freq_in, freq_out);
 	if (ret < 0)
 		return ret;
-	dbg("FLL in %d FLL out %d N 0x%x K 0x%x div %d ratio %d",
-	    freq_in, freq_out, fll_div.n, fll_div.k, fll_div.div,
-	    fll_div.ratio);
 
 	/* set up N.K & dividers */
 	fll_1 = wm8350_codec_read(codec, WM8350_FLL_CONTROL_1) &
