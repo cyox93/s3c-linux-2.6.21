@@ -1816,7 +1816,9 @@ _lcd_panel_init(void)
 	}
 }
 
+#include <asm/plat-s3c24xx/s3c2416.h>
 #include "unidata-logo.h"
+#include "mylg070-logo.h"
 
 void lcd_module_init (void)
 {
@@ -1826,7 +1828,12 @@ void lcd_module_init (void)
 	int ys = 0;
 	int ye = 220 -1;
 	int i = H_RESOLUTION * V_RESOLUTION;
-	u16 *logo = (u16 *)&_logo[12];
+	u16 *logo = NULL;
+	
+	if (q_hw_ver(7800))
+		logo = (u16 *)&_mylg070_logo[12];
+	else
+		logo = (u16 *)&_unidata_logo[12];
 
 	lcd_reset();
 	lcd_set_command_mode(1);
