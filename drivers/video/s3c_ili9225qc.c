@@ -1819,6 +1819,7 @@ _lcd_panel_init(void)
 #include <asm/plat-s3c24xx/s3c2416.h>
 #include "unidata-logo.h"
 #include "mylg070-logo.h"
+#include "skbb-logo.h"
 
 void lcd_module_init (void)
 {
@@ -1832,6 +1833,8 @@ void lcd_module_init (void)
 	
 	if (q_hw_ver(7800))
 		logo = (u16 *)&_mylg070_logo[12];
+	else if (q_hw_ver(SKBB))
+		logo = (u16 *)&_skbb_logo[12];
 	else
 		logo = (u16 *)&_unidata_logo[12];
 
