@@ -70,14 +70,7 @@ struct wm8350_data {
 	struct regulator *analog_supply;
 };
 
-typedef struct audio_mixer_control {
-	int playback_active;
-	int capture_active;
-} audio_mixer_control_t;
-
 extern void speaker_amp(bool flag);
-
-audio_mixer_control_t audio_mixer_control;
 
 #ifdef CONFIG_HAS_WAKELOCK
 #include <linux/wakelock.h>
@@ -980,17 +973,21 @@ static int wm8350_pcm_trigger(struct snd_pcm_substream *substream,
 	    WM8350_BCLK_MSTR;
 	int enabled = 0;
 
-	if (cmd == SNDRV_PCM_TRIGGER_STOP) {
-		if (substream->stream == SNDRV_PCM_STREAM_CAPTURE)
-			audio_mixer_control.capture_active = 0;
-		else
-			audio_mixer_control.playback_active = 0;
+	int amp_en = 0;
+	if (cmd == SNDRV_PCM_TRIGGER_START) {
+		amp_en = wm8350_codec_cache_read(codec, WM8350_RIGHT_MIXER_CONTROL) & 
+			WM8350_DACR_TO_MIXOUTR;
 
-		if (!audio_mixer_control.capture_active &&
-				!audio_mixer_control.playback_active) {
-			speaker_amp(0);
-		}
+		if (amp_en)	speaker_amp(1);
 	}
+
+	if (cmd == SNDRV_PCM_TRIGGER_STOP) {
+		amp_en = wm8350_codec_cache_read(codec, WM8350_RIGHT_MIXER_CONTROL) & 
+			WM8350_DACR_TO_MIXOUTR;
+
+		if (!amp_en) speaker_amp(0);
+	}
+
 	/* Check that the DACs or ADCs are enabled since they are
 	 * required for LRC in master mode. The DACs or ADCs need a
 	 * valid audio path i.e. pin -> ADC or DAC -> pin before
@@ -999,13 +996,9 @@ static int wm8350_pcm_trigger(struct snd_pcm_substream *substream,
 		return 0;
 
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
-		audio_mixer_control.capture_active = 1;
-		speaker_amp(1);
 		enabled = wm8350_codec_cache_read(codec, WM8350_POWER_MGMT_4) &
 		    (WM8350_ADCR_ENA | WM8350_ADCL_ENA);
 	} else {
-		audio_mixer_control.playback_active = 1;
-		speaker_amp(1);
 		enabled = wm8350_codec_cache_read(codec, WM8350_POWER_MGMT_4) &
 		    (WM8350_DACR_ENA | WM8350_DACL_ENA);
 	}
@@ -1414,9 +1407,6 @@ static int wm8350_codec_init(struct snd_soc_codec *codec,
 	wm8350_reg_write(wm8350, WM8350_LOUT2_VOLUME, 0);
 	wm8350_reg_write(wm8350, WM8350_ROUT2_VOLUME, 0);
 	wm8350_set_bits(wm8350, WM8350_LOUT2_VOLUME, WM8350_OUT2_VU);
-
-	audio_mixer_control.capture_active = 0;
-	audio_mixer_control.playback_active = 0;
 
 	return 0;
 }
