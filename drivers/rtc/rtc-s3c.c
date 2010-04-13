@@ -414,6 +414,7 @@ static int s3c_rtc_open(struct device *dev)
 	struct rtc_device *rtc_dev = platform_get_drvdata(pdev);
 	int ret;
 
+#ifndef CONFIG_RTC_WAKERS
 	ret = request_irq(s3c_rtc_alarmno, s3c_rtc_alarmirq,
 			  IRQF_DISABLED,  "s3c2410-rtc alarm", rtc_dev);
 
@@ -435,6 +436,10 @@ static int s3c_rtc_open(struct device *dev)
  tick_err:
 	free_irq(s3c_rtc_alarmno, rtc_dev);
 	return ret;
+#else	// CONFIG_RTC_WAKERS
+	return 0;
+#endif	// CONFIG_RTC_WAKERS
+
 }
 
 static void s3c_rtc_release(struct device *dev)
@@ -444,9 +449,11 @@ static void s3c_rtc_release(struct device *dev)
 
 	/* do not clear AIE here, it may be needed for wake */
 
+#ifndef CONFIG_RTC_WAKERS
 	s3c_rtc_setpie(0);
 	free_irq(s3c_rtc_alarmno, rtc_dev);
 	free_irq(s3c_rtc_tickno, rtc_dev);
+#endif	// CONFIG_RTC_WAKERS
 }
 
 static const struct rtc_class_ops s3c_rtcops = {
@@ -530,6 +537,11 @@ static void s3c_rtc_enable(struct platform_device *pdev, int en)
 static int s3c_rtc_remove(struct platform_device *dev)
 {
 	struct rtc_device *rtc = platform_get_drvdata(dev);
+
+#ifdef CONFIG_RTC_WAKERS
+	free_irq(s3c_rtc_alarmno, rtc);
+	free_irq(s3c_rtc_tickno, rtc);
+#endif	// CONFIG_RTC_WAKERS
 
 	platform_set_drvdata(dev, NULL);
 	rtc_device_unregister(rtc);
@@ -625,8 +637,32 @@ static int s3c_rtc_probe(struct platform_device *pdev)
 	rtc->max_user_freq = 32768;
 #endif
 
+#ifdef CONFIG_RTC_WAKERS
+	ret = request_irq(s3c_rtc_alarmno, s3c_rtc_alarmirq,
+			  IRQF_DISABLED,  "s3c2410-rtc alarm", rtc);
+
+	if (ret) {
+		dev_err(&pdev->dev, "IRQ%d error %d\n", s3c_rtc_alarmno, ret);
+		goto err_irq;
+	}
+
+	ret = request_irq(s3c_rtc_tickno, s3c_rtc_tickirq,
+			  IRQF_DISABLED,  "s3c2410-rtc tick", rtc);
+
+	if (ret) {
+		dev_err(&pdev->dev, "IRQ%d error %d\n", s3c_rtc_tickno, ret);
+		goto err_irq;
+	}
+#endif	// CONFIG_RTC_WAKERS
+
 	platform_set_drvdata(pdev, rtc);
 	return 0;
+
+#ifdef CONFIG_RTC_WAKERS
+err_irq:
+	free_irq(s3c_rtc_alarmno, rtc);
+	free_irq(s3c_rtc_tickno, rtc);
+#endif	// CONFIG_RTC_WAKERS
 
  err_nortc:
 	s3c_rtc_enable(pdev, 0);
