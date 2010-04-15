@@ -40,6 +40,8 @@ extern  int s3c2443_baseclk_add(void);
 #define q_hw_ver_is_7800_TP()	( (q_hw_version() == 0x1) ? 1 : 0 )
 
 #define q_hw_ver_is_SKBB()	( !q_hw_ver_is_7800() )
+#define q_hw_ver_is_SKBB_ES1()	( (q_hw_version() == 0x8) ? 1 : 0 )
+#define q_hw_ver_is_SKBB_ES2()	( (q_hw_version() == 0x9) ? 1 : 0 )
 
 extern int q_hw_version(void);
 #endif
