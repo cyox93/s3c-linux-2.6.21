@@ -38,6 +38,8 @@
 #include <asm/io.h>
 #include <asm/unistd.h>
 
+#include <asm/arch/regs-s3c2416-clock.h>
+
 #ifndef SET_UNALIGN_CTL
 # define SET_UNALIGN_CTL(a,b)	(-EINVAL)
 #endif
@@ -818,6 +820,7 @@ EXPORT_SYMBOL_GPL(kernel_power_off);
 asmlinkage long sys_reboot(int magic1, int magic2, unsigned int cmd, void __user * arg)
 {
 	char buffer[256];
+	u16 reg;
 
 	/* We only trust the superuser with rebooting the system. */
 	if (!capable(CAP_SYS_BOOT))
@@ -840,6 +843,8 @@ asmlinkage long sys_reboot(int magic1, int magic2, unsigned int cmd, void __user
 	lock_kernel();
 	switch (cmd) {
 	case LINUX_REBOOT_CMD_RESTART:
+		reg = __raw_readl(S3C2443_INFORM3);
+		__raw_writel(reg | 0x01, S3C2443_INFORM3);
 		kernel_restart(NULL);
 		break;
 

@@ -18,6 +18,9 @@
 #include <linux/platform_device.h>
 #include <linux/power_supply.h>
 
+#include <asm/io.h>
+#include <asm/arch/regs-s3c2416-clock.h>
+
 #include <linux/mfd/wm8350/supply.h>
 #include <linux/mfd/wm8350/core.h>
 #include <linux/mfd/wm8350/gpio.h>
@@ -135,15 +138,19 @@ static struct wake_lock _bat_wake_lock;
 
 static DECLARE_MUTEX(event_mutex);
 
+static int bat_fault_led_status = 0;
+
 static void _wm8350_bat_detect_work(struct work_struct *work);
 static void _wm8350_bat_full_work(struct work_struct *work);
 static void _wm8350_bat_fault_work(struct work_struct *work);
 static void _wm8350_bat_timeout_work(struct work_struct *work);
+static void _wm8350_bat_fault_led_work(struct work_struct *work);
 
 DECLARE_DELAYED_WORK(_bat_timeout, _wm8350_bat_timeout_work);
 DECLARE_DELAYED_WORK(_bat_full, _wm8350_bat_full_work);
 DECLARE_DELAYED_WORK(_bat_fault, _wm8350_bat_fault_work);
 DECLARE_DELAYED_WORK(_bat_detect, _wm8350_bat_detect_work);
+DECLARE_DELAYED_WORK(_bat_fault_led, _wm8350_bat_fault_led_work);
 
 static int wm8350_bat_green_led_show(struct device *dev, struct device_attribute *attr, 
 					char *buf)
@@ -405,6 +412,21 @@ static ssize_t charger_state_show(struct device *dev,
 
 static DEVICE_ATTR(charger_state, 0444, charger_state_show, NULL);
 
+
+static void wm8350_bat_fault_led_control(int val)
+{
+	struct wm8350 *wm8350 = wm8350_bat;
+
+	if (val) {
+		wm8350_gpio_set_status(wm8350, 10, 0);
+		wm8350_gpio_set_status(wm8350, 11, 0);
+	}
+	else {
+		wm8350_gpio_set_status(wm8350, 10, 1);
+		wm8350_gpio_set_status(wm8350, 11, 1);
+	}
+}
+
 static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 {
 	struct wm8350_power *power = &wm8350->power;
@@ -428,6 +450,7 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 		cancel_delayed_work(&_bat_full);
 		cancel_delayed_work(&_bat_timeout);
 		cancel_delayed_work(&_bat_fault);
+		cancel_delayed_work(&_bat_fault_led);
 
 		schedule_delayed_work(&_bat_fault, msecs_to_jiffies(1000));
 		break;
@@ -437,6 +460,7 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 		cancel_delayed_work(&_bat_full);
 		cancel_delayed_work(&_bat_fault);
 		cancel_delayed_work(&_bat_timeout);
+		cancel_delayed_work(&_bat_fault_led);
 
 		schedule_delayed_work(&_bat_timeout, msecs_to_jiffies(2000));
 		break;
@@ -492,6 +516,7 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 		cancel_delayed_work(&_bat_detect);
 		cancel_delayed_work(&_bat_full);
 		cancel_delayed_work(&_bat_timeout);
+		cancel_delayed_work(&_bat_fault_led);
 
 		schedule_delayed_work(&_bat_detect, msecs_to_jiffies(1000));
 		break;
@@ -591,14 +616,12 @@ static void _wm8350_bat_fault_work(struct work_struct *work)
 {
 	int event = 0;
 	struct list_head *p;
-	struct wm8350 *wm8350 = wm8350_bat;
 	wm8350_bat_event_callback_list_t *temp = NULL;
 
 	event = WM8350_BAT_EVENT_FAULT;
 
 	printk("battery fault ...\n");
-	wm8350_gpio_set_status(wm8350, 10, 0);
-	wm8350_gpio_set_status(wm8350, 11, 0);
+	schedule_delayed_work(&_bat_fault_led, msecs_to_jiffies(0));
 
 	if (!list_empty(&wm8350_bat_events[event])) {
 		list_for_each(p, &wm8350_bat_events[event]) {
@@ -606,6 +629,20 @@ static void _wm8350_bat_fault_work(struct work_struct *work)
 			temp->callback.func(temp->callback.param);
 		}
 	}
+}
+
+static void _wm8350_bat_fault_led_work(struct work_struct *work)
+{
+	if (bat_fault_led_status) {
+		bat_fault_led_status = 0;
+		wm8350_bat_fault_led_control(1);
+	}
+	else {
+		bat_fault_led_status = 1;
+		wm8350_bat_fault_led_control(0);
+	}
+
+	schedule_delayed_work(&_bat_fault_led, msecs_to_jiffies(1000));
 }
 
 static void _wm8350_bat_timeout_work(struct work_struct *work)
@@ -616,7 +653,7 @@ static void _wm8350_bat_timeout_work(struct work_struct *work)
 	wm8350_bat_event_callback_list_t *temp = NULL;
 
 	uVolt = wm8350_read_battery_uvolts(wm8350);
-	if (uVolt < 4100000 ) {
+	if (uVolt > 4100000 ) {
 		printk("battery timeout [%d] -> full ...\n", uVolt);
 		event = WM8350_BAT_EVENT_FULL_CHG;
 
@@ -1375,6 +1412,7 @@ static int __devexit wm8350_power_remove(struct platform_device *pdev)
 	cancel_delayed_work(&_bat_full);
 	cancel_delayed_work(&_bat_detect);
 	cancel_delayed_work(&_bat_timeout);
+	cancel_delayed_work(&_bat_fault_led);
 
 #ifdef CONFIG_HAS_WAKELOCK
 	wake_lock_destroy(&_bat_wake_lock);
