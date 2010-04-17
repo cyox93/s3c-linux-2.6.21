@@ -337,15 +337,17 @@ void Key_gpio_init(void)
 /* 3.3V LDO  */
 void gpio_wifi_power(bool flag)
 {
-	if (q_hw_ver(7800_ES1) || q_hw_ver(SKBB))
+	if (q_hw_ver(7800_ES1))
 		s3c2410_gpio_setpin(S3C2410_GPH12, (flag ? 1 : 0));
+	else if (q_hw_ver(SKBB))
+		s3c2410_gpio_setpin(S3C2410_GPF5, (flag ? 1 : 0));
 	// esle
 	// 	not used
 }
 
 void gpio_wifi_power_down(bool flag)
 {
-	if (q_hw_ver(7800_ES1) || q_hw_ver(SKBB))
+	if (q_hw_ver(7800_ES1))
 		s3c2410_gpio_setpin(S3C2410_GPH7, (flag ? 0 : 1));
 	else
 		s3c2410_gpio_setpin(S3C2410_GPF7, (flag ? 0 : 1));
@@ -355,7 +357,7 @@ void gpio_wifi_reset(void)
 {
 	unsigned int pin;
 
-	if (q_hw_ver(7800_ES1) || q_hw_ver(SKBB)) pin = S3C2410_GPH6;
+	if (q_hw_ver(7800_ES1)) pin = S3C2410_GPH6;
 	else pin = S3C2410_GPF6;
 
 	mdelay(1);
@@ -369,7 +371,7 @@ void wifi_gpio_init (void)
 {	
 	unsigned long mask;
 
-	if (q_hw_ver(7800_ES1) || q_hw_ver(SKBB)) {
+	if (q_hw_ver(7800_ES1)) {
 		// wifi reset
 		s3c2410_gpio_setpin(S3C2410_GPH6, 1);
 		s3c2410_gpio_cfgpin(S3C2410_GPH6, S3C2410_GPH6_OUTP);
@@ -389,6 +391,10 @@ void wifi_gpio_init (void)
 		// wifi power down
 		s3c2410_gpio_setpin(S3C2410_GPF7, 1);
 		s3c2410_gpio_cfgpin(S3C2410_GPF7, S3C2410_GPF7_OUTP);
+
+		// wifi LDO enable
+		s3c2410_gpio_setpin(S3C2410_GPF5, 0);
+		s3c2410_gpio_cfgpin(S3C2410_GPF5, S3C2410_GPF5_OUTP);
 	}
 
 	s3c2410_gpio_cfgpin(S3C2410_GPL0, S3C2410_GPL0_SD0_DAT0);
@@ -421,7 +427,7 @@ void lcd_reset(void)
 {
 	unsigned int pin;
 
-	if (q_hw_ver(7800_ES1) || q_hw_ver(SKBB)) pin = S3C2410_GPB1;
+	if (q_hw_ver(7800_ES1)) pin = S3C2410_GPB1;
 	else pin = S3C2410_GPG6;
 
 	mdelay(10);
@@ -438,7 +444,7 @@ void lcd_gpio_init(void)
 	u32 val;
 
 	// set gpio out for lcd reset 
-	if (q_hw_ver(7800_ES1) || q_hw_ver(SKBB)) {
+	if (q_hw_ver(7800_ES1)) {
 		s3c2410_gpio_setpin(S3C2410_GPB1, 1);
 		s3c2410_gpio_cfgpin(S3C2410_GPB1, S3C2410_GPB1_OUTP);
 	} else {

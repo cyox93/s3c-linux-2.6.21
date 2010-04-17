@@ -100,7 +100,7 @@ static void s3c2450_cpu_suspend(void)
 
 	__raw_writel(0x01, S3C2443_PWRCFG);
 
-	if (q_hw_ver(7800_ES1) || q_hw_ver(SKBB_ES1)) {
+	if (q_hw_ver(7800_ES1)) {
 		extern void (*s3c24xx_idle)(void);
 		s3c24xx_idle();
 	} else {
