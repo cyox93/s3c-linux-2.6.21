@@ -642,7 +642,7 @@ static void _wm8350_bat_fault_led_work(struct work_struct *work)
 		wm8350_bat_fault_led_control(0);
 	}
 
-	schedule_delayed_work(&_bat_fault_led, msecs_to_jiffies(1000));
+	schedule_delayed_work(&_bat_fault_led, msecs_to_jiffies(500));
 }
 
 static void _wm8350_bat_timeout_work(struct work_struct *work)
