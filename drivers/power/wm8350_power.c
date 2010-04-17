@@ -663,8 +663,7 @@ static void _wm8350_bat_timeout_work(struct work_struct *work)
 		printk("battery timeout [%d] -> fault ...\n", uVolt);
 		event = WM8350_BAT_EVENT_FAULT;
 
-		wm8350_gpio_set_status(wm8350, 10, 0);
-		wm8350_gpio_set_status(wm8350, 11, 0);
+		schedule_delayed_work(&_bat_fault_led, msecs_to_jiffies(0));
 	}
 
 	if (!list_empty(&wm8350_bat_events[event])) {
