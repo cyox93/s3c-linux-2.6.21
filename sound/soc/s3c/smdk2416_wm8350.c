@@ -315,10 +315,10 @@ static struct snd_soc_ops smdk2416_hifi_ops = {
 
 /* need to refine these */
 static struct wm8350_audio_platform_data smdk2416_wm8350_setup = {
-	.vmid_discharge_msecs = 1000,
-	.drain_msecs = 30,
-	.cap_discharge_msecs = 700,
-	.vmid_charge_msecs = 700,
+	.vmid_discharge_msecs = 0,
+	.drain_msecs = 0,
+	.cap_discharge_msecs = 0,
+	.vmid_charge_msecs = 0,
 	.vmid_s_curve = WM8350_S_CURVE_SLOW,
 	.dis_out4 = WM8350_DISCHARGE_SLOW,
 	.dis_out3 = WM8350_DISCHARGE_SLOW,

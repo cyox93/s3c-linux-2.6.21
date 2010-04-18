@@ -1230,9 +1230,10 @@ static int wm8350_set_bias_level(struct snd_soc_codec *codec,
 					 (platform->dis_out4 << 6));
 
 			/* wait for discharge */
-			schedule_timeout_interruptible(msecs_to_jiffies
-						       (platform->
-							cap_discharge_msecs));
+			if (platform->cap_discharge_msecs)
+				schedule_timeout_interruptible(msecs_to_jiffies
+							       (platform->
+								cap_discharge_msecs));
 
 			/* enable antipop */
 			wm8350_reg_write(wm8350, WM8350_ANTI_POP_CONTROL,
@@ -1246,9 +1247,10 @@ static int wm8350_set_bias_level(struct snd_soc_codec *codec,
 					 WM8350_VBUFEN);
 
 			/* wait for vmid */
-			schedule_timeout_interruptible(msecs_to_jiffies
-						       (platform->
-							vmid_charge_msecs));
+			if (platform->vmid_charge_msecs)
+				schedule_timeout_interruptible(msecs_to_jiffies
+							       (platform->
+								vmid_charge_msecs));
 
 			/* turn on vmid 500k  */
 			pm1 = wm8350_reg_read(wm8350, WM8350_POWER_MGMT_1) &
@@ -1297,9 +1299,10 @@ static int wm8350_set_bias_level(struct snd_soc_codec *codec,
 		wm8350_reg_write(wm8350, WM8350_POWER_MGMT_1, pm1);
 
 		/* wait */
-		schedule_timeout_interruptible(msecs_to_jiffies
-					       (platform->
-						vmid_discharge_msecs));
+		if (platform->vmid_discharge_msecs)
+			schedule_timeout_interruptible(msecs_to_jiffies
+						       (platform->
+							vmid_discharge_msecs));
 
 		wm8350_reg_write(wm8350, WM8350_ANTI_POP_CONTROL,
 				 (platform->vmid_s_curve << 8) |
@@ -1317,8 +1320,9 @@ static int wm8350_set_bias_level(struct snd_soc_codec *codec,
 #endif
 
 		/* wait */
-		schedule_timeout_interruptible(msecs_to_jiffies
-					       (platform->drain_msecs));
+		if (platform->drain_msecs)
+			schedule_timeout_interruptible(msecs_to_jiffies
+						       (platform->drain_msecs));
 
 		pm1 &= ~WM8350_BIASEN;
 		wm8350_reg_write(wm8350, WM8350_POWER_MGMT_1, pm1);
@@ -1351,7 +1355,6 @@ static int wm8350_suspend(struct platform_device *pdev, pm_message_t state)
 	struct snd_soc_codec *codec = platform_get_drvdata(pdev);
 
 	wm8350_set_bias_level(codec, SND_SOC_BIAS_OFF);
-
 	return 0;
 }
 
