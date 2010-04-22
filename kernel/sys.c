@@ -844,7 +844,7 @@ asmlinkage long sys_reboot(int magic1, int magic2, unsigned int cmd, void __user
 	lock_kernel();
 	switch (cmd) {
 	case LINUX_REBOOT_CMD_RESTART:
-#ifdef CONFIG_MACH_CANOSPU
+#ifdef CONFIG_MACH_CANOPUS
 		__raw_writel(0x01, S3C2443_INFORM3);
 #endif	// CONFIG_MACH_CANOPUS
 		kernel_restart(NULL);
