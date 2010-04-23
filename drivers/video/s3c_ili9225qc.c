@@ -45,6 +45,8 @@
 #define V_SW		1		/* Vsync width */
 #define V_BP		7		/* Back porch */
 
+#define BOOTROM_SPLASH
+
 extern struct s3c_fb_info info[S3C_FB_NUM];
 s3c_win_info_t window_info;
 
@@ -895,7 +897,9 @@ int s3c_fb_init_registers(struct s3c_fb_info *fbi)
 
 		__raw_writel(0x7, S3C_SYSIFCON0);
 
+#ifndef BOOTROM_SPLASH 
 		lcd_module_init();
+#endif
  	}
 
         /* For buffer start address */
