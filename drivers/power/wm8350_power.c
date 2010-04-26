@@ -440,9 +440,23 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 	switch (irq) {
 	case WM8350_IRQ_CHG_BAT_HOT:
 		printk(KERN_ERR "wm8350-power: battery too hot\n");
+
+		cancel_delayed_work(&_bat_full);
+		cancel_delayed_work(&_bat_timeout);
+		cancel_delayed_work(&_bat_fault);
+		cancel_delayed_work(&_bat_fault_led);
+
+		schedule_delayed_work(&_bat_fault, msecs_to_jiffies(2000));
 		break;
 	case WM8350_IRQ_CHG_BAT_COLD:
 		printk(KERN_ERR "wm8350-power: battery too cold\n");
+
+		cancel_delayed_work(&_bat_full);
+		cancel_delayed_work(&_bat_timeout);
+		cancel_delayed_work(&_bat_fault);
+		cancel_delayed_work(&_bat_fault_led);
+
+		schedule_delayed_work(&_bat_fault, msecs_to_jiffies(2000));
 		break;
 	case WM8350_IRQ_CHG_BAT_FAIL:
 		printk(KERN_ERR "wm8350-power: battery failed\n");
@@ -548,7 +562,10 @@ static void _wm8350_bat_detect_work(struct work_struct *work)
 	
 	state = wm8350_get_supplies(wm8350) & WM8350_LINE_SUPPLY;
 	uvolt = wm8350_read_battery_uvolts(wm8350);
-	
+
+	cancel_delayed_work(&_bat_fault);
+	cancel_delayed_work(&_bat_fault_led);
+
 	/* LED Control */
 	if (vbatt_event && !state) {
 		printk("battery not detect...\n");
