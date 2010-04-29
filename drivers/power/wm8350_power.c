@@ -26,6 +26,8 @@
 #include <linux/mfd/wm8350/gpio.h>
 #include <linux/mfd/wm8350/comparator.h>
 
+#include <asm/plat-s3c24xx/s3c2416.h>
+
 #ifdef CONFIG_HAS_WAKELOCK
 #include <linux/wakelock.h>
 #endif
@@ -96,6 +98,8 @@ typedef enum {
 typedef enum {
 	WM8350_BAT_GREEN_LED = 0,
 	WM8350_BAT_RED_LED,
+	WM8350_BAT_LED_ALL_ON,
+	WM8350_BAT_LED_ALL_OFF,
 } wm8350_led_control;
 
 typedef struct {
@@ -156,8 +160,19 @@ static int wm8350_bat_green_led_show(struct device *dev, struct device_attribute
 					char *buf)
 {
 	struct wm8350 *wm8350 = dev_get_drvdata(dev);
+	int on, off;
+
+	if (q_hw_ver(SKBB_PP))
+	{
+		on  = 1;
+		off = 0;
+	}
+	else {
+		on  = 0;
+		off = 1;
+	}
 		
-	return snprintf(buf, PAGE_SIZE, "%d\n", wm8350_gpio_get_status(wm8350, 10) ? 0 : 1);
+	return snprintf(buf, PAGE_SIZE, "%d\n", wm8350_gpio_get_status(wm8350, 10) ? on : off);
 }
 
 static int wm8350_bat_green_led_store(struct device *dev, struct device_attribute *attr,
@@ -165,11 +180,22 @@ static int wm8350_bat_green_led_store(struct device *dev, struct device_attribut
 {
 	unsigned long value = simple_strtoul(buf, NULL, 10);
 	struct wm8350 *wm8350 = dev_get_drvdata(dev);
+	int on, off;
 
 	if (value > 1)
 		return -ERANGE;
 
-	wm8350_gpio_set_status(wm8350, 10, value ? 0 : 1);
+	if (q_hw_ver(SKBB_PP))
+	{
+		on  = 1;
+		off = 0;
+	}
+	else {
+		on  = 0;
+		off = 1;
+	}
+	
+	wm8350_gpio_set_status(wm8350, 10, value ? on : off);
 
 	return len;
 }
@@ -178,8 +204,19 @@ static int wm8350_bat_red_led_show(struct device *dev, struct device_attribute *
 					char *buf)
 {
 	struct wm8350 *wm8350 = dev_get_drvdata(dev);
+	int on, off;
+
+	if (q_hw_ver(SKBB_PP))
+	{
+		on  = 1;
+		off = 0;
+	}
+	else {
+		on  = 0;
+		off = 1;
+	}
 		
-	return snprintf(buf, PAGE_SIZE, "%d\n", wm8350_gpio_get_status(wm8350, 11) ? 0 : 1);
+	return snprintf(buf, PAGE_SIZE, "%d\n", wm8350_gpio_get_status(wm8350, 11) ? on : off);
 }
 
 static int wm8350_bat_red_led_store(struct device *dev, struct device_attribute *attr,
@@ -187,11 +224,22 @@ static int wm8350_bat_red_led_store(struct device *dev, struct device_attribute 
 {
 	unsigned long value = simple_strtoul(buf, NULL, 10);
 	struct wm8350 *wm8350 = dev_get_drvdata(dev);
+	int on, off;
 
 	if (value > 1)
 		return -ERANGE;
 
-	wm8350_gpio_set_status(wm8350, 11, value ? 0 : 1);
+	if (q_hw_ver(SKBB_PP))
+	{
+		on  = 1;
+		off = 0;
+	}
+	else {
+		on  = 0;
+		off = 1;
+	}
+	
+	wm8350_gpio_set_status(wm8350, 11, value ? on : off);
 
 	return len;
 }
@@ -412,7 +460,42 @@ static ssize_t charger_state_show(struct device *dev,
 
 static DEVICE_ATTR(charger_state, 0444, charger_state_show, NULL);
 
+static void wm8350_bat_led_status(struct wm8350 *wm8350, int state)
+{
+	int on, off;
 
+	if (q_hw_ver(SKBB_PP)) {
+		on  = 1;
+		off = 0;
+	}
+	else {
+		on  = 0;
+		off = 1;
+	}
+
+	switch (state) {
+	case WM8350_BAT_RED_LED: 
+		wm8350_gpio_set_status(wm8350, 10, off);	
+		wm8350_gpio_set_status(wm8350, 11, on);	
+		break;
+	case WM8350_BAT_GREEN_LED:
+		wm8350_gpio_set_status(wm8350, 10, on);	
+		wm8350_gpio_set_status(wm8350, 11, off);	
+		break;
+	case WM8350_BAT_LED_ALL_ON:
+		wm8350_gpio_set_status(wm8350, 10, on);	
+		wm8350_gpio_set_status(wm8350, 11, on);	
+		break;
+	case WM8350_BAT_LED_ALL_OFF:
+		wm8350_gpio_set_status(wm8350, 10, off);	
+		wm8350_gpio_set_status(wm8350, 11, off);	
+		break;
+
+	default:
+		printk("BATTERRY LED NOT CONTROL..\n");
+		break;
+	}
+}
 static void wm8350_bat_fault_led_control(int val)
 {
 	struct wm8350 *wm8350 = wm8350_bat;
@@ -556,8 +639,7 @@ static void _wm8350_bat_detect_work(struct work_struct *work)
 {
 	int event = 0;
 	int state, uvolt;
-	struct list_head *p;
-	struct wm8350 *wm8350 = wm8350_bat;
+	struct list_head *p; struct wm8350 *wm8350 = wm8350_bat;
 	wm8350_bat_event_callback_list_t *temp = NULL;
 	
 	state = wm8350_get_supplies(wm8350) & WM8350_LINE_SUPPLY;
@@ -569,16 +651,16 @@ static void _wm8350_bat_detect_work(struct work_struct *work)
 	/* LED Control */
 	if (vbatt_event && !state) {
 		printk("battery not detect...\n");
-		wm8350_gpio_set_status(wm8350, 10, 1);
-		wm8350_gpio_set_status(wm8350, 11, 1);
+
+		wm8350_bat_led_status(wm8350, WM8350_BAT_LED_ALL_OFF);
 
 		event		= WM8350_BAT_EVENT_NOTDETECT;
 		bat_detect	= WM8350_BAT_EVENT_NOTDETECT;
 	}
 	else {
 		printk("battery detect...\n");
-		wm8350_gpio_set_status(wm8350, 10, 1);
-		wm8350_gpio_set_status(wm8350, 11, 0);
+
+		wm8350_bat_led_status(wm8350, WM8350_BAT_RED_LED);
 
 		event		= WM8350_BAT_EVENT_DETECT;
 		bat_detect	= WM8350_BAT_EVENT_DETECT;
@@ -615,8 +697,8 @@ static void _wm8350_bat_full_work(struct work_struct *work)
 	if (line && (batt == POWER_SUPPLY_STATUS_DISCHARGING) &&
 				(bat_detect == WM8350_BAT_EVENT_DETECT)) {
 		printk("battery full charging..\n");
-		wm8350_gpio_set_status(wm8350, 10, 0);
-		wm8350_gpio_set_status(wm8350, 11, 1);
+
+		wm8350_bat_led_status(wm8350, WM8350_BAT_GREEN_LED);
 
 		event = WM8350_BAT_EVENT_FULL_CHG;
 		
@@ -674,8 +756,8 @@ static void _wm8350_bat_timeout_work(struct work_struct *work)
 		printk("battery timeout [%d] -> full ...\n", uVolt);
 		event = WM8350_BAT_EVENT_FULL_CHG;
 
-		wm8350_gpio_set_status(wm8350, 10, 0);
-		wm8350_gpio_set_status(wm8350, 11, 1);
+		wm8350_bat_led_status(wm8350, WM8350_BAT_GREEN_LED);
+
 	} else {
 		printk("battery timeout [%d] -> fault ...\n", uVolt);
 		event = WM8350_BAT_EVENT_FAULT;
@@ -870,25 +952,35 @@ static int wm8350_bat_get_status(struct wm8350 *wm8350, unsigned long arg)
 static int wm8350_bat_led_control(struct wm8350 *wm8350, unsigned long arg)
 {
 	_t_wm8350_led_data led_data = {0};
+	int on, off;
 
 	if (copy_from_user((void *)&led_data,
 				(const void *)arg,
 				sizeof(led_data)))
 		return -EFAULT;
 
+	if (q_hw_ver(SKBB_PP)) {
+		on  = 1;
+		off = 0;
+	}
+	else {
+		on  = 0;
+		off = 1;
+	}
+
 	switch (led_data.command) {
 		case WM8350_BAT_GREEN_LED:
 			if (led_data.control)
-				wm8350_gpio_set_status(wm8350, 10, 0);
+				wm8350_gpio_set_status(wm8350, 10, on);
 			else
-				wm8350_gpio_set_status(wm8350, 10, 1);
+				wm8350_gpio_set_status(wm8350, 10, off);
 			break;
 
 		case WM8350_BAT_RED_LED:
 			if (led_data.control)
-				wm8350_gpio_set_status(wm8350, 11, 0);
+				wm8350_gpio_set_status(wm8350, 11, on);
 			else
-				wm8350_gpio_set_status(wm8350, 11, 1);
+				wm8350_gpio_set_status(wm8350, 11, off);
 			break;
 	}
 
@@ -1226,8 +1318,7 @@ static int wm8350_fast_charger_mode(struct wm8350 *wm8350)
 	}
 
 	if (state) {
-		wm8350_gpio_set_status(wm8350, 10, 1);
-		wm8350_gpio_set_status(wm8350, 11, 0);
+		wm8350_bat_led_status(wm8350, WM8350_BAT_RED_LED);
 
 		bat_detect = WM8350_BAT_EVENT_DETECT;
 
