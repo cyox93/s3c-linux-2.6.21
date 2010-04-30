@@ -165,4 +165,9 @@ struct wm8350_power {
 #define wm8350_read_usb_mvolts(wm8350) \
 	(wm8350_read_usb_uvolts(wm8350 / 1000)
 
+#define wm8350_read_aux2_adc(wm8350) \
+	wm8350_read_auxadc(wm8350, WM8350_AUXADC_AUX2, 3, 1)
+#define wm8350_read_aux3_adc(wm8350) \
+	wm8350_read_auxadc(wm8350, WM8350_AUXADC_AUX3, 3, 1)
+
 #endif

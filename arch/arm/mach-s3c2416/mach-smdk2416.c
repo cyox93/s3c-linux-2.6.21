@@ -27,6 +27,7 @@
 #include <linux/mfd/wm8350/core.h>
 #include <linux/mfd/wm8350/pmic.h>
 #include <linux/mfd/wm8350/gpio.h>
+#include <linux/mfd/wm8350/comparator.h>
 #include <linux/fb.h>
 #include <linux/regulator/machine.h>
 #endif
@@ -668,8 +669,11 @@ int wm8350_dev_init(struct wm8350 *wm8350)
 	/* Shutdown threshold value */
 	wm8350_reg_unlock(wm8350);
 	data = wm8350_reg_read(wm8350, WM8350_POWER_CHECK_COMPARATOR) & ~(WM8350_PCCMP_OFF_THR_MASK);
-	wm8350_reg_write(wm8350, WM8350_POWER_CHECK_COMPARATOR, data | 0x40);
+	wm8350_reg_write(wm8350, WM8350_POWER_CHECK_COMPARATOR, data | 0x30);
 	wm8350_reg_lock(wm8350);
+
+	data = wm8350_reg_read(wm8350, WM8350_DIGITISER_CONTROL_2);
+	wm8350_reg_write(wm8350, WM8350_DIGITISER_CONTROL_2, data | WM8350_AUXADC_CAL);
 
 	config_s3c_wm8350_gpio(wm8350);
 

@@ -67,6 +67,7 @@ typedef struct {
 } wm8350_reg_info;
 
 #define WM8350_BATTERY_VOLTAGE		_IOR('P', 0xa4, int)
+#define WM8350_BATTERY_ADC		_IOR('P', 0xae, int)
 #define WM8350_AC_ONLINE		_IOR('P', 0xa5, int)
 #define WM8350_USB_ONLINE		_IOR('P', 0xa6, int)
 #define WM8350_BAT_STATUS		_IOWR('P', 0xa7, int)
@@ -251,6 +252,32 @@ static DEVICE_ATTR(green_led, 0644,
 static DEVICE_ATTR(red_led, 0644,
 		wm8350_bat_red_led_show,
 		wm8350_bat_red_led_store);
+
+static int wm8350_aux2_show(struct device *dev, struct device_attribute *attr,
+					char *buf)
+{
+	struct wm8350 *wm8350 = dev_get_drvdata(dev);
+
+	return snprintf(buf, PAGE_SIZE, "%x\n", wm8350_read_aux2_adc(wm8350));
+
+}
+
+static int wm8350_aux3_show(struct device *dev, struct device_attribute *attr,
+					char *buf)
+{
+	struct wm8350 *wm8350 = dev_get_drvdata(dev);
+
+	return snprintf(buf, PAGE_SIZE, "%x\n", wm8350_read_aux3_adc(wm8350));
+
+}
+
+static DEVICE_ATTR(aux2_adc, 0444,
+		wm8350_aux2_show,
+		NULL);
+
+static DEVICE_ATTR(aux3_adc, 0444,
+		wm8350_aux3_show,
+		NULL);
 
 static inline int wm8350_charge_time_min(struct wm8350 *wm8350, int min)
 {
@@ -752,6 +779,7 @@ static void _wm8350_bat_timeout_work(struct work_struct *work)
 	wm8350_bat_event_callback_list_t *temp = NULL;
 
 	uVolt = wm8350_read_battery_uvolts(wm8350);
+
 	if (uVolt > 4100000 ) {
 		printk("battery timeout [%d] -> full ...\n", uVolt);
 		event = WM8350_BAT_EVENT_FULL_CHG;
@@ -1003,6 +1031,13 @@ static int wm8350_bat_ioctl(struct inode *inode, struct file *file,
 	switch (cmd) {
 		case WM8350_BATTERY_VOLTAGE:
 			online = wm8350_read_battery_uvolts(wm8350);
+			if (copy_to_user((int *) arg, &online, sizeof(int))) {
+				return -EFAULT;
+			}
+			break;
+
+		case WM8350_BATTERY_ADC:
+			online = wm8350_read_aux2_adc(wm8350);
 			if (copy_to_user((int *) arg, &online, sizeof(int))) {
 				return -EFAULT;
 			}
@@ -1448,6 +1483,12 @@ static int __init wm8350_power_probe(struct platform_device *pdev)
 	ret = device_create_file(&pdev->dev, &dev_attr_red_led);
 	if (ret <0)
 		printk(KERN_WARNING "wm8350: failed to add red led sysfs\n");
+	ret = device_create_file(&pdev->dev, &dev_attr_aux2_adc);
+	if (ret <0)
+		printk(KERN_WARNING "wm8350: failed to add aux2 adc sysfs\n");
+	ret = device_create_file(&pdev->dev, &dev_attr_aux3_adc);
+	if (ret <0)
+		printk(KERN_WARNING "wm8350: failed to add aux3 adc sysfs\n");
 
 	ret = 0;
 
