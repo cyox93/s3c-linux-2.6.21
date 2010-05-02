@@ -30,6 +30,11 @@
 #include <asm/arch/regs-s3c6410-clock.h>
 #endif
 
+#include <asm/plat-s3c24xx/s3c2416.h>
+#include "unidata-logo.h"
+#include "mylg070-logo.h"
+#include "skbb-logo.h"
+
 #include "s3cfb.h"
 
 #define ON 		1
@@ -44,8 +49,6 @@
 #define V_FP		5		/* front porch */
 #define V_SW		1		/* Vsync width */
 #define V_BP		7		/* Back porch */
-
-#define BOOTROM_SPLASH
 
 extern struct s3c_fb_info info[S3C_FB_NUM];
 s3c_win_info_t window_info;
@@ -897,9 +900,10 @@ int s3c_fb_init_registers(struct s3c_fb_info *fbi)
 
 		__raw_writel(0x7, S3C_SYSIFCON0);
 
-#ifndef BOOTROM_SPLASH 
-		lcd_module_init();
-#endif
+		if (q_boot_flag_get() != Q_BOOT_FLAG_LCD_INIT)
+			lcd_module_init();
+		else
+			q_boot_flag_set(Q_BOOT_FLAG_CLEAR);
  	}
 
         /* For buffer start address */
@@ -1819,11 +1823,6 @@ _lcd_panel_init(void)
 		break;
 	}
 }
-
-#include <asm/plat-s3c24xx/s3c2416.h>
-#include "unidata-logo.h"
-#include "mylg070-logo.h"
-#include "skbb-logo.h"
 
 void lcd_module_init (void)
 {

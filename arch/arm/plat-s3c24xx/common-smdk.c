@@ -45,6 +45,10 @@
 #include <asm/plat-s3c24xx/pm.h>
 #include <asm/plat-s3c24xx/s3c2416.h>
 
+#ifdef CONFIG_MACH_CANOPUS
+#include <asm/arch/regs-s3c2416-clock.h>
+#endif	// CONFIG_MACH_CANOPUS
+
 /* LED devices */
 
 static struct s3c24xx_led_platdata smdk_pdata_led4 = {
@@ -534,6 +538,17 @@ void canopus_gpio_init(void)
 	Key_gpio_init();
 	
 }
+
+int q_boot_flag_get(void)
+{
+	return __raw_readl(S3C2443_INFORM3);
+}
+
+void q_boot_flag_set(int flag)
+{
+	__raw_writel(flag, S3C2443_INFORM3);
+}
+
 #endif	// CONFIG_MACH_CANOPUS
 
 void __init smdk_machine_init(void)
@@ -572,5 +587,7 @@ EXPORT_SYMBOL(lcd_reset);
 EXPORT_SYMBOL(lcd_gpio_init);
 EXPORT_SYMBOL(speaker_amp);
 EXPORT_SYMBOL(q_hw_version);
+EXPORT_SYMBOL(q_boot_flag_set);
+EXPORT_SYMBOL(q_boot_flag_get);
 #endif	// CONFIG_MACH_CANOPUS
 

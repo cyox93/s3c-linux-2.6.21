@@ -44,4 +44,11 @@ extern  int s3c2443_baseclk_add(void);
 #define q_hw_ver_is_SKBB_PP()	( (q_hw_version() == 0x9) ? 1 : 0 )
 
 extern int q_hw_version(void);
+
+#define Q_BOOT_FLAG_CLEAR		0x00
+#define Q_BOOT_FLAG_REBOOT		0x01
+#define Q_BOOT_FLAG_LCD_INIT		0x03
+
+extern void q_boot_flag_set(int flag);
+extern int q_boot_flag_get(void);
 #endif
