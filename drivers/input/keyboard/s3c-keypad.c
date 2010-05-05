@@ -271,32 +271,32 @@ static int endkey_scan(struct s3c_keypad *pdata)
 	struct input_dev *dev = pdata->dev;
 
 	endkey = __raw_readl(S3C2410_GPFDAT) & 0x01;
+	DPRINTK("endkey scan: endkey, endkey_press [%d, %d]\n", endkey, endkey_press);
+	
+	if (!endkey) {
+		if (!endkey_press)  {
+			input_report_key(dev, pdata->keycodes[12], 1);
+			input_sync(dev);
+			
+			key_code = pdata->keycodes[12];
+			key_state = 1;
 
-	if (!endkey && !endkey_press) {
-		endkey_press = 1;
-		
-		input_report_key(dev, pdata->keycodes[12], 1);
-		input_sync(dev);
-
-		key_code = pdata->keycodes[12];
-		key_state = 1;
-
+			endkey_press = 1;
+		}
 		DPRINTK("key Pressed : %d\n", pdata->keycodes[12]);
 
 		return KEY_PRESS_STATE;
-	}
-
-	if (endkey && endkey_press) {
-		input_report_key(dev, pdata->keycodes[12], 0);
-		input_sync(dev);
-		
-		key_code = pdata->keycodes[12];
-		key_state = 0;
-
-		endkey_press = 0;
-
+	} else {
+		if (endkey_press) {
+			input_report_key(dev, pdata->keycodes[12], 0);
+			input_sync(dev);
+			
+			key_code = pdata->keycodes[12];
+			key_state = 0;
+			
+			endkey_press = 0;
+		}
 		DPRINTK("key Released : %d\n", pdata->keycodes[12]);
-		
 		ret = KEY_RELEASE_STATE;
 	}
 
