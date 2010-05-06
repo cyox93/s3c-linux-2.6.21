@@ -194,12 +194,12 @@ struct mtd_partition s3c_partition_info[] = {
         {
                 .name		= "Rootfs",
                 .offset		= MTDPART_OFS_APPEND,
-                .size		= (79360*SZ_1K),	/* 77.5 Mbytes */
+                .size		= (79232*SZ_1K),	/* 77.38 Mbytes */
         },
         {
                 .name		= "Param",
                 .offset		= MTDPART_OFS_APPEND,
-                .size		= (128*SZ_1K),		/* 128 KBytes */
+                .size		= (128*SZ_1K*2),	/* 256 KBytes */
         }
 };
 #else	/* ! CONFIG_MACH_CANOPUS*/
