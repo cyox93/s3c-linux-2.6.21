@@ -577,6 +577,10 @@ void __init smdk_machine_init(void)
 	platform_add_devices(smdk_devs, ARRAY_SIZE(smdk_devs));
 
 	s3c2410_pm_init();
+
+#ifdef CONFIG_MACH_CANOPUS
+	q_param_proc_init();
+#endif
 }
 
 #ifdef CONFIG_MACH_CANOPUS

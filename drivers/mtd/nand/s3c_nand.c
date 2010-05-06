@@ -86,7 +86,7 @@ struct s3c_nand_info {
 };
 static struct s3c_nand_info s3c_nand;
 
-static struct mtd_info *s3c_mtd = NULL;
+struct mtd_info *s3c_mtd = NULL;
 
 /* Nand flash definition values by jsgood */
 #define S3C_NAND_TYPE_UNKNOWN	0x0

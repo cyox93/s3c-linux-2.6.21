@@ -180,6 +180,7 @@ core-$(CONFIG_VFP)		+= arch/arm/vfp/
 core-$(CONFIG_PLAT_IOP)		+= arch/arm/plat-iop/
 core-$(CONFIG_ARCH_OMAP)	+= arch/arm/plat-omap/
 core-$(CONFIG_PLAT_S3C)		+= arch/arm/plat-s3c24xx/
+core-$(CONFIG_MACH_CANOPUS)	+= arch/arm/plat-canopus/
 
 drivers-$(CONFIG_OPROFILE)      += arch/arm/oprofile/
 drivers-$(CONFIG_ARCH_CLPS7500)	+= drivers/acorn/char/

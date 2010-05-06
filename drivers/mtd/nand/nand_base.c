@@ -87,6 +87,53 @@ static int nand_get_device(struct nand_chip *chip, struct mtd_info *mtd,
 static int nand_do_write_oob(struct mtd_info *mtd, loff_t to,
 			     struct mtd_oob_ops *ops);
 
+#ifdef CONFIG_MACH_CANOPUS
+static int nand_block_isbad(struct mtd_info *mtd, loff_t offs);
+static int nand_read(struct mtd_info *mtd, loff_t from, size_t len, 
+			size_t *retlen, uint8_t *buf);
+//int nand_read(struct mtd_info *mtd, loff_t from, size_t len,
+		     //size_t *retlen, uint8_t *buf);
+
+static int nand_write(struct mtd_info *mtd, loff_t to, size_t len,
+			size_t *retlen, const uint8_t *buf);
+static int nand_erase(struct mtd_info *mtd, struct erase_info *instr);
+
+
+int q_nand_block_isbad(struct mtd_info *mtd, loff_t offs)
+{
+	return nand_block_isbad(mtd, offs);
+}
+
+int q_nand_read(struct mtd_info *mtd, loff_t from, size_t len,
+		     size_t *retlen, uint8_t *buf) 
+{
+	return nand_read(mtd, from, len, retlen, buf);
+}
+
+int q_nand_write(struct mtd_info *mtd, loff_t to, size_t len,
+			  size_t *retlen, const uint8_t *buf)
+{
+	return nand_write(mtd, to, len, retlen, buf);
+}
+
+static void erase_callback(struct erase_info *done)
+{
+	return;
+}
+
+int q_nand_erase(struct mtd_info *mtd, loff_t pos, size_t len)
+{
+	struct erase_info erase;
+	memset(&erase, 0, sizeof(struct erase_info));
+
+	erase.mtd = mtd;
+	erase.callback = erase_callback;
+	erase.addr = pos;
+	erase.len = len;
+
+	return nand_erase(mtd, &erase);
+}
+#endif
 /*
  * For devices which display every fart in the system on a seperate LED. Is
  * compiled away when LED support is disabled.
@@ -1089,6 +1136,7 @@ static int nand_do_read_ops(struct mtd_info *mtd, loff_t from,
  *
  * Get hold of the chip and call nand_do_read
  */
+
 static int nand_read(struct mtd_info *mtd, loff_t from, size_t len,
 		     size_t *retlen, uint8_t *buf)
 {
@@ -2123,7 +2171,7 @@ static void nand_sync(struct mtd_info *mtd)
 static int nand_block_isbad(struct mtd_info *mtd, loff_t offs)
 {
 	/* Check for invalid offset */
-	if (offs > mtd->size)
+	if (offs > mtd->size) 
 		return -EINVAL;
 
 	return nand_block_checkbad(mtd, offs, 1, 1);
