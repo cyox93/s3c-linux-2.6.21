@@ -486,6 +486,18 @@ void speaker_amp(bool flag)
 
 int q_hw_version(void) { return _hw_version; }
 
+#include <linux/proc_fs.h>
+static struct proc_dir_entry *_proc_dir;
+
+static int _proc_hw_version(char *buf)
+{
+	char *p = buf;
+
+	p += sprintf(p, "%d\n", _hw_version);
+
+	return p - buf;
+}
+
 static void _get_hw_version(void)
 {
 	_hw_version = 0;
@@ -514,7 +526,12 @@ static void _get_hw_version(void)
 	s3c2410_gpio_pullup(S3C2410_GPE9, 0);
 	s3c2410_gpio_pullup(S3C2410_GPE10, 0);
 
-	printk("CANOPUS H/W ver. 0x%x\n", _hw_version);
+	printk(KERN_INFO "CANOPUS H/W ver. 0x%x\n", _hw_version);
+
+	/* proc */
+	_proc_dir = create_proc_entry("hwversion", 0, NULL);
+	_proc_dir->read_proc = (read_proc_t *)_proc_hw_version;
+	_proc_dir->data = NULL;
 }
 
 void canopus_gpio_init(void)
