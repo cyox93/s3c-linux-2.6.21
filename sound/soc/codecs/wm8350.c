@@ -1356,13 +1356,13 @@ static int wm8350_set_bias_level(struct snd_soc_codec *codec,
 				  WM8350_OUT2R_ENA);
 #else	// CONFIG_MACH_CANOPUS
 		wm8350_clear_bits(wm8350, WM8350_LOUT1_VOLUME,
-				  0x80000);
+				  0x8000);
 		wm8350_clear_bits(wm8350, WM8350_ROUT1_VOLUME,
-				  0x80000);
+				  0x8000);
 		wm8350_clear_bits(wm8350, WM8350_LOUT2_VOLUME,
-				  0x80000);
+				  0x8000);
 		wm8350_clear_bits(wm8350, WM8350_ROUT2_VOLUME,
-				  0x80000);
+				  0x8000);
 #endif	// CONFIG_MACH_CANOPUS
 
 		/* disable clock gen */
