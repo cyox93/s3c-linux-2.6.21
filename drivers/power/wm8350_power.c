@@ -773,21 +773,27 @@ static void _wm8350_bat_fault_led_work(struct work_struct *work)
 
 static void _wm8350_bat_timeout_work(struct work_struct *work)
 {
-	int event = 0, uVolt;
+	int event = 0, uVolt, is_full = 0;
 	struct list_head *p;
 	struct wm8350 *wm8350 = wm8350_bat;
 	wm8350_bat_event_callback_list_t *temp = NULL;
 
-	uVolt = wm8350_read_battery_uvolts(wm8350);
+	if (q_hw_ver(7800_ES1) || q_hw_ver(7800_ES2)) {
+		uVolt = wm8350_read_battery_uvolts(wm8350);
+		if (uVolt > 3800000) is_full = 1;
+	} else {
+		uVolt = wm8350_read_aux2_adc(wm8350);
+		if (uVolt > 0x749) is_full = 1;
+	}
 
-	if (uVolt > 4100000 ) {
-		printk("battery timeout [%d] -> full ...\n", uVolt);
+	if (is_full) {
+		printk(KERN_DEBUG "battery timeout [%d] -> full ...\n", uVolt);
 		event = WM8350_BAT_EVENT_FULL_CHG;
 
 		wm8350_bat_led_status(wm8350, WM8350_BAT_GREEN_LED);
 
 	} else {
-		printk("battery timeout [%d] -> fault ...\n", uVolt);
+		printk(KERN_DEBUG "battery timeout [%d] -> fault ...\n", uVolt);
 		event = WM8350_BAT_EVENT_FAULT;
 
 		schedule_delayed_work(&_bat_fault_led, msecs_to_jiffies(0));
