@@ -626,6 +626,7 @@ static const struct snd_soc_dapm_widget wm8350_dapm_widgets[] = {
 
 	SND_SOC_DAPM_PGA("IN3R PGA", WM8350_POWER_MGMT_2, 11, 0, NULL, 0),
 	SND_SOC_DAPM_PGA("IN3L PGA", WM8350_POWER_MGMT_2, 10, 0, NULL, 0),
+#ifndef CONFIG_MACH_CANOPUS
 	SND_SOC_DAPM_PGA_E("Right Out2 PGA", WM8350_POWER_MGMT_3, 3, 0, NULL, 0,
 			   pga_event,
 			   SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
@@ -638,6 +639,20 @@ static const struct snd_soc_dapm_widget wm8350_dapm_widgets[] = {
 	SND_SOC_DAPM_PGA_E("Left Out1 PGA", WM8350_POWER_MGMT_3, 0, 0, NULL, 0,
 			   pga_event,
 			   SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
+#else	// CONFIG_MACH_CANOPUS
+	SND_SOC_DAPM_PGA_E("Right Out2 PGA", WM8350_ROUT2_VOLUME, 15, 0, NULL, 0,
+			   pga_event,
+			   SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
+	SND_SOC_DAPM_PGA_E("Left Out2 PGA", WM8350_LOUT2_VOLUME, 15, 0, NULL, 0,
+			   pga_event,
+			   SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
+	SND_SOC_DAPM_PGA_E("Right Out1 PGA", WM8350_ROUT1_VOLUME, 15, 0, NULL, 0,
+			   pga_event,
+			   SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
+	SND_SOC_DAPM_PGA_E("Left Out1 PGA", WM8350_LOUT1_VOLUME, 15, 0, NULL, 0,
+			   pga_event,
+			   SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
+#endif	// CONFIG_MACH_CANOPUS
 
 	SND_SOC_DAPM_MIXER("Right Capture Mixer", WM8350_POWER_MGMT_2,
 			   7, 0, &wm8350_right_capt_mixer_controls[0],
