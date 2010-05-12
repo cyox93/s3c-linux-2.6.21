@@ -1345,6 +1345,7 @@ static int wm8350_set_bias_level(struct snd_soc_codec *codec,
 		/* disable anti-pop */
 		wm8350_reg_write(wm8350, WM8350_ANTI_POP_CONTROL, 0);
 
+#ifndef CONFIG_MACH_CANOPUS
 		wm8350_clear_bits(wm8350, WM8350_LOUT1_VOLUME,
 				  WM8350_OUT1L_ENA);
 		wm8350_clear_bits(wm8350, WM8350_ROUT1_VOLUME,
@@ -1353,6 +1354,16 @@ static int wm8350_set_bias_level(struct snd_soc_codec *codec,
 				  WM8350_OUT2L_ENA);
 		wm8350_clear_bits(wm8350, WM8350_ROUT2_VOLUME,
 				  WM8350_OUT2R_ENA);
+#else	// CONFIG_MACH_CANOPUS
+		wm8350_clear_bits(wm8350, WM8350_LOUT1_VOLUME,
+				  0x80000);
+		wm8350_clear_bits(wm8350, WM8350_ROUT1_VOLUME,
+				  0x80000);
+		wm8350_clear_bits(wm8350, WM8350_LOUT2_VOLUME,
+				  0x80000);
+		wm8350_clear_bits(wm8350, WM8350_ROUT2_VOLUME,
+				  0x80000);
+#endif	// CONFIG_MACH_CANOPUS
 
 		/* disable clock gen */
 		wm8350_clear_bits(wm8350, WM8350_POWER_MGMT_4,
