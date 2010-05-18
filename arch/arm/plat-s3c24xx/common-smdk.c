@@ -187,6 +187,11 @@ struct mtd_partition s3c_partition_info[] = {
                 .size		= (5*SZ_1M),		/* 5 MBytes */
         },
         {
+                .name		= "ROrign",
+                .offset		= MTDPART_OFS_APPEND,
+                .size		= (9*SZ_1M),		/* 9 MBytes */
+        },
+        {
                 .name		= "Image",
                 .offset		= MTDPART_OFS_APPEND,
                 .size		= (40*SZ_1M),		/* 40 MBytes*/
@@ -194,7 +199,7 @@ struct mtd_partition s3c_partition_info[] = {
         {
                 .name		= "Rootfs",
                 .offset		= MTDPART_OFS_APPEND,
-                .size		= (79232*SZ_1K),	/* 77.38 Mbytes */
+                .size		= (70016*SZ_1K),	/* 68.38 Mbytes */
         },
         {
                 .name		= "Param",
