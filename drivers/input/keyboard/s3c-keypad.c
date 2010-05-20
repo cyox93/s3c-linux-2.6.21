@@ -84,9 +84,9 @@ struct proc_dir_entry *proc_s3c_keypad_value = NULL;
 
 static int s3c_keypad_proc_init(struct s3c_keypad *s3c_keypad);
 static int s3c_keypad_proc_clear(int level);
-static int s3c_keypad_proc_vaule_read(char *buf, char **start, off_t offset, int count,
+static int s3c_keypad_proc_value_read(char *buf, char **start, off_t offset, int count,
 			 int *eof, void *data);
-static int s3c_keypad_proc_vaule_write(struct file *file, const char __user *buffer,
+static int s3c_keypad_proc_value_write(struct file *file, const char __user *buffer,
 			  unsigned long count, void *data);
 
 
@@ -451,8 +451,8 @@ static int s3c_keypad_proc_init(struct s3c_keypad *s3c_keypad)
 		return -ENOMEM;
 	}
 
-	proc_s3c_keypad_value->read_proc = s3c_keypad_proc_vaule_read;
-	proc_s3c_keypad_value->write_proc = s3c_keypad_proc_vaule_write;
+	proc_s3c_keypad_value->read_proc = s3c_keypad_proc_value_read;
+	proc_s3c_keypad_value->write_proc = s3c_keypad_proc_value_write;
 	proc_s3c_keypad_value->owner = THIS_MODULE;
 	/* End make proc dir and files */
 
@@ -475,7 +475,7 @@ static int s3c_keypad_proc_clear(int level)
 	return 0;
 }
 
-static int s3c_keypad_proc_vaule_read(char *buf, char **start, off_t offset, int count,
+static int s3c_keypad_proc_value_read(char *buf, char **start, off_t offset, int count,
 			 int *eof, void *data)
 {
 	int len;
@@ -484,7 +484,7 @@ static int s3c_keypad_proc_vaule_read(char *buf, char **start, off_t offset, int
 	return len;
 }
 
-static int s3c_keypad_proc_vaule_write(struct file *file, const char __user *buffer,
+static int s3c_keypad_proc_value_write(struct file *file, const char __user *buffer,
 			  unsigned long count, void *data)
 {
 	struct input_dev *input_dev;
