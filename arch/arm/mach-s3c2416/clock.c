@@ -116,7 +116,7 @@ static unsigned long s3c2443_roundrate_clksrc(struct clk *clk,
 
 	/* note, we remove the +/- 1 calculations as they cancel out */
 
-	div = (rate / parent_rate);
+	div = (parent_rate / rate);
 
 	if (div < 1)
 		div = 1;
