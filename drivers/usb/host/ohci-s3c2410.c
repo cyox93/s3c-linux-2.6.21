@@ -38,6 +38,11 @@
 #include <asm/arch/regs-usb-otg-hs.h>
 #endif
 
+#include <asm/arch/regs-s3c2416-clock.h>
+
+#include <asm/plat-s3c24xx/s3c2416.h>
+#include <asm/plat-s3c24xx/clock.h>
+#include <asm/plat-s3c24xx/cpu.h>
 
 #define valid_port(idx) ((idx) == 1 || (idx) == 2)
 
@@ -352,6 +357,19 @@ usb_hcd_s3c2410_remove (struct usb_hcd *hcd, struct platform_device *dev)
 	iounmap(hcd->regs);
 	release_mem_region(hcd->rsrc_start, hcd->rsrc_len);
 	usb_put_hcd(hcd);
+
+#ifdef CONFIG_MACH_CANOPUS
+	u32 val = __raw_readl(S3C2443_UCLKCON) & ~(1<<1);
+	__raw_writel(val, S3C2443_UCLKCON);
+
+	if (!(val & (1<<2))) {
+		/* USB Port is Suspend mode */
+		__raw_writel(__raw_readl(S3C2410_MISCCR)|(1<<12), S3C2410_MISCCR);
+
+		/* PHY power disable */
+		__raw_writel(__raw_readl(S3C2443_PWRCFG)&~(1<<4), S3C2443_PWRCFG);
+	}
+#endif	// CONFIG_MACH_CANOPUS
 }
 
 /**
@@ -369,10 +387,21 @@ static int usb_hcd_s3c2410_probe (const struct hc_driver *driver,
 	struct usb_hcd *hcd = NULL;
 	int retval;
 #if defined(CONFIG_CPU_S3C2450) || defined(CONFIG_CPU_S3C2416)
+#ifndef CONFIG_MACH_CANOPUS
 	/* USB host Power enable */
 	s3c2410_gpio_cfgpin(S3C2410_GPB4, S3C2410_GPB4_OUTP);
 	s3c2410_gpio_pullup(S3C2410_GPB4, 0);
 	s3c2410_gpio_setpin(S3C2410_GPB4, 1);
+#else	// CONFIG_MACH_CANOPUS
+	/* USB Port is Normal mode */
+	__raw_writel(__raw_readl(S3C2410_MISCCR)&~(1<<12), S3C2410_MISCCR);
+	/* PHY power enable */
+	__raw_writel(__raw_readl(S3C2443_PWRCFG)|(1<<4), S3C2443_PWRCFG);
+
+	/* Host 1.1 S/W reset */
+	__raw_writel((0<<2)|(1<<1)|(0<<0), S3C2443_URSTCON);
+	__raw_writel((0<<2)|(0<<1)|(0<<0), S3C2443_URSTCON);
+#endif	// CONFIG_MACH_CANOPUS
 #endif
 
 #if (USB_HOST_PORT2_EN == 1) && (CONFIG_PLAT_S3C64XX == 1)
@@ -471,6 +500,10 @@ ohci_s3c2410_start (struct usb_hcd *hcd)
 {
 	struct ohci_hcd	*ohci = hcd_to_ohci (hcd);
 	int ret;
+
+#ifdef CONFIG_MACH_CANOPUS
+	ohci->num_ports = 1;
+#endif	// CONFIG_MACH_CANOPUS
 
 	if ((ret = ohci_init(ohci)) < 0)
 		return ret;

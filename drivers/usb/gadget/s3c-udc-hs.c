@@ -258,15 +258,14 @@ static void udc_disable(struct s3c_udc *dev)
 
 	/* usb power disable */
 #if defined(CONFIG_CPU_S3C2450) || defined(CONFIG_CPU_S3C2416)
+#ifndef CONFIG_MACH_CANOPUS
 	s3c2410_gpio_pullup(S3C2443_GPH14, 1); /* pull-down enable */
-#if defined(CONFIG_MACH_CANOPUS)
-	s3c2410_gpio_pullup(S3C2410_GPG6, 1);  /* vbus detect pull-up/down disable */
-#else	// CONFIG_MACH_CANOPUS
 	s3c2410_gpio_pullup(S3C2410_GPF2, 1);  /* pull-down enable */
 #endif	// CONFIG_MACH_CANOPUS
 #else
 	s3c2410_gpio_pullup(S3C2443_GPH14, 2); /* pull-down enable */
 #endif
+#ifndef CONFIG_MACH_CANOPUS
 	s3c2410_gpio_cfgpin(S3C2443_GPH14, S3C2443_GPH14_OUTP);
 	s3c2410_gpio_setpin(S3C2443_GPH14, 0);
 
@@ -278,6 +277,19 @@ static void udc_disable(struct s3c_udc *dev)
 
 	/* PHY power disable */
 	__raw_writel(__raw_readl(S3C_PWRCFG)&~(1<<4), S3C_PWRCFG);
+#else	// CONFIG_MACH_CANOPUS
+	/* usb clock disable */
+	u32 val = __raw_readl(S3C_UCLKCON) & (1<<1);
+	__raw_writel(val, S3C_UCLKCON);
+
+	if (!val) {
+		/* USB Port is Suspend mode */
+		__raw_writel(__raw_readl(S3C2410_MISCCR)|(1<<12), S3C2410_MISCCR);
+
+		/* PHY power disable */
+		__raw_writel(__raw_readl(S3C_PWRCFG)&~(1<<4), S3C_PWRCFG);
+	}
+#endif	// CONFIG_MACH_CANOPUS
 
 }
 
@@ -323,11 +335,9 @@ static int udc_enable(struct s3c_udc *dev)
 
 	/* usb power enable, vbus detect pull-up/down disable */
 #if defined(CONFIG_CPU_S3C2450) || defined(CONFIG_CPU_S3C2416)
+#ifndef CONFIG_MACH_CANOPUS
 	s3c2410_gpio_pullup(S3C2443_GPH14, 2); /* usb power pull-up enable */
-#if defined(CONFIG_MACH_CANOPUS)
 	s3c2410_gpio_pullup(S3C2410_GPG6, 0);  /* vbus detect pull-up/down disable */
-#else	// CONFIG_MACH_CANOPUS
-	s3c2410_gpio_pullup(S3C2410_GPF2, 0);  /* vbus detect pull-up/down disable */
 #endif	// CONFIG_MACH_CANOPUS
 #else
 	s3c2410_gpio_pullup(S3C2443_GPH14, 0); /* usb power pull-up enable */
@@ -357,15 +367,19 @@ static int udc_enable(struct s3c_udc *dev)
 	/* PHY 2.0 S/W reset */
 	__raw_writel((0<<2)|(0<<1)|(1<<0), S3C_URSTCON);
 	mdelay(1); /* phy reset must be asserted for at 10us */
+
+#if defined(CONFIG_MACH_CANOPUS)
+	/*Function 2.0 S/W reset*/
+	__raw_writel((1<<2)|(0<<1)|(0<<0), S3C_URSTCON);
+	__raw_writel((0<<2)|(0<<1)|(0<<0), S3C_URSTCON);
 	
+	/* 48MHz, Crystal,External X-tal,device */
+	__raw_writel((0<<3)|(0<<2)|(0<<1)|(0<<0), S3C_PHYCTRL);
+#else	// CONFIG_MACH_CANOPUS
 	/*Function 2.0, Host 1.1 S/W reset*/
 	__raw_writel((1<<2)|(1<<1)|(0<<0), S3C_URSTCON);
 	__raw_writel((0<<2)|(0<<1)|(0<<0), S3C_URSTCON);
-	
-#if defined(CONFIG_MACH_CANOPUS)
-	/* 48MHz, Crystal,External X-tal,device */
-	__raw_writel((0<<3)|(0<<2)|(1<<1)|(0<<0), S3C_PHYCTRL);
-#else	// CONFIG_MACH_CANOPUS
+
 	/* 48Mhz,Oscillator,External X-tal,device */
 	__raw_writel((0<<3)|(1<<2)|(1<<1)|(0<<0), S3C_PHYCTRL);
 #endif	// CONFIG_MACH_CANOPUS
@@ -376,10 +390,18 @@ static int udc_enable(struct s3c_udc *dev)
 	 */
 	__raw_writel((1<<31)|(0<<4)|(0<<3)|(0<<2)|(0<<1)|(0<<0), S3C_PHYPWR);
 
+#ifndef CONFIG_MACH_CANOPUS
 	/* D+ pull up disable(VBUS detect), USB2.0 Function clock Enable,
 	 * USB1.1 HOST disable, USB2.0 PHY test enable
 	 */
 	__raw_writel((0<<31)|(1<<2)|(0<<1)|(1<<0), S3C_UCLKCON);
+#else	// CONFIG_MACH_CANOPUS
+	/* D+ pull up disable(VBUS detect), USB2.0 Function clock Enable,
+	 * USB1.1 HOST remain value, USB2.0 PHY test enable
+	 */
+	u32 val = __raw_readl(S3C_UCLKCON) & (1<<1);
+	__raw_writel(val | (0<<31)|(1<<2)|(1<<0), S3C_UCLKCON);
+#endif	// CONFIG_MACH_CANOPUS
 
 	__raw_writel(IRQ_USBD, S3C2410_INTPND);
 	__raw_writel(IRQ_USBD, S3C2410_SRCPND);
@@ -388,10 +410,18 @@ static int udc_enable(struct s3c_udc *dev)
 	
 	__raw_writel(__raw_readl(S3C2410_INTMSK)&~(IRQ_USBD), S3C2410_INTMSK);
 
+#ifndef CONFIG_MACH_CANOPUS
 	/* D+ pull up , USB2.0 Function clock Enable,
 	 * USB1.1 HOST disable,USB2.0 PHY test enable
 	 */
 	__raw_writel((1<<31)|(1<<2)|(0<<1)|(1<<0), S3C_UCLKCON);
+#else	// CONFIG_MACH_CANOPUS
+	/* D+ pull up , USB2.0 Function clock Enable,
+	 * USB1.1 HOST remain value,USB2.0 PHY test enable
+	 */
+	val = __raw_readl(S3C_UCLKCON) & (1<<1);
+	__raw_writel(val | (1<<31)|(1<<2)|(1<<0), S3C_UCLKCON);
+#endif	// CONFIG_MACH_CANOPUS
 	
 	DEBUG_SETUP("S3C2443 USB Controller Core Initialized\n");
 	
