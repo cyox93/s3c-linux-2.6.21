@@ -34,6 +34,7 @@
 #include "unidata-logo.h"
 #include "mylg070-logo.h"
 #include "skbb-logo.h"
+#include "ktqook-logo.h"
 
 #include "s3cfb.h"
 
@@ -90,6 +91,9 @@ int virtual_display_offset = DEF_DISPLAY_OFFSET;
 
 #define MAX_ALPHA_LEVEL		0x0f
 
+int _h_resolution_osd = H_RESOLUTION_OSD;
+int _v_resolution_osd = V_RESOLUTION_OSD;
+
 int osd_alpha_level = MAX_ALPHA_LEVEL;
 int osd_left_top_x = 0;
 int osd_left_top_y = 0;
@@ -113,6 +117,12 @@ int osd_left_bottom_y = V_RESOLUTION_OSD -1;
 
 #define MAX_DISPLAY_BRIGHTNESS		100
 #define DEF_DISPLAY_BRIGHTNESS		80
+
+int _h_resolution = H_RESOLUTION;
+int _v_resolution = V_RESOLUTION;
+
+int _h_resolution_virtual = H_RESOLUTION_VIRTUAL;
+int _v_resolution_virtual = V_RESOLUTION_VIRTUAL;
 
 int display_brightness = DEF_DISPLAY_BRIGHTNESS;
 int backup_brightness = DEF_DISPLAY_BRIGHTNESS;
@@ -394,7 +404,7 @@ int set_vs_info(vs_info_t vs_info_from_app )
 {
 
 	/* check invalid value */
-	if(vs_info_from_app.width != H_RESOLUTION || vs_info_from_app.height != V_RESOLUTION ){
+	if(vs_info_from_app.width != _h_resolution || vs_info_from_app.height != _v_resolution ){
 		return 1;
 	}
 	if(!(vs_info_from_app.bpp==8 ||vs_info_from_app.bpp==16 ||vs_info_from_app.bpp==24 || vs_info_from_app.bpp==32) ){
@@ -403,7 +413,7 @@ int set_vs_info(vs_info_t vs_info_from_app )
 	if(vs_info_from_app.offset<0){
 		return 1;
 	}
-	if(vs_info_from_app.v_width != H_RESOLUTION_VIRTUAL  || vs_info_from_app.v_height != V_RESOLUTION_VIRTUAL){
+	if(vs_info_from_app.v_width != _h_resolution_virtual  || vs_info_from_app.v_height != _v_resolution_virtual){
 		return 1;
 	}
 
@@ -695,7 +705,7 @@ int s3c_fb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 				break;
 
 		case SET_OSD_MOVE_RIGHT:
-				if(var->xoffset < (H_RESOLUTION - var->xres)) var->xoffset ++;
+				if(var->xoffset < (_h_resolution - var->xres)) var->xoffset ++;
 				s3c_fb_set_position_win(fbi, var->xoffset, var->yoffset, var->xres, var->yres);
 				break;
 
@@ -705,7 +715,7 @@ int s3c_fb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 				break;
 
 		case SET_OSD_MOVE_DOWN:
-				if(var->yoffset < (V_RESOLUTION - var->yres)) var->yoffset ++;
+				if(var->yoffset < (_v_resolution - var->yres)) var->yoffset ++;
 				s3c_fb_set_position_win(fbi, var->xoffset, var->yoffset, var->xres, var->yres);
 				break;
 
@@ -1515,8 +1525,20 @@ int s3c_fb_set_out_path(struct s3c_fb_info *fbi, int Path)
 	return 0;
 }
 
+
 extern void lcd_reset(void);
 extern void lcd_gpio_init(void);
+
+static int _lcd_panel_id = -1;
+
+static int
+_lcd_get_panel_id(void)
+{
+	if (_lcd_panel_id < 0)
+		_lcd_panel_id = (__raw_readl(S3C2410_GPDDAT) & 0x700) >> 8;
+
+	return _lcd_panel_id;
+}
 
 static inline void
 _lcd_i80_cmd(int control)
@@ -1621,26 +1643,61 @@ void lcd_set_command_mode (int set)
 static void
 lcd_ili9225b_power(int set)
 {
+	int id = _lcd_get_panel_id();
 
 	if (!set) {
 		lcd_power_state = set;
 		lcd_set_command_mode(1);
 
-		_lcd_ili9225b_reg_write(0x0007,0x0000);
-		mdelay(50);
-		_lcd_ili9225b_reg_write(0x0011,0x0007);
-		mdelay(50);
-		_lcd_ili9225b_reg_write(0x0010,0x0A01);
+		if (id == 7) {
+			_lcd_ili9225b_reg_write(0x0007, 0x0131); // Set D1=0, D0=1
+			mdelay(10);
+			_lcd_ili9225b_reg_write(0x0007, 0x0130); // Set D1=0, D0=0
+			mdelay(10);
+			_lcd_ili9225b_reg_write(0x0007, 0x0000); // display OFF
+			//************* Power OFF sequence **************//
+			_lcd_ili9225b_reg_write(0x0010, 0x0080); // SAP, BT[3:0], APE, AP, DSTB, SLP
+			_lcd_ili9225b_reg_write(0x0011, 0x0000); // DC1[2:0], DC0[2:0], VC[2:0]
+			_lcd_ili9225b_reg_write(0x0012, 0x0000); // VREG1OUT voltage
+			_lcd_ili9225b_reg_write(0x0013, 0x0000); // VDV[4:0] for VCOM amplitude
+			mdelay(20); // Dis-charge capacitor power voltage
+			_lcd_ili9225b_reg_write(0x0010, 0x0082); // SAP, BT[3:0], APE, AP, DSTB, SLP
+		} else {
+			_lcd_ili9225b_reg_write(0x0007,0x0000);
+			mdelay(50);
+			_lcd_ili9225b_reg_write(0x0011,0x0007);
+			mdelay(50);
+			_lcd_ili9225b_reg_write(0x0010,0x0A01);
+		}
 
 		lcd_set_command_mode(0);
 	} else {
 		lcd_set_command_mode(1);
 
-		_lcd_ili9225b_reg_write(0x0010,0x0A00);
-		_lcd_ili9225b_reg_write(0x0011,0x1038);
-		mdelay(50);
-		_lcd_ili9225b_reg_write(0x0007,0x1017);
-		lcd_prepare_write(0, 0);
+		if (id == 7) {
+			//*************Power On sequence ******************//
+			_lcd_ili9225b_reg_write(0x0010, 0x0000); // SAP, BT[3:0], AP, DSTB, SLP, STB
+			_lcd_ili9225b_reg_write(0x0011, 0x0007); // DC1[2:0], DC0[2:0], VC[2:0]
+			_lcd_ili9225b_reg_write(0x0012, 0x0000); // VREG1OUT voltage
+			_lcd_ili9225b_reg_write(0x0013, 0x0000); // VDV[4:0] for VCOM amplitude
+			_lcd_ili9225b_reg_write(0x0007, 0x0001);
+			mdelay(20); // Dis-charge capacitor power voltage
+			_lcd_ili9225b_reg_write(0x0010, 0x1690); // SAP, BT[3:0], AP, DSTB, SLP, STB
+			_lcd_ili9225b_reg_write(0x0011, 0x0227); // Set DC1[2:0], DC0[2:0], VC[2:0]
+			mdelay(10); // Delay 50ms
+			_lcd_ili9225b_reg_write(0x0012, 0x000D); // External reference voltage= Vci;
+			mdelay(10); // Delay 50ms
+			_lcd_ili9225b_reg_write(0x0013, 0x1200); // VDV[4:0] for VCOM amplitude
+			_lcd_ili9225b_reg_write(0x0029, 0x0007); // VCM[5:0] for VCOMH
+			mdelay(10); // Delay 50ms
+			_lcd_ili9225b_reg_write(0x0007, 0x0133); // 262K color and display ON
+		} else {
+			_lcd_ili9225b_reg_write(0x0010,0x0A00);
+			_lcd_ili9225b_reg_write(0x0011,0x1038);
+			mdelay(50);
+			_lcd_ili9225b_reg_write(0x0007,0x1017);
+			lcd_prepare_write(0, 0);
+		}
 
 		lcd_set_command_mode(0);
 		mdelay(2);
@@ -1659,14 +1716,12 @@ static void s3c_fb_change_fb(struct fb_info *info)
 #define _LCD_PANEL_BYD		0
 #define _LCD_PANEL_TRULY	1
 #define _LCD_PANEL_TCL		2
+#define _LCD_PANEL_HSD24	7
 
-static const char *_lcd_panel_str[8] = { "BYD", "TRULY", "TCL", NULL, };
-
-static int
-_lcd_get_panel_id(void)
-{
-	return (__raw_readl(S3C2410_GPDDAT) & 0x700) >> 8;
-}
+static const char *_lcd_panel_str[8] = {
+	"BYD", "TRULY", "TCL", NULL,
+	NULL, NULL, NULL, "HSD2.4"
+};
 
 static void
 _lcd_panel_set_display(int on)
@@ -1797,9 +1852,80 @@ _lcd_panel_init_truly(void)
 }
 
 static void
-_lcd_panel_init_byd(void)
+_lcd_panel_init_hsd24(void)
 {
-	_lcd_panel_init_tcl();
+	_lcd_ili9225b_reg_write(0x00E3,0x3008);          // Set internal timing
+	_lcd_ili9225b_reg_write(0x00E7,0x0012);          // Set internal timing
+	_lcd_ili9225b_reg_write(0x00EF,0x1231);          // Set internal timing
+	_lcd_ili9225b_reg_write(0x00E5,0x78F0);          // Set internal timing
+
+	//************* Start Initial Sequence **********//
+	_lcd_ili9225b_reg_write(0x0001, 0x0100); // set SS and SM bit
+	_lcd_ili9225b_reg_write(0x0002, 0x0200); // set 1 line inversion
+	_lcd_ili9225b_reg_write(0x0003, 0x1030); // set GRAM write direction and BGR=1.
+	_lcd_ili9225b_reg_write(0x0004, 0x0000); // Resize register
+	_lcd_ili9225b_reg_write(0x0008, 0x0207); // set the back porch and front porch
+	_lcd_ili9225b_reg_write(0x0009, 0x0000); // set non-display area refresh cycle ISC[3:0]
+	_lcd_ili9225b_reg_write(0x000A, 0x0000); // FMARK function
+	_lcd_ili9225b_reg_write(0x000C, 0x0000); // RGB interface setting
+	_lcd_ili9225b_reg_write(0x000D, 0x0000); // Frame marker Position
+	_lcd_ili9225b_reg_write(0x000F, 0x0000); // RGB interface polarity
+
+
+	//*************Power On sequence ****************//
+	_lcd_ili9225b_reg_write(0x0010, 0x0000); // SAP, BT[3:0], AP, DSTB, SLP, STB
+	_lcd_ili9225b_reg_write(0x0011, 0x0007); // DC1[2:0], DC0[2:0], VC[2:0]
+	_lcd_ili9225b_reg_write(0x0012, 0x0000); // VREG1OUT voltage
+	_lcd_ili9225b_reg_write(0x0013, 0x0000); // VDV[4:0] for VCOM amplitude
+	_lcd_ili9225b_reg_write(0x0007, 0x0001);
+	msleep(200); // Dis-charge capacitor power voltage
+	_lcd_ili9225b_reg_write(0x0010, 0x1690); // SAP, BT[3:0], AP, DSTB, SLP, STB
+	_lcd_ili9225b_reg_write(0x0011, 0x0227); // Set DC1[2:0], DC0[2:0], VC[2:0]
+	msleep(50); // Delay 50ms
+	_lcd_ili9225b_reg_write(0x0012, 0x000D); // External reference voltage= Vci;
+	msleep(50); // Delay 50ms
+	_lcd_ili9225b_reg_write(0x0013, 0x1200); // VDV[4:0] for VCOM amplitude
+	_lcd_ili9225b_reg_write(0x0029, 0x0007); // VCM[5:0] for VCOMH
+	_lcd_ili9225b_reg_write(0x002B, 0x000C); // Set Frame Rate
+	msleep(50); // Delay 50ms
+	_lcd_ili9225b_reg_write(0x0020, 0x0000); // GRAM horizontal Address
+	_lcd_ili9225b_reg_write(0x0021, 0x0000); // GRAM Vertical Address
+
+
+	// ----------- Adjust the Gamma Curve ----------//
+	_lcd_ili9225b_reg_write(0x0030, 0x0000);
+	_lcd_ili9225b_reg_write(0x0031, 0x0404);
+	_lcd_ili9225b_reg_write(0x0032, 0x0003);
+	_lcd_ili9225b_reg_write(0x0035, 0x0405);
+	_lcd_ili9225b_reg_write(0x0036, 0x0808);
+	_lcd_ili9225b_reg_write(0x0037, 0x0407);
+	_lcd_ili9225b_reg_write(0x0038, 0x0303);
+	_lcd_ili9225b_reg_write(0x0039, 0x0707);
+	_lcd_ili9225b_reg_write(0x003C, 0x0504);
+	_lcd_ili9225b_reg_write(0x003D, 0x0808);
+
+	//------------------ Set GRAM area ---------------//
+	_lcd_ili9225b_reg_write(0x0050, 0x0000); // Horizontal GRAM Start Address
+	_lcd_ili9225b_reg_write(0x0051, 0x00EF); // Horizontal GRAM End Address
+	_lcd_ili9225b_reg_write(0x0052, 0x0000); // Vertical GRAM Start Address
+	_lcd_ili9225b_reg_write(0x0053, 0x013F); // Vertical GRAM End Address
+	_lcd_ili9225b_reg_write(0x0060, 0xA700); // Gate Scan Line
+	_lcd_ili9225b_reg_write(0x0061, 0x0001); // NDL,VLE, REV
+	_lcd_ili9225b_reg_write(0x006A, 0x0000); // set scrolling line
+
+	//-------------- Partial Display Control ---------//
+	_lcd_ili9225b_reg_write(0x0080, 0x0000);
+	_lcd_ili9225b_reg_write(0x0081, 0x0000);
+	_lcd_ili9225b_reg_write(0x0082, 0x0000);
+	_lcd_ili9225b_reg_write(0x0083, 0x0000);
+	_lcd_ili9225b_reg_write(0x0084, 0x0000);
+	_lcd_ili9225b_reg_write(0x0085, 0x0000);
+
+	//-------------- Panel Control -------------------//
+	_lcd_ili9225b_reg_write(0x0090, 0x0010);
+	_lcd_ili9225b_reg_write(0x0092, 0x0000);
+	_lcd_ili9225b_reg_write(0x0007, 0x0133); // 262K color and display ON
+	_lcd_ili9225b_reg(0x22);
 }
 
 static void
@@ -1811,8 +1937,8 @@ _lcd_panel_init(void)
 			_lcd_panel_str[id] ? _lcd_panel_str[id] : "unknown");
 
 	switch (id) {
-	case _LCD_PANEL_BYD:
-		_lcd_panel_init_byd();
+	case _LCD_PANEL_HSD24:
+		_lcd_panel_init_hsd24();
 		break;
 	case _LCD_PANEL_TRULY:
 		_lcd_panel_init_truly();
@@ -1824,32 +1950,86 @@ _lcd_panel_init(void)
 	}
 }
 
+void _lcd_set_resolution(void)
+{
+	int id = _lcd_get_panel_id();
+
+	switch (id) {
+	case _LCD_PANEL_HSD24:
+		_h_resolution_osd = 240;
+		_v_resolution_osd = 320;
+
+		_h_resolution = 240;
+		_v_resolution = 320;
+
+		_h_resolution_virtual = 240;
+		_v_resolution_virtual = 640;
+
+		break;
+	default:
+		break;
+	}
+
+	osd_right_bottom_x = _h_resolution_osd-1;
+	osd_left_bottom_y = _v_resolution_osd -1;
+
+	mach_info.vidtcon2= S3C_VIDTCON2_LINEVAL(_v_resolution-1) | S3C_VIDTCON2_HOZVAL(_h_resolution-1);
+#if defined(CONFIG_CPU_S3C2443) ||  defined(CONFIG_CPU_S3C2450) || defined(CONFIG_CPU_S3C2416)
+	mach_info.vidosd0b= S3C_VIDOSDxB_OSD_RBX_F(_h_resolution-1) | S3C_VIDOSDxB_OSD_RBY_F(_v_resolution-1);
+	mach_info.vidosd1b= S3C_VIDOSDxB_OSD_RBX_F(_h_resolution_osd-1) | S3C_VIDOSDxB_OSD_RBY_F(_v_resolution_osd-1);
+#elif defined(CONFIG_CPU_S3C6400) || defined(CONFIG_CPU_S3C6410)
+	mach_info.vidosd0b = S3C_VIDOSDxB_OSD_RBX_F(_h_resolution-1) | S3C_VIDOSDxB_OSD_RBY_F(_v_resolution-1);
+	mach_info.vidosd0c = S3C_VIDOSDxD_OSDSIZE(_h_resolution*_v_resolution);
+	mach_info.vidosd1b = S3C_VIDOSDxB_OSD_RBX_F(_h_resolution_osd-1) | S3C_VIDOSDxB_OSD_RBY_F(_v_resolution_osd-1);
+	mach_info.vidosd1d = S3C_VIDOSDxD_OSDSIZE(_h_resolution*_v_resolution);
+	mach_info.vidosd2b = S3C_VIDOSDxB_OSD_RBX_F(_h_resolution_osd-1) | S3C_VIDOSDxB_OSD_RBY_F(_v_resolution_osd-1);
+	mach_info.vidosd2d = S3C_VIDOSDxD_OSDSIZE(_h_resolution*_v_resolution);
+	mach_info.vidosd3b = S3C_VIDOSDxB_OSD_RBX_F(_h_resolution_osd-1) | S3C_VIDOSDxB_OSD_RBY_F(_v_resolution_osd-1);
+	mach_info.vidosd4b = S3C_VIDOSDxB_OSD_RBX_F(_h_resolution_osd-1) | S3C_VIDOSDxB_OSD_RBY_F(_v_resolution_osd-1);
+#endif
+
+	mach_info.width= _h_resolution;
+	mach_info.height= _v_resolution;
+	mach_info.xres=	_h_resolution;
+	mach_info.yres=	_v_resolution;
+
+#if defined(CONFIG_FB_VIRTUAL_SCREEN)
+	mach_info.xres_virtual = _h_resolution_virtual;
+	mach_info.yres_virtual = _v_resolution_virtual;
+#else
+	mach_info.xres_virtual = _h_resolution;
+	mach_info.yres_virtual = _v_resolution;
+#endif
+
+	mach_info.osd_width = _h_resolution_osd;
+	mach_info.osd_height = _v_resolution_osd;
+	mach_info.osd_xres = _h_resolution_osd;
+	mach_info.osd_yres = _v_resolution_osd;
+
+	mach_info.osd_xres_virtual = _h_resolution_osd;
+	mach_info.osd_yres_virtual = _v_resolution_osd;
+
+      	mach_info.pixclock = VFRAME_FREQ
+		* (VFRAME_FREQ *(H_FP+H_SW+H_BP+_h_resolution) * (V_FP+V_SW+V_BP+_v_resolution));
+}
+
 void lcd_module_init (void)
 {
 	/* set window size */
-	int xs = 0;
-	int xe = 176 -1;
-	int ys = 0;
-	int ye = 220 -1;
-	int i = H_RESOLUTION * V_RESOLUTION;
+	int i = _h_resolution * _v_resolution;
 	u16 *logo = NULL;
 	
 	if (q_hw_ver(7800))
 		logo = (u16 *)&_mylg070_logo[12];
 	else if (q_hw_ver(SKBB))
 		logo = (u16 *)&_skbb_logo[12];
-	else
-		logo = (u16 *)&_unidata_logo[12];
+	else if (q_hw_ver(KTQOOK))
+		logo = (u16 *)&_kt_logo[12];
 
 	lcd_reset();
 	lcd_set_command_mode(1);
 
 	_lcd_panel_init();
-
-	_lcd_ili9225b_reg_write (0x36, xs+xe);
-	_lcd_ili9225b_reg_write (0x37, xs);
-        _lcd_ili9225b_reg_write (0x38, ys+ye);
-        _lcd_ili9225b_reg_write (0x39, ys);
 
 	lcd_prepare_write(0, 0);
 	while (i-- > 0) {
@@ -1870,6 +2050,7 @@ void Init_LDI(void)
 	printk(KERN_INFO "LCD TYPE :: S3C_ILI9225QC LCD will only be set port\n");
 
 	SetLcdPort();
+	_lcd_set_resolution();
 }
 
 int
