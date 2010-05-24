@@ -136,6 +136,7 @@ static struct wm8350 *wm8350_bat = NULL;
 
 static int bat_detect = 0;
 static bool vbatt_event = false;
+static bool _is_fault = false;
 
 #ifdef CONFIG_HAS_WAKELOCK
 static struct wake_lock _bat_wake_lock;
@@ -600,10 +601,22 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 
 		vbatt_event = false;
 		cancel_delayed_work(&_bat_full);
+
+		if (_is_fault) {
+			schedule_delayed_work(&_bat_detect, msecs_to_jiffies(1000));
+			_is_fault = false;
+		}
+
 		break;
 	case WM8350_IRQ_CHG_FAST_RDY:
 		/* we are ready to fast charge */
 		printk(KERN_INFO "wm8350-power: fast charger ready\n");
+
+		if (_is_fault) {
+			schedule_delayed_work(&_bat_detect, msecs_to_jiffies(1000));
+			_is_fault = false;
+		}
+
 		wm8350_charger_config(wm8350, policy);
 		wm8350_reg_unlock(wm8350);
 		wm8350_set_bits(wm8350, WM8350_BATTERY_CHARGER_CONTROL_1,
@@ -627,12 +640,14 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 	case WM8350_IRQ_EXT_USB_FB:
 		printk(KERN_INFO "wm8350-power: USB is now supply\n");
 		power->is_usb_supply = 1;
+		_is_fault = false;
 		wm8350_charger_config(wm8350, policy);
 		wm8350_charger_enable(wm8350, 1);
 		break;
 	case WM8350_IRQ_EXT_WALL_FB:
 		printk(KERN_INFO "wm8350-power: AC is now supply\n");
 		power->is_usb_supply = 0;
+		_is_fault = false;
 		wm8350_charger_config(wm8350, policy);
 		wm8350_charger_enable(wm8350, 1);
 
@@ -647,6 +662,7 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 	case WM8350_IRQ_EXT_BAT_FB:
 		printk(KERN_INFO "wm8350-power: Battery is now supply\n");
 		power->is_usb_supply = 0;
+		_is_fault = false;
 		break;
 	case WM8350_IRQ_SYS_HYST_COMP_FAIL:
 		printk(KERN_INFO "wm8350-power : shut down system\n");
@@ -745,6 +761,7 @@ static void _wm8350_bat_fault_work(struct work_struct *work)
 	wm8350_bat_event_callback_list_t *temp = NULL;
 
 	event = WM8350_BAT_EVENT_FAULT;
+	_is_fault = true;
 
 	printk("battery fault ...\n");
 	schedule_delayed_work(&_bat_fault_led, msecs_to_jiffies(0));
