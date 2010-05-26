@@ -1018,12 +1018,14 @@ static int wm8350_pcm_trigger(struct snd_pcm_substream *substream,
 		    (WM8350_DACR_ENA | WM8350_DACL_ENA);
 	}
 
+#ifndef CONFIG_MACH_CANOPUS
 	if (!enabled) {
 		printk(KERN_ERR
 		       "%s: invalid audio path - no clocks available\n",
 		       __func__);
 		return -EINVAL;
 	}
+#endif	// CONFIG_MACH_CANOPUS
 	return 0;
 }
 
@@ -1097,6 +1099,7 @@ static inline int fll_factors(struct _fll_div *fll_div, unsigned int input,
 		return -EINVAL;
 	}
 
+#ifndef CONFIG_MACH_CANOPUS
 	if (input > 48000)
 		fll_div->ratio = 1;
 	else
@@ -1123,6 +1126,21 @@ static inline int fll_factors(struct _fll_div *fll_div, unsigned int input,
 	} else
 		fll_div->k = 0;
 
+#else	// CONFIG_MACH_CANOPUS
+	switch (output) {
+	case 12288000:
+		fll_div->ratio = 7;
+		fll_div->k = 0x9249;
+		fll_div->n = 0x1ac;
+		break;
+	default:
+		fll_div->ratio = 8;
+		fll_div->k = 0x8800;
+		fll_div->n = 0x158;
+		break;
+	}
+#endif	// CONFIG_MACH_CANOPUS
+
 	return 0;
 }
 
@@ -1147,6 +1165,7 @@ static int wm8350_set_fll(struct snd_soc_dai *codec_dai,
 	if (ret < 0)
 		return ret;
 
+#ifndef CONFIG_MACH_CANOPUS
 	/* set up N.K & dividers */
 	fll_1 = wm8350_codec_read(codec, WM8350_FLL_CONTROL_1) &
 	    ~(WM8350_FLL_OUTDIV_MASK | WM8350_FLL_RSP_RATE_MASK | 0xc000);
@@ -1161,6 +1180,22 @@ static int wm8350_set_fll(struct snd_soc_dai *codec_dai,
 	wm8350_codec_write(codec, WM8350_FLL_CONTROL_4,
 			   fll_4 | (fll_div.k ? WM8350_FLL_FRAC : 0) |
 			   (fll_div.ratio == 8 ? WM8350_FLL_SLOW_LOCK_REF : 0));
+#else	 // CONFIG_MACH_CANOPUS
+	/* set up N.K & dividers */
+	fll_1 = wm8350_codec_read(codec, WM8350_FLL_CONTROL_1) &
+	    ~(WM8350_FLL_OUTDIV_MASK | WM8350_FLL_RSP_RATE_MASK | 0xc000);
+	wm8350_codec_write(codec, WM8350_FLL_CONTROL_1,
+			   fll_1 | (fll_div.div << 8));
+	wm8350_codec_write(codec, WM8350_FLL_CONTROL_2,
+			   (fll_div.ratio << 11) | (fll_div.
+						    n & WM8350_FLL_N_MASK));
+	wm8350_codec_write(codec, WM8350_FLL_CONTROL_3, fll_div.k);
+	fll_4 = wm8350_codec_read(codec, WM8350_FLL_CONTROL_4) &
+	    ~(WM8350_FLL_FRAC | WM8350_FLL_SLOW_LOCK_REF);
+	wm8350_codec_write(codec, WM8350_FLL_CONTROL_4,
+			   fll_4 | (fll_div.k ? WM8350_FLL_FRAC : 0) |
+			   ((fll_div.ratio == 8 || fll_div.ratio == 7) ? WM8350_FLL_SLOW_LOCK_REF : 0));
+#endif	// CONFIG_MACH_CANOPUS
 
 	/* power FLL on */
 	wm8350_set_bits(wm8350, WM8350_POWER_MGMT_4, WM8350_FLL_OSC_ENA);

@@ -114,7 +114,11 @@
  * R45 (0x2D) - FLL Control 4
  */
 #define WM8350_FLL_FRAC                         0x0020
+#ifndef CONFIG_MACH_CANOPUS
 #define WM8350_FLL_SLOW_LOCK_REF                0x0010
+#else	// CONFIG_MACH_CANOPUS
+#define WM8350_FLL_SLOW_LOCK_REF                0x0080
+#endif	// CONFIG_MACH_CANOPUS
 #define WM8350_FLL_CLK_SRC_MASK                 0x0003
 
 /*

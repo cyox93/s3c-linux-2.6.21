@@ -86,6 +86,7 @@ struct _wm8350_audio {
 
 /* in order of power consumption per rate (lowest first) */
 static const struct _wm8350_audio wm8350_audio[] = {
+#ifndef CONFIG_MACH_CANOPUS
 	/* 16 bit stereo modes */
 	{2, SNDRV_PCM_FORMAT_S16_LE, 8000, 12288000,
 	 WM8350_BCLK_DIV_48, WM8350_DACDIV_3, 32, 24,},
@@ -93,7 +94,6 @@ static const struct _wm8350_audio wm8350_audio[] = {
 	 WM8350_BCLK_DIV_24, WM8350_DACDIV_3, 32, 12,},
 	{2, SNDRV_PCM_FORMAT_S16_LE, 32000, 12288000,
 	 WM8350_BCLK_DIV_12, WM8350_DACDIV_3, 32, 6,},
-#if 0
 	{2, SNDRV_PCM_FORMAT_S16_LE, 48000, 12288000,
 	 WM8350_BCLK_DIV_8, WM8350_DACDIV_3, 32, 4,},
 	{2, SNDRV_PCM_FORMAT_S16_LE, 96000, 24576000,
@@ -102,10 +102,8 @@ static const struct _wm8350_audio wm8350_audio[] = {
 	 WM8350_BCLK_DIV_32, WM8350_DACDIV_4, 32, 32,},
 	{2, SNDRV_PCM_FORMAT_S16_LE, 22050, 11289600,
 	 WM8350_BCLK_DIV_16, WM8350_DACDIV_2, 32, 16,},
-#endif
 	{2, SNDRV_PCM_FORMAT_S16_LE, 44100, 11289600,
 	 WM8350_BCLK_DIV_8, WM8350_DACDIV_3, 32, 8,},
-#if 0
 	{2, SNDRV_PCM_FORMAT_S16_LE, 88200, 22579200,
 	 WM8350_BCLK_DIV_8, WM8350_DACDIV_1, 32, 4,},
 
@@ -118,7 +116,15 @@ static const struct _wm8350_audio wm8350_audio[] = {
 	 WM8350_BCLK_DIV_4, WM8350_DACDIV_1, 64, 8,},
 	{2, SNDRV_PCM_FORMAT_S24_LE, 88200, 22579200,
 	 WM8350_BCLK_DIV_4, WM8350_DACDIV_1, 64, 4,},
-#endif
+#else	// CONFIG_MACH_CANOPUS
+	/* 16 bit stereo modes */
+	{2, SNDRV_PCM_FORMAT_S16_LE, 8000, 12288000,
+	 WM8350_BCLK_DIV_24, WM8350_DACDIV_6, 32, 24,},
+	{2, SNDRV_PCM_FORMAT_S16_LE, 16000, 12288000,
+	 WM8350_BCLK_DIV_12, WM8350_DACDIV_3, 32, 12,},
+	{2, SNDRV_PCM_FORMAT_S16_LE, 32000, 12288000,
+	 WM8350_BCLK_DIV_6, WM8350_DACDIV_1_5, 32, 6,},
+#endif	// CONFIG_MACH_CANOPUS
 };
 
 static int smdk2416_hifi_hw_params(struct snd_pcm_substream *substream,
@@ -141,6 +147,7 @@ static int smdk2416_hifi_hw_params(struct snd_pcm_substream *substream,
 	if (state->lr_clk_active > 1)
 		return 0;
 
+#ifndef CONFIG_MACH_CANOPUS
 	/* Select Clock source EPLL */
 //	regs = ioremap(S3C2410_PA_CLKPWR,0x20);
 	regs = readl(S3C2443_CLKSRC);
@@ -179,6 +186,7 @@ static int smdk2416_hifi_hw_params(struct snd_pcm_substream *substream,
 		printk("Unsupported rate = %d\n", params_rate(params));
 		break;
 	}
+#endif	// CONFIG_MACH_CANOPUS
 
 	for (i=0; i <ARRAY_SIZE(wm8350_audio); i++) {
 		if (rate == wm8350_audio[i].rate &&
@@ -195,9 +203,15 @@ static int smdk2416_hifi_hw_params(struct snd_pcm_substream *substream,
 	snd_soc_dai_set_pll(codec_dai, 0, rate, wm8350_audio[i].sysclk);
 
 	/* set codec DAI configuration */
+#ifndef CONFIG_MACH_CANOPUS
 	ret = snd_soc_dai_set_fmt(codec_dai, 
 		SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
 		SND_SOC_DAIFMT_CBS_CFS | SND_SOC_DAIFMT_SYNC); 
+#else	// CONFIG_MACH_CANOPUS
+	ret = snd_soc_dai_set_fmt(codec_dai, 
+		SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
+		SND_SOC_DAIFMT_CBM_CFM | SND_SOC_DAIFMT_SYNC); 
+#endif	// CONFIG_MACH_CANOPUS
 	if (ret < 0)
 		return ret;
 
@@ -208,9 +222,15 @@ static int smdk2416_hifi_hw_params(struct snd_pcm_substream *substream,
 	if (ret < 0)
 		return ret;
 
+#ifndef CONFIG_MACH_CANOPUS
 	/* set the codec system clock for DAC and ADC */
 	ret = snd_soc_dai_set_sysclk(codec_dai, WM8350_MCLK_SEL_MCLK, 
 		wm8350_audio[i].sysclk, SND_SOC_CLOCK_OUT);
+#else	// CONFIG_MACH_CANOPUS
+	/* set the codec system clock for DAC and ADC */
+	ret = snd_soc_dai_set_sysclk(codec_dai, WM8350_MCLK_SEL_PLL_32K, 
+		wm8350_audio[i].sysclk, SND_SOC_CLOCK_OUT);
+#endif	// CONFIG_MACH_CANOPUS
 	if (ret < 0)
 		return ret;
 
