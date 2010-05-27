@@ -336,6 +336,11 @@ int wm8350_gpio_get_status(struct wm8350 *wm8350, int gpio);
 int wm8350_gpio_config(struct wm8350 *wm8350, int gpio, int dir, int func,
 		       int pol, int pull, int invert, int debounce);
 
+#ifdef CONFIG_MACH_CANOPUS
+int wm8350_gpio_set_dir(struct wm8350 *wm8350, int gpio, int dir);
+int wm8350_gpio_get_dir(struct wm8350 *wm8350, int gpio);
+#endif	// CONFIG_MACH_CANOPUS
+
 /*
  * GPIO Interrupts
  */

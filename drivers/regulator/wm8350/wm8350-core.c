@@ -1303,6 +1303,24 @@ static int gpio_set_dir(struct wm8350 *wm8350, int gpio, int dir)
 	return ret;
 }
 
+#ifdef CONFIG_MACH_CANOPUS
+int
+wm8350_gpio_set_dir(struct wm8350 *wm8350, int gpio, int dir)
+{
+	return gpio_set_dir(wm8350, gpio, dir);
+}
+
+int
+wm8350_gpio_get_dir(struct wm8350 *wm8350, int gpio)
+{
+	return  (wm8350_reg_read(wm8350, WM8350_GPIO_CONFIGURATION_I_O)
+			& (1 << gpio)) ? 0 : 1;
+}
+
+EXPORT_SYMBOL(wm8350_gpio_set_dir);
+EXPORT_SYMBOL(wm8350_gpio_get_dir);
+#endif	// CONFIG_MACH_CANOPUS
+
 static int gpio_set_debounce(struct wm8350 *wm8350, int gpio, int db)
 {
 	if (db == WM8350_GPIO_DEBOUNCE_ON)
