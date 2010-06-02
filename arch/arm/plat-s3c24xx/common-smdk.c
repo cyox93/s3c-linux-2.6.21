@@ -448,6 +448,27 @@ void lcd_reset(void)
 	mdelay(150);
 }
 
+static int _lcd_panel_id;
+
+int q_lcd_panel_id(void) { return _lcd_panel_id; }
+
+static void
+_get_lcd_panel_id(void)
+{
+	// set gpio in for lcd panel id
+	s3c2410_gpio_cfgpin(S3C2410_GPD8, S3C2410_GPD8_INP);
+	s3c2410_gpio_cfgpin(S3C2410_GPD9, S3C2410_GPD9_INP);
+	s3c2410_gpio_cfgpin(S3C2410_GPD10, S3C2410_GPD10_INP);
+
+	// set pull up/down disable for lcd panel id
+	s3c2410_gpio_pullup(S3C2410_GPD8, 0);
+	s3c2410_gpio_pullup(S3C2410_GPD9, 0);
+	s3c2410_gpio_pullup(S3C2410_GPD10, 0);
+
+	_lcd_panel_id = (__raw_readl(S3C2410_GPDDAT) & 0x700) >> 8;
+	printk(KERN_INFO "CANOPUS LCD Panel ID [0x%x]\n", _lcd_panel_id);
+}
+
 void lcd_gpio_init(void)
 {
 	u32 val;
@@ -468,16 +489,6 @@ void lcd_gpio_init(void)
 	// set lcd interface
 	val = __raw_readl(S3C2410_GPDCON) & ~(0x003fffff);
 	__raw_writel(val | 0x002aaaaa, S3C2410_GPDCON);
-
-	// set gpio in for lcd panel id
-	s3c2410_gpio_cfgpin(S3C2410_GPD8, S3C2410_GPD8_INP);
-	s3c2410_gpio_cfgpin(S3C2410_GPD9, S3C2410_GPD9_INP);
-	s3c2410_gpio_cfgpin(S3C2410_GPD10, S3C2410_GPD10_INP);
-
-	// set pull up/down disable for lcd panel id
-	s3c2410_gpio_pullup(S3C2410_GPD8, 0);
-	s3c2410_gpio_pullup(S3C2410_GPD9, 0);
-	s3c2410_gpio_pullup(S3C2410_GPD10, 0);
 }
 
 void speaker_amp(bool flag)
@@ -544,6 +555,7 @@ void canopus_gpio_init(void)
 	printk("canopus_gpio_init\n");
 
 	_get_hw_version();
+	_get_lcd_panel_id();
 
 	// Speaker AMP
 	s3c2410_gpio_cfgpin(S3C2410_GPH8, S3C2410_GPH8_OUTP);
@@ -615,5 +627,6 @@ EXPORT_SYMBOL(speaker_amp);
 EXPORT_SYMBOL(q_hw_version);
 EXPORT_SYMBOL(q_boot_flag_set);
 EXPORT_SYMBOL(q_boot_flag_get);
+EXPORT_SYMBOL(q_lcd_panel_id);
 #endif	// CONFIG_MACH_CANOPUS
 

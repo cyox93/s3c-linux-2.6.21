@@ -1528,17 +1528,7 @@ int s3c_fb_set_out_path(struct s3c_fb_info *fbi, int Path)
 
 extern void lcd_reset(void);
 extern void lcd_gpio_init(void);
-
-static int _lcd_panel_id = -1;
-
-static int
-_lcd_get_panel_id(void)
-{
-	if (_lcd_panel_id < 0)
-		_lcd_panel_id = (__raw_readl(S3C2410_GPDDAT) & 0x700) >> 8;
-
-	return _lcd_panel_id;
-}
+extern int q_lcd_panel_id(void);
 
 static inline void
 _lcd_i80_cmd(int control)
@@ -1643,7 +1633,7 @@ void lcd_set_command_mode (int set)
 static void
 lcd_ili9225b_power(int set)
 {
-	int id = _lcd_get_panel_id();
+	int id = q_lcd_panel_id();
 
 	if (!set) {
 		lcd_power_state = set;
@@ -1931,7 +1921,7 @@ _lcd_panel_init_hsd24(void)
 static void
 _lcd_panel_init(void)
 {
-	int id = _lcd_get_panel_id();
+	int id = q_lcd_panel_id();
 
 	printk("Initialize %s LCD panel\n",
 			_lcd_panel_str[id] ? _lcd_panel_str[id] : "unknown");
@@ -1952,7 +1942,7 @@ _lcd_panel_init(void)
 
 void _lcd_set_resolution(void)
 {
-	int id = _lcd_get_panel_id();
+	int id = q_lcd_panel_id();
 
 	switch (id) {
 	case _LCD_PANEL_HSD24:
