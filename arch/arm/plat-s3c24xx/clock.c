@@ -397,7 +397,11 @@ static int s3c24xx_clkout_setparent(struct clk *clk, struct clk *parent)
 
 	clk->parent = parent;
 
+#ifndef CONFIG_MACH_CANOPUS
 	if (clk == &s3c24xx_dclk0)
+#else	// CONFIG_MACH_CANOPUS
+	if (clk->parent == &s3c24xx_dclk0)
+#endif	// CONFIG_MACH_CANOPUS
 		mask = S3C2410_MISCCR_CLK0_MASK;
 	else {
 		source <<= 4;
