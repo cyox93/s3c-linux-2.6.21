@@ -251,9 +251,11 @@ static int s3c_i2s_hw_params(struct snd_pcm_substream *substream,
 
 	writel(readl(S3C2410_GPEUP)| 0x3ff, S3C2410_GPEUP);
 
+#ifndef CONFIG_MACH_CANOPUS
 	//writel(readl(S3C2450_GPBSEL)|(0x3<<3), S3C2450_GPBSEL);
 	writel(readl(S3C2450_GPBSEL)|(0x1<<3), S3C2450_GPBSEL);
 	writel(readl(S3C2410_GPBUP)|(0xF<<18), S3C2410_GPBUP);
+#endif	// CONFIG_MACH_CANOPUS
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 //		rtd->dai->cpu_dai->dma_data = &s3c24xx_i2s_pcm_stereo_out;
