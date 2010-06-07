@@ -61,6 +61,7 @@ struct wm8350_output {
 	u16 right_vol;
 	u16 ramp;
 	u16 mute;
+	atomic_t ramp_req;
 };
 
 struct wm8350_data {
@@ -245,13 +246,30 @@ static void wm8350_pga_work(struct work_struct *work)
 	    *out2 = &wm8350_data->out2;
 	int i, out1_complete, out2_complete;
 
+_restart:
+	if (atomic_read(&out1->ramp_req) != WM8350_RAMP_NONE) {
+		if (atomic_cmpxchg(&out1->ramp_req, WM8350_RAMP_UP, WM8350_RAMP_NONE) == WM8350_RAMP_UP)
+			out1->ramp = WM8350_RAMP_UP;
+		else if (atomic_cmpxchg(&out1->ramp_req, WM8350_RAMP_DOWN, WM8350_RAMP_NONE) == WM8350_RAMP_DOWN)
+			out1->ramp = WM8350_RAMP_DOWN;
+	}
+	if (atomic_read(&out2->ramp_req) != WM8350_RAMP_NONE) {
+		if (atomic_cmpxchg(&out2->ramp_req, WM8350_RAMP_UP, WM8350_RAMP_NONE) == WM8350_RAMP_UP)
+			out2->ramp = WM8350_RAMP_UP;
+		else if (atomic_cmpxchg(&out2->ramp_req, WM8350_RAMP_DOWN, WM8350_RAMP_NONE) == WM8350_RAMP_DOWN)
+			out2->ramp = WM8350_RAMP_DOWN;
+	}
+	
 	/* do we need to ramp at all ? */
 	if (out1->ramp == WM8350_RAMP_NONE && out2->ramp == WM8350_RAMP_NONE)
 		return;
 
 	/* PGA volumes have 6 bits of resolution to ramp */
 	for (i = 0; i <= 63; i++) {
-
+		if (atomic_read(&out1->ramp_req) != WM8350_RAMP_NONE ||
+		    atomic_read(&out2->ramp_req) != WM8350_RAMP_NONE)
+			goto _restart;
+		
 		out1_complete = 1, out2_complete = 1;
 		if (out1->ramp != WM8350_RAMP_NONE)
 			out1_complete = wm8350_out1_ramp_step(codec);
@@ -276,6 +294,9 @@ static void wm8350_pga_work(struct work_struct *work)
 			udelay(50);	/* doesn't matter if we delay longer */
 	}
 
+	if (atomic_read(&out1->ramp_req) != WM8350_RAMP_NONE ||
+	    atomic_read(&out2->ramp_req) != WM8350_RAMP_NONE)
+		goto _restart;
 	out1->ramp = WM8350_RAMP_NONE;
 	out2->ramp = WM8350_RAMP_NONE;
 }
@@ -295,14 +316,14 @@ static int pga_event(struct snd_soc_dapm_widget *w,
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
 		/* ramp vol up */
-		switch (w->shift) {
-		case 0:
-		case 1:
-			out1->ramp = WM8350_RAMP_UP;
+		switch (w->reg) {
+		case WM8350_LOUT1_VOLUME:
+		case WM8350_ROUT1_VOLUME:
+			atomic_set(&out1->ramp_req, WM8350_RAMP_UP);
 			break;
-		case 2:
-		case 3:
-			out2->ramp = WM8350_RAMP_UP;
+		case WM8350_LOUT2_VOLUME:
+		case WM8350_ROUT2_VOLUME:
+			atomic_set(&out2->ramp_req, WM8350_RAMP_UP);
 			break;
 		}
 		if (!delayed_work_pending(&codec->delayed_work))
@@ -311,14 +332,14 @@ static int pga_event(struct snd_soc_dapm_widget *w,
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
 		/* ramp down */
-		switch (w->shift) {
-		case 0:
-		case 1:
-			out1->ramp = WM8350_RAMP_DOWN;
+		switch (w->reg) {
+		case WM8350_LOUT1_VOLUME:
+		case WM8350_ROUT1_VOLUME:
+			atomic_set(&out1->ramp_req, WM8350_RAMP_DOWN);
 			break;
-		case 2:
-		case 3:
-			out2->ramp = WM8350_RAMP_DOWN;
+		case WM8350_LOUT2_VOLUME:
+		case WM8350_ROUT2_VOLUME:
+			atomic_set(&out2->ramp_req, WM8350_RAMP_DOWN);
 			break;
 		}
 		if (!delayed_work_pending(&codec->delayed_work))
@@ -627,6 +648,7 @@ static const struct snd_soc_dapm_widget wm8350_dapm_widgets[] = {
 	SND_SOC_DAPM_PGA("IN3R PGA", WM8350_POWER_MGMT_2, 11, 0, NULL, 0),
 	SND_SOC_DAPM_PGA("IN3L PGA", WM8350_POWER_MGMT_2, 10, 0, NULL, 0),
 #ifndef CONFIG_MACH_CANOPUS
+#error If you want to this register, you must change pga_event() also.
 	SND_SOC_DAPM_PGA_E("Right Out2 PGA", WM8350_POWER_MGMT_3, 3, 0, NULL, 0,
 			   pga_event,
 			   SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
