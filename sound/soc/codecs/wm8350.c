@@ -69,6 +69,8 @@ struct wm8350_data {
 	struct wm8350_output out1;
 	struct wm8350_output out2;
 	struct regulator *analog_supply;
+
+	int last_cmd;
 };
 
 extern void speaker_amp(bool flag);
@@ -346,6 +348,27 @@ static int pga_event(struct snd_soc_dapm_widget *w,
 			schedule_delayed_work(&codec->delayed_work,
 					      msecs_to_jiffies(1));
 		break;
+	}
+	return 0;
+}
+
+static int amp_event(struct snd_soc_dapm_widget *w,
+		     struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_codec *codec = w->codec;
+	struct wm8350_data *wm8350_data = codec->private_data;
+	int reg = kcontrol->private_value & 0xff;
+	int shift = (kcontrol->private_value >> 8) & 0x0f;
+
+	if (wm8350_data->last_cmd != SNDRV_PCM_TRIGGER_START)
+		return 0;
+	
+	if (event == SND_SOC_DAPM_POST_REG &&
+	    reg == WM8350_RIGHT_MIXER_CONTROL && shift == 12) {
+		if (wm8350_codec_cache_read(codec, reg) && (1<<12))
+			speaker_amp(1);
+		else 
+			speaker_amp(0);
 	}
 	return 0;
 }
@@ -692,9 +715,10 @@ static const struct snd_soc_dapm_widget wm8350_dapm_widgets[] = {
 			   &wm8350_out3_mixer_controls[0],
 			   ARRAY_SIZE(wm8350_out3_mixer_controls)),
 
-	SND_SOC_DAPM_MIXER("Right Playback Mixer", WM8350_POWER_MGMT_2, 1, 0,
+	SND_SOC_DAPM_MIXER_E("Right Playback Mixer", WM8350_POWER_MGMT_2, 1, 0,
 			   &wm8350_right_play_mixer_controls[0],
-			   ARRAY_SIZE(wm8350_right_play_mixer_controls)),
+			   ARRAY_SIZE(wm8350_right_play_mixer_controls),
+			   amp_event, SND_SOC_DAPM_POST_REG),
 
 	SND_SOC_DAPM_MIXER("Left Playback Mixer", WM8350_POWER_MGMT_2, 0, 0,
 			   &wm8350_left_play_mixer_controls[0],
@@ -1006,24 +1030,18 @@ static int wm8350_pcm_trigger(struct snd_pcm_substream *substream,
 			      int cmd, struct snd_soc_dai *codec_dai)
 {
 	struct snd_soc_codec *codec = codec_dai->codec;
+	struct wm8350_data *wm8350_data = codec->private_data;
 	int master = wm8350_codec_cache_read(codec, WM8350_AI_DAC_CONTROL) &
 	    WM8350_BCLK_MSTR;
 	int enabled = 0;
 
-	int amp_en = 0;
-	if (cmd == SNDRV_PCM_TRIGGER_START) {
-		amp_en = wm8350_codec_cache_read(codec, WM8350_RIGHT_MIXER_CONTROL) & 
-			WM8350_DACR_TO_MIXOUTR;
+#ifdef CONFIG_MACH_CANOPUS
+	int amp_en =wm8350_codec_cache_read(codec, WM8350_RIGHT_MIXER_CONTROL) & 
+		WM8350_DACR_TO_MIXOUTR;
 
-		if (amp_en)	speaker_amp(1);
-	}
-
-	if (cmd == SNDRV_PCM_TRIGGER_STOP) {
-		amp_en = wm8350_codec_cache_read(codec, WM8350_RIGHT_MIXER_CONTROL) & 
-			WM8350_DACR_TO_MIXOUTR;
-
-		if (!amp_en) speaker_amp(0);
-	}
+	wm8350_data->last_cmd = cmd;
+	speaker_amp((amp_en) ? 1 : 0);
+#endif
 
 	/* Check that the DACs or ADCs are enabled since they are
 	 * required for LRC in master mode. The DACs or ADCs need a
