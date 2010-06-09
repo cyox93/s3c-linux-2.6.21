@@ -1040,7 +1040,11 @@ static int wm8350_pcm_trigger(struct snd_pcm_substream *substream,
 		WM8350_DACR_TO_MIXOUTR;
 
 	wm8350_data->last_cmd = cmd;
-	speaker_amp((amp_en) ? 1 : 0);
+
+	if (cmd == SNDRV_PCM_TRIGGER_START && amp_en)
+		speaker_amp(1);
+	else 
+		speaker_amp(0);
 #endif
 
 	/* Check that the DACs or ADCs are enabled since they are
