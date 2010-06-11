@@ -588,6 +588,9 @@ static int __init s3c_keypad_probe(struct platform_device *pdev)
 #endif
 	
 	keypad_irq_mask();
+	key_irq_press = 1;
+	curr_key_irq = 0;
+
 	INIT_WORK(&s3c_keypad->work, key_bh_handler);
 	ret = s3c_keypad_request_irq(s3c_keypad);
 	if (ret)
@@ -596,8 +599,7 @@ static int __init s3c_keypad_probe(struct platform_device *pdev)
 	printk( DEVICE_NAME " Initialized\n");
 
 	/* force scan after init */
-	key_irq_press = 1;
-	curr_key_irq = 0;
+	keypad_irq_mask();
 	keypad_scan_timer.expires = jiffies + msecs_to_jiffies(50);
 	add_timer(&keypad_scan_timer);
 
