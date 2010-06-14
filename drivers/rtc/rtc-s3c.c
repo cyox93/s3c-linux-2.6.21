@@ -679,7 +679,9 @@ err_irq:
 
 /* RTC Power management control */
 
+#ifndef CONFIG_MACH_CANOPUS
 static struct timespec s3c_rtc_delta;
+#endif	// CONFIG_MACH_CANOPUS
 
 static int ticnt_save;
 
@@ -712,9 +714,7 @@ static int s3c_rtc_suspend(struct platform_device *pdev, pm_message_t state)
 	if (wakers_set_alarm(&rtc_dev->class_dev))
 		s3c_rtc_setaie(1);
 #endif
-	s3c_rtc_gettime(&pdev->dev, &tm);
-	rtc_tm_to_time(&tm, &time.tv_sec);
-	save_time_delta(&s3c_rtc_delta, &time);
+
 #endif	// CONFIG_MACH_CANOPUS
 
 	return 0;
@@ -737,7 +737,7 @@ static int s3c_rtc_resume(struct platform_device *pdev)
 #else	// CONFIG_MACH_CANOPUS
 	s3c_rtc_gettime(&pdev->dev, &tm);
 	rtc_tm_to_time(&tm, &time.tv_sec);
-	restore_time_delta(&s3c_rtc_delta, &time);
+	do_settimeofday(&time);	/* restore from RTC */
 #endif	// CONFIG_MACH_CANOPUS
 	return 0;
 }
