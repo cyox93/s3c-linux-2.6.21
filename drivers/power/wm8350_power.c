@@ -1461,6 +1461,11 @@ void wm8350_power_off(void)
 	if (wm8350_get_supplies(_wm8350) & WM8350_LINE_SUPPLY) {
 		kernel_restart(NULL);
 	} else {
+		wm8350_gpio_config(_wm8350, 2, WM8350_GPIO_DIR_IN,
+				   WM8350_GPIO2_32KHZ_IN, WM8350_GPIO_ACTIVE_LOW,
+				   WM8350_GPIO_PULL_NONE, WM8350_GPIO_INVERT_OFF,
+				   WM8350_GPIO_DEBOUNCE_OFF);
+
 		u16 val = wm8350_reg_read(_wm8350, 0x5);
 		val |= (1<<15);
 		wm8350_reg_write(_wm8350, 0x5, val);
