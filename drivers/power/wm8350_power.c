@@ -137,6 +137,7 @@ static struct wm8350 *wm8350_bat = NULL;
 static int bat_detect = 0;
 static bool vbatt_event = false;
 static bool _is_fault = false;
+static bool _is_temp_fault = false;
 
 #ifdef CONFIG_HAS_WAKELOCK
 static struct wake_lock _bat_wake_lock;
@@ -533,6 +534,7 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 		cancel_delayed_work(&_bat_fault);
 		cancel_delayed_work(&_bat_fault_led);
 
+		_is_temp_fault = true;
 		schedule_delayed_work(&_bat_fault, msecs_to_jiffies(2000));
 		break;
 	case WM8350_IRQ_CHG_BAT_COLD:
@@ -543,6 +545,7 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 		cancel_delayed_work(&_bat_fault);
 		cancel_delayed_work(&_bat_fault_led);
 
+		_is_temp_fault = true;
 		schedule_delayed_work(&_bat_fault, msecs_to_jiffies(2000));
 		break;
 	case WM8350_IRQ_CHG_BAT_FAIL:
@@ -553,6 +556,7 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 		cancel_delayed_work(&_bat_fault);
 		cancel_delayed_work(&_bat_fault_led);
 
+		_is_temp_fault = false;
 		schedule_delayed_work(&_bat_fault, msecs_to_jiffies(1000));
 		break;
 	case WM8350_IRQ_CHG_TO:
@@ -734,10 +738,31 @@ static void _wm8350_bat_fault_work(struct work_struct *work)
 {
 	int event = 0;
 	struct list_head *p;
+	struct wm8350 *wm8350 = wm8350_bat;
 	wm8350_bat_event_callback_list_t *temp = NULL;
 
 	event = WM8350_BAT_EVENT_FAULT;
 	_is_fault = true;
+
+	if (_is_temp_fault) {
+		bool over_39v = false;
+		_is_temp_fault = false;
+
+
+		if (q_hw_ver(7800_ES1) || q_hw_ver(7800_ES2)) {
+			if (wm8350_read_battery_uvolts(wm8350) > 3900000)
+				over_39v = true;
+		} else {
+			if (wm8350_read_aux2_adc(wm8350) > 0x77d)
+				over_39v = true;
+		}
+
+		if (over_39v) {
+			_wm8350_bat_full_work(NULL);
+
+			return ;
+		}
+	}
 
 	printk("battery fault ...\n");
 	schedule_delayed_work(&_bat_fault_led, msecs_to_jiffies(0));
