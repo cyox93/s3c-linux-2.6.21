@@ -1396,6 +1396,64 @@ static struct file_operations wm8350_bat_fos = {
 static struct wm8350 *_wm8350;
 extern void kernel_restart(char *cmd);
 
+static void
+_pmic_dcdc_low_power_mode(int addr, int mode, int trig)
+{
+	uint val;
+
+	val = wm8350_reg_read(_wm8350, addr)
+		& ~(WM8350_DCDC_HIB_MODE_MASK | WM8350_DCDC_HIB_TRIG_MASK);
+	wm8350_reg_write(_wm8350, addr, val | (mode | trig));
+}
+
+static void
+_pmic_dcdc2_low_power_mode(int mode, int trig)
+{
+	uint val;
+
+	val = wm8350_reg_read(_wm8350, WM8350_DCDC2_CONTROL)
+		& ~(WM8350_DCDC2_HIB_MODE_MASK | WM8350_DCDC2_HIB_TRIG_MASK);
+	wm8350_reg_write(_wm8350, WM8350_DCDC2_CONTROL, val | (mode | trig));
+}
+
+static void
+_pmic_ldo_low_power_mode(int addr, int mode, int trig)
+{
+	uint val;
+
+	val = wm8350_reg_read(_wm8350, addr)
+		& ~(WM8350_LDO_HIB_MODE_MASK | WM8350_LDO_HIB_TRIG_MASK);
+	wm8350_reg_write(_wm8350, addr, val | (mode | trig));
+}
+
+static void
+_wm8350_init_hibernation(void)
+{
+	uint value;
+
+	// set hibernate behavior
+	_pmic_dcdc_low_power_mode(WM8350_DCDC1_LOW_POWER,
+			WM8350_DCDC_HIB_MODE_DISABLE, WM8350_DCDC_HIB_TRIG_REG);
+	_pmic_dcdc2_low_power_mode(WM8350_DCDC2_HIB_MODE_DISABLE, WM8350_DCDC2_HIB_TRIG_REG);
+	_pmic_dcdc_low_power_mode(WM8350_DCDC3_LOW_POWER,
+			WM8350_DCDC_HIB_MODE_DISABLE, WM8350_DCDC_HIB_TRIG_REG);
+	_pmic_dcdc_low_power_mode(WM8350_DCDC4_LOW_POWER,
+			WM8350_DCDC_HIB_MODE_DISABLE, WM8350_DCDC_HIB_TRIG_REG);
+
+	_pmic_ldo_low_power_mode(WM8350_LDO1_LOW_POWER,
+			WM8350_LDO_HIB_MODE_DISABLE, WM8350_LDO_HIB_TRIG_REG);
+	_pmic_ldo_low_power_mode(WM8350_LDO2_LOW_POWER,
+			WM8350_LDO_HIB_MODE_DISABLE, WM8350_LDO_HIB_TRIG_REG);
+	_pmic_ldo_low_power_mode(WM8350_LDO3_LOW_POWER,
+			WM8350_LDO_HIB_MODE_DISABLE, WM8350_LDO_HIB_TRIG_REG);
+	_pmic_ldo_low_power_mode(WM8350_LDO4_LOW_POWER,
+			WM8350_LDO_HIB_MODE_DISABLE, WM8350_LDO_HIB_TRIG_REG);
+
+	// set dcdc4 timeout to 5
+	value = wm8350_reg_read(_wm8350, WM8350_DCDC4_TIMEOUTS) & ~(0xf << 10);
+	wm8350_reg_write(_wm8350, WM8350_DCDC4_TIMEOUTS, value | (5 << 10));
+}
+
 void wm8350_power_off(void)
 {
 	if (!_wm8350) return ;
@@ -1403,9 +1461,9 @@ void wm8350_power_off(void)
 	if (wm8350_get_supplies(_wm8350) & WM8350_LINE_SUPPLY) {
 		kernel_restart(NULL);
 	} else {
-		u16 val = wm8350_reg_read(_wm8350, 0x3);
-		val &= ~(1<<15);
-		wm8350_reg_write(_wm8350, 0x3, val);
+		u16 val = wm8350_reg_read(_wm8350, 0x5);
+		val |= (1<<15);
+		wm8350_reg_write(_wm8350, 0x5, val);
 	}
 }
 #endif
@@ -1534,6 +1592,8 @@ static int __init wm8350_power_probe(struct platform_device *pdev)
 #ifdef CONFIG_MACH_CANOPUS
 	_wm8350 = wm8350;
 	pm_power_off = wm8350_power_off;
+
+	_wm8350_init_hibernation();
 #endif
 	return ret;
 

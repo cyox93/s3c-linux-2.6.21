@@ -109,6 +109,47 @@
 #define WM8350_IRQ_EXT_WALL_FB			37
 #define WM8350_IRQ_EXT_BAT_FB			38
 
+#ifdef CONFIG_MACH_CANOPUS
+#define WM8350_DCDC1_LOW_POWER                  0xB6
+#define WM8350_DCDC2_CONTROL                    0xB7
+#define WM8350_DCDC3_LOW_POWER                  0xBC
+#define WM8350_DCDC4_LOW_POWER                  0xBF
+
+#define WM8350_LDO1_LOW_POWER                   0xCA
+#define WM8350_LDO2_LOW_POWER                   0xCD
+#define WM8350_LDO3_LOW_POWER                   0xD0
+#define WM8350_LDO4_LOW_POWER                   0xD3
+
+#define WM8350_DCDC4_TIMEOUTS                   0xBE
+
+/*
+ * R182 (0xB6), R188 (0xBC), R191 (0xBF) - Low Power Mode Control
+ */
+#define WM8350_DCDC_HIB_MODE_MASK		(0x7 << 12)
+#define WM8350_DCDC_HIB_MODE_DISABLE		(0x7 << 12)
+
+#define WM8350_DCDC_HIB_TRIG_MASK		(0x3 << 8)
+#define WM8350_DCDC_HIB_TRIG_REG		(0x0 << 8)
+
+/*
+ * R183 (0xB7) - Low Power Mode Control for DCDC2
+ */
+#define WM8350_DCDC2_HIB_MODE_MASK		(0x1 << 12)
+#define WM8350_DCDC2_HIB_MODE_DISABLE		(0x1 << 12)
+
+#define WM8350_DCDC2_HIB_TRIG_MASK		(0x3 << 8)
+#define WM8350_DCDC2_HIB_TRIG_REG		(0x0 << 8)
+
+/*
+ * R202 (0xCA), R205 (0xCD), R208 (0xD0), R211 (0xD3) - Low Power Mode Control
+ */
+#define WM8350_LDO_HIB_MODE_MASK		(0x3 << 12)
+#define WM8350_LDO_HIB_MODE_DISABLE		(0x1 << 12)
+
+#define WM8350_LDO_HIB_TRIG_MASK		(0x3 << 8)
+#define WM8350_LDO_HIB_TRIG_REG			(0x0 << 8)
+
+#endif	// CONFIG_MACH_CANOPUS
 /*
  * Policy to control charger state machine.
  */
