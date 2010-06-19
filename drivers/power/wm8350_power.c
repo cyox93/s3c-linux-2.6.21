@@ -230,6 +230,15 @@ static int wm8350_bat_red_led_store(struct device *dev, struct device_attribute 
 	return len;
 }
 
+static int
+wm8350_bat_fault_show(struct device *dev, struct device_attribute *attr, 
+					char *buf)
+{
+	int ret;
+	ret = snprintf(buf, PAGE_SIZE, "%d\n", _is_temp_fault);
+	return ret;
+}
+
 static DEVICE_ATTR(green_led, 0644,
 		wm8350_bat_green_led_show,
 		wm8350_bat_green_led_store);
@@ -237,6 +246,10 @@ static DEVICE_ATTR(green_led, 0644,
 static DEVICE_ATTR(red_led, 0644,
 		wm8350_bat_red_led_show,
 		wm8350_bat_red_led_store);
+
+static DEVICE_ATTR(fault, 0444,
+		wm8350_bat_fault_show,
+		NULL);
 
 static int wm8350_aux2_show(struct device *dev, struct device_attribute *attr,
 					char *buf)
@@ -764,7 +777,7 @@ static void _wm8350_bat_fault_work(struct work_struct *work)
 		}
 	}
 
-	printk("battery fault ...\n");
+	printk(KERN_INFO "battery fault ...\n");
 	schedule_delayed_work(&_bat_fault_led, msecs_to_jiffies(0));
 
 	if (!list_empty(&wm8350_bat_events[event])) {
@@ -1562,9 +1575,15 @@ static int __init wm8350_power_probe(struct platform_device *pdev)
 	ret = device_create_file(&pdev->dev, &dev_attr_green_led);
 	if (ret <0)
 		printk(KERN_WARNING "wm8350: failed to add green led sysfs\n");
+
 	ret = device_create_file(&pdev->dev, &dev_attr_red_led);
 	if (ret <0)
 		printk(KERN_WARNING "wm8350: failed to add red led sysfs\n");
+
+	ret = device_create_file(&pdev->dev, &dev_attr_fault);
+	if (ret <0)
+		printk(KERN_WARNING "wm8350: failed to add temp fault sysfs\n");
+
 	ret = device_create_file(&pdev->dev, &dev_attr_aux2_adc);
 	if (ret <0)
 		printk(KERN_WARNING "wm8350: failed to add aux2 adc sysfs\n");
