@@ -492,7 +492,7 @@ static int s3c2410wdt_suspend(struct platform_device *dev, pm_message_t state)
 	return 0;
 }
 
-static int s3c2410wdt_resume(struct platform_device *dev)
+static int s3c2410wdt_resume_early(struct platform_device *dev)
 {
 	/* Restore watchdog state. */
 
@@ -508,7 +508,7 @@ static int s3c2410wdt_resume(struct platform_device *dev)
 
 #else
 #define s3c2410wdt_suspend NULL
-#define s3c2410wdt_resume  NULL
+#define s3c2410wdt_resume_early  NULL
 #endif /* CONFIG_PM */
 
 
@@ -517,7 +517,7 @@ static struct platform_driver s3c2410wdt_driver = {
 	.remove		= s3c2410wdt_remove,
 	.shutdown	= s3c2410wdt_shutdown,
 	.suspend	= s3c2410wdt_suspend,
-	.resume		= s3c2410wdt_resume,
+	.resume_early	= s3c2410wdt_resume_early,
 	.driver		= {
 		.owner	= THIS_MODULE,
 		.name	= "s3c2410-wdt",
