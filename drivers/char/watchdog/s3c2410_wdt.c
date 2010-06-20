@@ -480,7 +480,7 @@ static void s3c2410wdt_shutdown(struct platform_device *dev)
 static unsigned long wtcon_save;
 static unsigned long wtdat_save;
 
-static int s3c2410wdt_suspend(struct platform_device *dev, pm_message_t state)
+static int s3c2410wdt_suspend_late(struct platform_device *dev, pm_message_t state)
 {
 	/* Save watchdog state, and turn it off. */
 	wtcon_save = readl(wdt_base + S3C2410_WTCON);
@@ -507,7 +507,7 @@ static int s3c2410wdt_resume_early(struct platform_device *dev)
 }
 
 #else
-#define s3c2410wdt_suspend NULL
+#define s3c2410wdt_suspend_late NULL
 #define s3c2410wdt_resume_early  NULL
 #endif /* CONFIG_PM */
 
@@ -516,7 +516,7 @@ static struct platform_driver s3c2410wdt_driver = {
 	.probe		= s3c2410wdt_probe,
 	.remove		= s3c2410wdt_remove,
 	.shutdown	= s3c2410wdt_shutdown,
-	.suspend	= s3c2410wdt_suspend,
+	.suspend_late	= s3c2410wdt_suspend_late,
 	.resume_early	= s3c2410wdt_resume_early,
 	.driver		= {
 		.owner	= THIS_MODULE,
