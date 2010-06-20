@@ -732,11 +732,28 @@ static void _wm8350_bat_full_work(struct work_struct *work)
 
 	if (line && (batt == POWER_SUPPLY_STATUS_DISCHARGING) &&
 				(bat_detect == WM8350_BAT_EVENT_DETECT)) {
-		printk("battery full charging..\n");
+		bool over_39v = false;
 
-		wm8350_bat_led_status(wm8350, WM8350_BAT_GREEN_LED);
+		if (q_hw_ver(7800_ES1) || q_hw_ver(7800_ES2)) {
+			if (wm8350_read_battery_uvolts(wm8350) > 3900000)
+				over_39v = true;
+		} else {
+			if (wm8350_read_aux2_adc(wm8350) > 0x77d)
+				over_39v = true;
+		}
 
-		event = WM8350_BAT_EVENT_FULL_CHG;
+		if (over_39v) {
+			printk(KERN_INFO "battery full charging..\n");
+
+			wm8350_bat_led_status(wm8350, WM8350_BAT_GREEN_LED);
+			event = WM8350_BAT_EVENT_FULL_CHG;
+		} else {
+			printk(KERN_INFO "battery fault ...\n");
+
+			_is_fault = true;
+			schedule_delayed_work(&_bat_fault_led, msecs_to_jiffies(0));
+			event = WM8350_BAT_EVENT_FAULT;
+		}
 		
 		if (!list_empty(&wm8350_bat_events[event])) {
 			list_for_each(p, &wm8350_bat_events[event]) {
