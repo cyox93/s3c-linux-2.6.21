@@ -141,6 +141,7 @@ static bool _is_temp_fault = false;
 
 #ifdef CONFIG_HAS_WAKELOCK
 static struct wake_lock _bat_wake_lock;
+static struct wake_lock _fault_led_wake_lock;
 #endif
 
 static DECLARE_MUTEX(event_mutex);
@@ -807,6 +808,10 @@ static void _wm8350_bat_fault_work(struct work_struct *work)
 
 static void _wm8350_bat_fault_led_work(struct work_struct *work)
 {
+#ifdef CONFIG_HAS_WAKELOCK
+	wake_lock_timeout(&_fault_led_wake_lock, 1 * HZ);
+#endif
+
 	if (bat_fault_led_status) {
 		bat_fault_led_status = 0;
 		wm8350_bat_fault_led_control(1);
@@ -1628,6 +1633,7 @@ static int __init wm8350_power_probe(struct platform_device *pdev)
 
 #ifdef CONFIG_HAS_WAKELOCK
 	wake_lock_init(&_bat_wake_lock, WAKE_LOCK_SUSPEND, "wm8350-power");
+	wake_lock_init(&_fault_led_wake_lock, WAKE_LOCK_SUSPEND, "fault-led");
 #endif
 
 #ifdef CONFIG_MACH_CANOPUS
@@ -1684,6 +1690,7 @@ static int __devexit wm8350_power_remove(struct platform_device *pdev)
 
 #ifdef CONFIG_HAS_WAKELOCK
 	wake_lock_destroy(&_bat_wake_lock);
+	wake_lock_destroy(&_fault_led_wake_lock);
 #endif
 
 	return 0;
