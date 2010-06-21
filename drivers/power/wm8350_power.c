@@ -46,7 +46,7 @@
 		cir_buf.buf[cir_buf.head] = (char)elem;		\
 		cir_buf.head = (cir_buf.head + 1) & (size - 1);	\
 	} else {						\
-		pr_info("Failed to notify event to the user\n");\
+		pr_debug("Failed to notify event to the user\n");\
 	}							\
 	up(&event_mutex);
 
@@ -57,7 +57,7 @@
 		cir_buf.tail = (cir_buf.tail + 1) & (size - 1); \
 	} else {                                                \
 		elem = -1;                                      \
-		pr_info("No valid notified event\n");           \
+		pr_debug("No valid notified event\n");           \
 	}							\
 	up(&event_mutex);
 
@@ -294,7 +294,7 @@ static int wm8350_charger_config(struct wm8350 *wm8350,
 
 	/* make sure USB fast charge current is not > 500mA */
 	if (policy->fast_limit_USB_mA > 500) {
-		printk(KERN_ERR "%s: USB fast charge > 500mA\n", __func__);
+		printk(KERN_DEBUG "%s: USB fast charge > 500mA\n", __func__);
 		return -EINVAL;
 	}
 
@@ -504,7 +504,7 @@ static void wm8350_bat_led_status(struct wm8350 *wm8350, int state)
 		break;
 
 	default:
-		printk("BATTERRY LED NOT CONTROL..\n");
+		printk(KERN_DEBUG "BATTERRY LED NOT CONTROL..\n");
 		return ;
 	}
 
@@ -540,7 +540,7 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 	mutex_lock(&power->charger_mutex);
 	switch (irq) {
 	case WM8350_IRQ_CHG_BAT_HOT:
-		printk(KERN_ERR "wm8350-power: battery too hot\n");
+		printk(KERN_DEBUG "wm8350-power: battery too hot\n");
 
 		cancel_delayed_work(&_bat_full);
 		cancel_delayed_work(&_bat_timeout);
@@ -551,7 +551,7 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 		schedule_delayed_work(&_bat_fault, msecs_to_jiffies(2000));
 		break;
 	case WM8350_IRQ_CHG_BAT_COLD:
-		printk(KERN_ERR "wm8350-power: battery too cold\n");
+		printk(KERN_DEBUG "wm8350-power: battery too cold\n");
 
 		cancel_delayed_work(&_bat_full);
 		cancel_delayed_work(&_bat_timeout);
@@ -562,7 +562,7 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 		schedule_delayed_work(&_bat_fault, msecs_to_jiffies(2000));
 		break;
 	case WM8350_IRQ_CHG_BAT_FAIL:
-		printk(KERN_ERR "wm8350-power: battery failed\n");
+		printk(KERN_DEBUG "wm8350-power: battery failed\n");
 
 		cancel_delayed_work(&_bat_full);
 		cancel_delayed_work(&_bat_timeout);
@@ -573,7 +573,7 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 		schedule_delayed_work(&_bat_fault, msecs_to_jiffies(1000));
 		break;
 	case WM8350_IRQ_CHG_TO:
-		printk(KERN_INFO "wm8350-power: charger timeout\n");
+		printk(KERN_DEBUG "wm8350-power: charger timeout\n");
 
 		cancel_delayed_work(&_bat_full);
 		cancel_delayed_work(&_bat_fault);
@@ -583,14 +583,14 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 		schedule_delayed_work(&_bat_timeout, msecs_to_jiffies(2000));
 		break;
 	case WM8350_IRQ_CHG_END:
-		printk(KERN_INFO "wm8350-power: charger stopped\n");
+		printk(KERN_DEBUG "wm8350-power: charger stopped\n");
 
 		cancel_delayed_work(&_bat_full);
 		cancel_delayed_work(&_bat_timeout);
 		schedule_delayed_work(&_bat_full, msecs_to_jiffies(2000));
 		break;
 	case WM8350_IRQ_CHG_START:
-		printk(KERN_INFO "wm8350-power: charger started\n");
+		printk(KERN_DEBUG "wm8350-power: charger started\n");
 
 		vbatt_event = false;
 		cancel_delayed_work(&_bat_full);
@@ -603,7 +603,7 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 		break;
 	case WM8350_IRQ_CHG_FAST_RDY:
 		/* we are ready to fast charge */
-		printk(KERN_INFO "wm8350-power: fast charger ready\n");
+		printk(KERN_DEBUG "wm8350-power: fast charger ready\n");
 
 		if (_is_fault) {
 			schedule_delayed_work(&_bat_detect, msecs_to_jiffies(1000));
@@ -618,27 +618,27 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 		wm8350_charger_enable(wm8350, 1);
 		break;
 	case WM8350_IRQ_CHG_VBATT_LT_3P9:
-		printk(KERN_WARNING "wm8350-power: battery < 3.9V\n");
+		printk(KERN_DEBUG "wm8350-power: battery < 3.9V\n");
 		wm8350_charger_enable(wm8350, 1);
 		break;
 	case WM8350_IRQ_CHG_VBATT_LT_3P1:
-		printk(KERN_WARNING "wm8350-power: battery < 3.1V\n");
+		printk(KERN_DEBUG "wm8350-power: battery < 3.1V\n");
 		wm8350_charger_enable(wm8350, 1);
 		break;
 	case WM8350_IRQ_CHG_VBATT_LT_2P85:
-		printk(KERN_WARNING "wm8350-power: battery < 2.85V\n");
+		printk(KERN_DEBUG "wm8350-power: battery < 2.85V\n");
 		wm8350_charger_enable(wm8350, 1);
 		vbatt_event = true;
 		break;
 	case WM8350_IRQ_EXT_USB_FB:
-		printk(KERN_INFO "wm8350-power: USB is now supply\n");
+		printk(KERN_DEBUG "wm8350-power: USB is now supply\n");
 		power->is_usb_supply = 1;
 		_is_fault = false;
 		wm8350_charger_config(wm8350, policy);
 		wm8350_charger_enable(wm8350, 1);
 		break;
 	case WM8350_IRQ_EXT_WALL_FB:
-		printk(KERN_INFO "wm8350-power: AC is now supply\n");
+		printk(KERN_DEBUG "wm8350-power: AC is now supply\n");
 		power->is_usb_supply = 0;
 		_is_fault = false;
 		wm8350_charger_config(wm8350, policy);
@@ -653,16 +653,16 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 		schedule_delayed_work(&_bat_detect, msecs_to_jiffies(1000));
 		break;
 	case WM8350_IRQ_EXT_BAT_FB:
-		printk(KERN_INFO "wm8350-power: Battery is now supply\n");
+		printk(KERN_DEBUG "wm8350-power: Battery is now supply\n");
 		power->is_usb_supply = 0;
 		_is_fault = false;
 		break;
 	case WM8350_IRQ_SYS_HYST_COMP_FAIL:
-		printk(KERN_INFO "wm8350-power : shut down system\n");
+		printk(KERN_DEBUG "wm8350-power : shut down system\n");
 		wm8350_set_bits(wm8350, WM8350_POWER_CHECK_COMPARATOR, WM8350_PCCMP_ERRACT);
 		break;
 	default:
-		printk(KERN_ERR "wm8350-power: irq %d don't care\n", irq);
+		printk(KERN_DEBUG "wm8350-power: irq %d don't care\n", irq);
 	}
 
 	mutex_unlock(&power->charger_mutex);
@@ -686,7 +686,7 @@ static void _wm8350_bat_detect_work(struct work_struct *work)
 
 	/* LED Control */
 	if (vbatt_event && !state) {
-		printk("battery not detect...\n");
+		printk(KERN_DEBUG "battery not detect...\n");
 
 		wm8350_bat_led_status(wm8350, WM8350_BAT_LED_ALL_OFF);
 
@@ -694,7 +694,7 @@ static void _wm8350_bat_detect_work(struct work_struct *work)
 		bat_detect	= WM8350_BAT_EVENT_NOTDETECT;
 	}
 	else {
-		printk("battery detect...\n");
+		printk(KERN_DEBUG "battery detect...\n");
 
 		wm8350_bat_led_status(wm8350, WM8350_BAT_RED_LED);
 
@@ -743,12 +743,12 @@ static void _wm8350_bat_full_work(struct work_struct *work)
 		}
 
 		if (over_39v) {
-			printk(KERN_INFO "battery full charging..\n");
+			printk(KERN_DEBUG "battery full charging..\n");
 
 			wm8350_bat_led_status(wm8350, WM8350_BAT_GREEN_LED);
 			event = WM8350_BAT_EVENT_FULL_CHG;
 		} else {
-			printk(KERN_INFO "battery fault ...\n");
+			printk(KERN_DEBUG "battery fault ...\n");
 
 			_is_fault = true;
 			schedule_delayed_work(&_bat_fault_led, msecs_to_jiffies(0));
@@ -794,7 +794,7 @@ static void _wm8350_bat_fault_work(struct work_struct *work)
 		}
 	}
 
-	printk(KERN_INFO "battery fault ...\n");
+	printk(KERN_DEBUG "battery fault ...\n");
 	schedule_delayed_work(&_bat_fault_led, msecs_to_jiffies(0));
 
 	if (!list_empty(&wm8350_bat_events[event])) {
@@ -867,7 +867,7 @@ static int wm8350_bat_event_subscribe(type_bat_event event,
 
 	/* Check wheter the event & callback are valid? */
 	if (event >= WM8350_BAT_EVENT_NUM) {
-		printk("Invalid Event : %d\n", event);
+		printk(KERN_DEBUG "Invalid Event : %d\n", event);
 		return -EINVAL;
 	}
 
@@ -914,7 +914,7 @@ static int wm8350_bat_event_unsubscribe(type_bat_event event,
 
 	/* Check whether the event & callback are valid? */
 	if (event >= WM8350_BAT_EVENT_NUM) {
-		printk("Invalid Event:%d\n", event);
+		printk(KERN_DEBUG "Invalid Event:%d\n", event);
 		return -EINVAL;
 	}
 
@@ -959,13 +959,13 @@ static void wm8350_bat_event_list_init(void)
 
 static void wm8350_bat_callbackfn(void *event)
 {
-	printk(KERN_INFO "\n\n DETECT WM8350 BAT EVENT : %d\n\n",
+	printk(KERN_DEBUG "\n\n DETECT WM8350 BAT EVENT : %d\n\n",
 			(unsigned int)event);
 }
 
 static void wm8350_bat_user_notify_callback(void *event)
 {
-	printk("user_notify_callback ...\n");
+	printk(KERN_DEBUG "user_notify_callback ...\n");
 
 	CIRC_ADD((int)event, wm8350_event, CIRC_BUF_MAX);
 	kill_fasync(&wm8350_bat_queue, SIGIO, POLL_IN);
@@ -1020,7 +1020,7 @@ static int wm8350_bat_get_status(struct wm8350 *wm8350, unsigned long arg)
 				break;
 
 		default:
-			printk("wm8350 bat : unsupported command 0x%x\n", chg_data.command);
+			printk(KERN_DEBUG "wm8350 bat : unsupported command 0x%x\n", chg_data.command);
 			return 0;
 	}
 
@@ -1192,7 +1192,7 @@ static int wm8350_bat_ioctl(struct inode *inode, struct file *file,
 			break;
 
 		default:
-			printk("wm8350 bat : unsupported ioctl command 0x%x\n", cmd);
+			printk(KERN_DEBUG "wm8350 bat : unsupported ioctl command 0x%x\n", cmd);
 			break;
 	}
 
@@ -1394,7 +1394,7 @@ static int wm8350_fast_charger_mode(struct wm8350 *wm8350)
 	uvolts = wm8350_read_battery_uvolts(wm8350);
 	
 	if (state && (uvolts > 3100000)) {
-		printk(KERN_INFO "Fast Charger Mode [%d uV]....\n", uvolts);
+		printk(KERN_DEBUG "Fast Charger Mode [%d uV]....\n", uvolts);
 		wm8350_reg_unlock(wm8350);
 		wm8350_set_bits(wm8350, WM8350_BATTERY_CHARGER_CONTROL_1,
 			WM8350_CHG_FAST);
@@ -1515,7 +1515,7 @@ static int __init wm8350_power_probe(struct platform_device *pdev)
 
 	struct class_device *wm8350_device;
 
-	printk(KERN_INFO "wm8350: power driver %s\n", WM8350_POWER_VERSION);
+	printk(KERN_DEBUG "wm8350: power driver %s\n", WM8350_POWER_VERSION);
 
 	mutex_init(&power->charger_mutex);
 
@@ -1549,14 +1549,14 @@ static int __init wm8350_power_probe(struct platform_device *pdev)
 	wm8350_bat = platform_get_drvdata(pdev);
 	wm8350_bat_major = register_chrdev(0, DEV_NAME, &wm8350_bat_fos);
 	if (wm8350_bat_major < 0) {
-		printk(KERN_ERR "unable to get a major for wm8350_bat\n");
+		printk(KERN_DEBUG "unable to get a major for wm8350_bat\n");
 		ret = wm8350_bat_major;
 		goto usb_failed;
 	}
 
 	wm8350_dev_class = class_create(THIS_MODULE, DEV_NAME);
 	if (IS_ERR(wm8350_dev_class)) {
-		printk(KERN_ERR "error creating wm8350 dev class\n");
+		printk(KERN_DEBUG "error creating wm8350 dev class\n");
 		ret = -1;
 		goto class_failed;
 	}
@@ -1565,7 +1565,7 @@ static int __init wm8350_power_probe(struct platform_device *pdev)
 		class_device_create(wm8350_dev_class, NULL, MKDEV(wm8350_bat_major, 0),
 				NULL, DEV_NAME);
 	if (IS_ERR(wm8350_device)) {
-		printk(KERN_ERR "error creating wm8350 class device\n");
+		printk(KERN_DEBUG "error creating wm8350 class device\n");
 		ret = -1;
 		goto dev_failed;
 	}
@@ -1581,37 +1581,37 @@ static int __init wm8350_power_probe(struct platform_device *pdev)
 
 	ret = device_create_file(&pdev->dev, &dev_attr_supply_state);
 	if (ret < 0)
-		printk(KERN_WARNING "wm8350: failed to add supply sysfs\n");
+		printk(KERN_DEBUG "wm8350: failed to add supply sysfs\n");
 	ret = device_create_file(&pdev->dev, &dev_attr_battery_state);
 	if (ret < 0)
-		printk(KERN_WARNING "wm8350: failed to add battery sysfs\n");
+		printk(KERN_DEBUG "wm8350: failed to add battery sysfs\n");
 	ret = device_create_file(&pdev->dev, &dev_attr_charger_state);
 	if (ret < 0)
-		printk(KERN_WARNING "wm8350: failed to add charge sysfs\n");
+		printk(KERN_DEBUG "wm8350: failed to add charge sysfs\n");
 	
 	ret = device_create_file(&pdev->dev, &dev_attr_green_led);
 	if (ret <0)
-		printk(KERN_WARNING "wm8350: failed to add green led sysfs\n");
+		printk(KERN_DEBUG "wm8350: failed to add green led sysfs\n");
 
 	ret = device_create_file(&pdev->dev, &dev_attr_red_led);
 	if (ret <0)
-		printk(KERN_WARNING "wm8350: failed to add red led sysfs\n");
+		printk(KERN_DEBUG "wm8350: failed to add red led sysfs\n");
 
 	ret = device_create_file(&pdev->dev, &dev_attr_fault);
 	if (ret <0)
-		printk(KERN_WARNING "wm8350: failed to add temp fault sysfs\n");
+		printk(KERN_DEBUG "wm8350: failed to add temp fault sysfs\n");
 
 	ret = device_create_file(&pdev->dev, &dev_attr_aux2_adc);
 	if (ret <0)
-		printk(KERN_WARNING "wm8350: failed to add aux2 adc sysfs\n");
+		printk(KERN_DEBUG "wm8350: failed to add aux2 adc sysfs\n");
 	ret = device_create_file(&pdev->dev, &dev_attr_aux3_adc);
 	if (ret <0)
-		printk(KERN_WARNING "wm8350: failed to add aux3 adc sysfs\n");
+		printk(KERN_DEBUG "wm8350: failed to add aux3 adc sysfs\n");
 
 	ret = 0;
 
 	if (policy == NULL)
-		printk(KERN_INFO "%s: no charger policy - "
+		printk(KERN_DEBUG "%s: no charger policy - "
 			"charging disabled\n", __func__);
 	else {
 		wm8350_init_charger(wm8350);
@@ -1620,7 +1620,7 @@ static int __init wm8350_power_probe(struct platform_device *pdev)
 			wm8350_fast_charger_mode(wm8350);
 			wm8350_charger_enable(wm8350, 1);
 		if (power->charger_enabled < 0) {
-			printk(KERN_ERR "%s: failed to enable charger\n",
+			printk(KERN_DEBUG "%s: failed to enable charger\n",
 				__func__);
 			free_charger_irq(wm8350);
 		}
