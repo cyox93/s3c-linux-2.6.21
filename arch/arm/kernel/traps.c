@@ -229,10 +229,6 @@ NORET_TYPE void die(const char *str, struct pt_regs *regs, int err)
 	if (panic_on_oops)
 		panic("Fatal exception");
 
-#ifdef CONFIG_MACH_CANOPUS
-	arch_reset((char) 1);
-#endif
-	
 	do_exit(SIGSEGV);
 }
 
