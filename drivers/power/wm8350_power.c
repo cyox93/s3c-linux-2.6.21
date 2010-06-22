@@ -687,7 +687,7 @@ static void _wm8350_bat_detect_work(struct work_struct *work)
 
 	/* LED Control */
 	if (vbatt_event && !state) {
-		printk(KERN_DEBUG "battery not detect...\n");
+		printk(KERN_DEBUG "%s battery not detect...\n", __func__);
 
 		wm8350_bat_led_status(wm8350, WM8350_BAT_LED_ALL_OFF);
 
@@ -695,7 +695,7 @@ static void _wm8350_bat_detect_work(struct work_struct *work)
 		bat_detect	= WM8350_BAT_EVENT_NOTDETECT;
 	}
 	else {
-		printk(KERN_DEBUG "battery detect...\n");
+		printk(KERN_DEBUG "%s battery detect...\n", __func__);
 
 		wm8350_bat_led_status(wm8350, WM8350_BAT_RED_LED);
 
@@ -734,22 +734,23 @@ static void _wm8350_bat_full_work(struct work_struct *work)
 	if (line && (batt == POWER_SUPPLY_STATUS_DISCHARGING) &&
 				(bat_detect == WM8350_BAT_EVENT_DETECT)) {
 		bool over_39v = false;
+		int vol;
 
 		if (q_hw_ver(7800_ES1) || q_hw_ver(7800_ES2)) {
-			if (wm8350_read_battery_uvolts(wm8350) > 3900000)
+			if ((vol = wm8350_read_battery_uvolts(wm8350)) > 3900000)
 				over_39v = true;
 		} else {
-			if (wm8350_read_aux2_adc(wm8350) > 0x77d)
+			if ((vol = wm8350_read_aux2_adc(wm8350)) > 0x77d)
 				over_39v = true;
 		}
 
 		if (over_39v) {
-			printk(KERN_DEBUG "battery full charging..\n");
+			printk(KERN_DEBUG "%s battery full charging..[0x%x]\n", __func__, vol);
 
 			wm8350_bat_led_status(wm8350, WM8350_BAT_GREEN_LED);
 			event = WM8350_BAT_EVENT_FULL_CHG;
 		} else {
-			printk(KERN_DEBUG "battery fault ...\n");
+			printk(KERN_DEBUG "%s battery fault ...[0x%x]\n", __func__, vol);
 
 			_is_fault = true;
 			schedule_delayed_work(&_bat_fault_led, msecs_to_jiffies(0));
@@ -771,6 +772,7 @@ static void _wm8350_bat_fault_work(struct work_struct *work)
 	struct list_head *p;
 	struct wm8350 *wm8350 = wm8350_bat;
 	wm8350_bat_event_callback_list_t *temp = NULL;
+	int vol = 0;
 
 	event = WM8350_BAT_EVENT_FAULT;
 	_is_fault = true;
@@ -781,10 +783,10 @@ static void _wm8350_bat_fault_work(struct work_struct *work)
 
 
 		if (q_hw_ver(7800_ES1) || q_hw_ver(7800_ES2)) {
-			if (wm8350_read_battery_uvolts(wm8350) > 3900000)
+			if ((vol = wm8350_read_battery_uvolts(wm8350)) > 3900000)
 				over_39v = true;
 		} else {
-			if (wm8350_read_aux2_adc(wm8350) > 0x77d)
+			if ((vol = wm8350_read_aux2_adc(wm8350)) > 0x77d)
 				over_39v = true;
 		}
 
@@ -795,7 +797,7 @@ static void _wm8350_bat_fault_work(struct work_struct *work)
 		}
 	}
 
-	printk(KERN_DEBUG "battery fault ...\n");
+	printk(KERN_DEBUG "%s battery fault ...[0x%x]\n", __func__, vol);
 	schedule_delayed_work(&_bat_fault_led, msecs_to_jiffies(0));
 
 	if (!list_empty(&wm8350_bat_events[event])) {
