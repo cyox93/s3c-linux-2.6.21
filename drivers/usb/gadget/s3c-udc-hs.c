@@ -2055,7 +2055,7 @@ s3c_udc_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	struct s3c_udc *dev = platform_get_drvdata(pdev);
 
-	printk("usb device suspend\n");
+	printk(KERN_INFO "usb device suspend\n");
 	udc_disable(dev);
 	clk_disable(udc_clock);
 
@@ -2067,7 +2067,7 @@ s3c_udc_resume(struct platform_device *pdev)
 {
 	struct s3c_udc *dev = platform_get_drvdata(pdev);
 
-	printk("usb device resume\n");
+	printk(KERN_INFO "usb device resume\n");
 	clk_enable(udc_clock);
 	udc_enable(dev);
 

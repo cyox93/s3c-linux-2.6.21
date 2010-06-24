@@ -734,7 +734,7 @@ int __init add_preferred_console(char *name, int idx, char *options)
  */
 void suspend_console(void)
 {
-	printk("Suspending console(s)\n");
+	printk(KERN_INFO "Suspending console(s)\n");
 	acquire_console_sem();
 	console_suspended = 1;
 	up(&console_sem);

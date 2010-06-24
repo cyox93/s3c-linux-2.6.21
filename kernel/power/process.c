@@ -186,7 +186,7 @@ int freeze_processes(void)
 {
 	unsigned int nr_unfrozen;
 
-	printk("Stopping tasks ... ");
+	printk(KERN_INFO "Stopping tasks ... ");
 	nr_unfrozen = try_to_freeze_tasks(FREEZER_USER_SPACE);
 	if (nr_unfrozen)
 		return nr_unfrozen;
@@ -196,7 +196,7 @@ int freeze_processes(void)
 	if (nr_unfrozen)
 		return nr_unfrozen;
 
-	printk("done.\n");
+	printk(KERN_INFO "done.\n");
 	BUG_ON(in_atomic());
 	return 0;
 }
@@ -222,11 +222,11 @@ static void thaw_tasks(int thaw_user_space)
 
 void thaw_processes(void)
 {
-	printk("Restarting tasks ... ");
+	printk(KERN_INFO "Restarting tasks ... ");
 	thaw_tasks(FREEZER_KERNEL_THREADS);
 	thaw_tasks(FREEZER_USER_SPACE);
 	schedule();
-	printk("done.\n");
+	printk(KERN_INFO "done.\n");
 }
 
 EXPORT_SYMBOL(refrigerator);
