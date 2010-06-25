@@ -168,11 +168,15 @@ void linkwatch_fire_event(struct net_device *dev)
 		spin_unlock_irqrestore(&lweventlist_lock, flags);
 
 		if (!test_and_set_bit(LW_RUNNING, &linkwatch_flags)) {
+#ifdef CONFIG_MACH_CANOPUS
+			unsigned long delay = 0;
+#else 
 			unsigned long delay = linkwatch_nextevent - jiffies;
 
 			/* If we wrap around we'll delay it by at most HZ. */
 			if (delay > HZ)
 				delay = 0;
+#endif
 			schedule_delayed_work(&linkwatch_work, delay);
 		}
 	}
