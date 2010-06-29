@@ -1088,5 +1088,11 @@ config TELCLOCK
 	  /sys/devices/platform/telco_clock, with a number of files for
 	  controlling the behavior of this hardware.
 
+config PIR
+	tristate "PIR Device config"
+	default y
+	help
+	  Motion detection sensor for canopus
+
 endmenu
 

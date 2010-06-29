@@ -812,6 +812,7 @@ CONFIG_HW_RANDOM=y
 # TPM devices
 #
 # CONFIG_TCG_TPM is not set
+CONFIG_PIR=y
 
 #
 # I2C support
