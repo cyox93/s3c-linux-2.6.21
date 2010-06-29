@@ -83,6 +83,12 @@ static struct s3c24xx_led_platdata smdk_pdata_led_key_bl = {
 	.name		= "key-backlight",
 };
 
+static struct s3c24xx_led_platdata smdk_pdata_led_pir = {
+	.gpio		= S3C2410_GPB0,
+	.flags		= 0,
+	.name		= "pir_status_led",
+};
+
 static struct platform_device smdk_led4 = {
 	.name		= "s3c24xx_led",
 	.id		= 0,
@@ -122,6 +128,15 @@ static struct platform_device smdk_led_key_bl = {
 		.platform_data = &smdk_pdata_led_key_bl,
 	},
 };
+
+static struct platform_device smdk_led_pir = {
+	.name		= "s3c24xx_led",
+	.id		= 5,
+	.dev		= {
+		.platform_data = &smdk_pdata_led_pir,
+	},
+};
+
 
 /* NAND parititon from 2.4.18-swl5 */
 
@@ -292,6 +307,12 @@ static struct platform_device __initdata *smdk_devs[] = {
 	&smdk_led_key_bl,
 #endif	// CONFIG_MACH_CANOPUS
 };
+
+#ifdef CONFIG_MACH_CANOPUS
+static struct platform_device __initdata *kt_devs[] = {
+    &smdk_led_pir,
+};
+#endif	// CONFIG_MACH_CANOPUS
 
 #ifdef CONFIG_MACH_CANOPUS
 #include <asm/arch/regs-lcd.h>
@@ -609,6 +630,9 @@ void __init smdk_machine_init(void)
 	s3c_device_nand.dev.platform_data = &nand_mtd_info;
 
 	platform_add_devices(smdk_devs, ARRAY_SIZE(smdk_devs));
+
+	if (q_hw_ver(KTQOOK))
+		platform_add_devices(kt_devs, ARRAY_SIZE(kt_devs));
 
 	s3c2410_pm_init();
 
