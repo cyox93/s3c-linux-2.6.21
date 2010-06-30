@@ -87,6 +87,7 @@ static struct s3c24xx_led_platdata smdk_pdata_led_pir = {
 	.gpio		= S3C2410_GPB0,
 	.flags		= 0,
 	.name		= "pir_status_led",
+	.name		= "monitor-indicator",
 };
 
 static struct platform_device smdk_led4 = {
