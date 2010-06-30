@@ -424,8 +424,10 @@ void wifi_gpio_init (void)
 		s3c2410_gpio_cfgpin(S3C2410_GPF7, S3C2410_GPF7_OUTP);
 
 		// wifi LDO enable
-		s3c2410_gpio_setpin(S3C2410_GPF5, 0);
-		s3c2410_gpio_cfgpin(S3C2410_GPF5, S3C2410_GPF5_OUTP);
+		if (q_hw_ver(SKBB)) {
+			s3c2410_gpio_setpin(S3C2410_GPF5, 0);
+			s3c2410_gpio_cfgpin(S3C2410_GPF5, S3C2410_GPF5_OUTP);
+		}
 	}
 
 	s3c2410_gpio_cfgpin(S3C2410_GPL0, S3C2410_GPL0_SD0_DAT0);
@@ -592,7 +594,13 @@ void canopus_gpio_init(void)
 
 	// KeyPAD 	
 	Key_gpio_init();
-	
+
+	if (q_hw_ver(KTQOOK)) {
+		// phone direction
+		s3c2410_gpio_pullup(S3C2410_GPF5, 0);
+		s3c2410_gpio_setpin(S3C2410_GPF5, 0);
+		s3c2410_gpio_cfgpin(S3C2410_GPF5, S3C2410_GPD15_INP);
+	}
 }
 
 int q_boot_flag_get(void)

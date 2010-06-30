@@ -20,6 +20,7 @@
 
 #include <asm/io.h>
 #include <asm/arch/regs-s3c2416-clock.h>
+#include <asm/arch/regs-gpio.h>
 
 #include <linux/mfd/wm8350/supply.h>
 #include <linux/mfd/wm8350/core.h>
@@ -79,6 +80,7 @@ typedef struct {
 #define WM8350_BAT_LED_CONTROL		_IOWR('P', 0xab, int)
 #define WM8350_REG_READ			_IOWR('P', 0xac, wm8350_reg_info*)
 #define WM8350_REG_WRITE		_IOWR('P', 0xad, wm8350_reg_info*)
+#define WM8350_PHONE_DIR		_IOR('P', 0xaf, int)
 
 #define CHG_MODE_STATUS		0x3000
 
@@ -1196,6 +1198,13 @@ static int wm8350_bat_ioctl(struct inode *inode, struct file *file,
 				return -EFAULT;
 			}
 
+			break;
+
+		case WM8350_PHONE_DIR:
+			online = s3c2410_gpio_getpin(S3C2410_GPF5) ? 1 : 0;
+			if (copy_to_user((int *) arg, &online, sizeof(int))) {
+				return -EFAULT;
+			}
 			break;
 
 		default:
