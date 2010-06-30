@@ -1,3 +1,22 @@
+/*-----------------------------------------------------------------------------
+ * FILE NAME : canopus_pir.c
+ * 
+ * PURPOSE : Motion detection sensor for Canopus K5
+ * 
+ * Copyright 1999 - 2010 UniData Communication Systems, Inc.
+ * All right reserved. 
+ * 
+ * The code contained herein is licensed under the GNU General Public
+ * License. You may obtain a copy of the GNU General Public License
+ * Version 2 or later at the following locations:
+ *
+ * http://www.opensource.org/licenses/gpl-license.html
+ * http://www.gnu.org/copyleft/gpl.html
+ *
+ * NOTES: N/A
+ *---------------------------------------------------------------------------*/
+
+/*_____________________ Include Header ______________________________________*/
 #include <linux/slab.h>
 #include <linux/input.h>
 #include <linux/interrupt.h>
@@ -30,44 +49,27 @@
 #include <asm/arch/regs-gpio.h>
 #include <asm/arch/regs-irq.h>
 
-#if 0
-#include "dev_int.h"
-#endif
+/*_____________________ Constants Definitions _______________________________*/
+#define DRVNAME				"canopus-pir"
+#define DEV_NAME			"pir"
 
-#define DRVNAME 			"canopus-pir"
+#define PIR_IOCTL_S_ENABLE		_IOW ('Q', 0x80, int)
 
-#define DEV_NAME 			 "pir"
-#define DEV_VERSION DEV_NAME "v0.1"
-#define CIRC_BUF_MAX		16	
-#define PIR_ON 				0x0001
-#define PIR_OFF 			0x0002
-#define PIR_NOTIFY_USER 	0x0004
+/*_____________________ Type definitions ____________________________________*/
 
+/*_____________________ Imported Variables __________________________________*/
 
-/* struct define */
-typedef struct {
-	void (*func) (void *);
-	void *param;
-} pir_event_callback_t;
+/*_____________________ Variables Definitions _______________________________*/
 
-typedef struct {
-	// keeps a list of subsecibed clients to an event
-	struct list_head list;
-
-	// Callback function with parameter, called whend event occurs
-	pir_event_callback_t callback;
-} pir_event_callback_list_t;
-
+/*_____________________ Local Declarations __________________________________*/
 static struct fasync_struct *_pir_queue;
-static struct circ_buf _pir_event;
 static struct platform_device *_pdev;
 static int _pir_major;
 static struct class *_pir_dev_class;
 static struct work_struct _pir_work;
 static int _is_enabled = false;
 
-static DECLARE_MUTEX(event_mutex);
-
+/*_____________________ Program Body ________________________________________*/
 static void
 _pir_irq_work(struct work_struct *work)
 {
@@ -85,42 +87,36 @@ static int
 canopus_pir_ioctl(struct inode *inode, struct file *file,
 				unsigned int cmd, unsigned long arg)
 {
+	int enable;
+
 	switch(cmd){
-		case PIR_ON:
-		{
-			if (!_is_enabled) {
-				enable_irq(IRQ_EINT2);
-				_is_enabled = true;
-			}
-			return 1;
+	case PIR_IOCTL_S_ENABLE:
+		if (get_user(enable, (int __user *)arg))
+			return -EFAULT;
+
+		enable = (enable) ? true : false;
+
+		if (enable != _is_enabled) {
+			if (enable) enable_irq(IRQ_EINT2);
+			else disable_irq(IRQ_EINT2);
+
+			_is_enabled = enable;
 		}
-		case PIR_OFF:
-		{
-			if (_is_enabled) {
-				disable_irq(IRQ_EINT2);
-				_is_enabled = false;
-			}
-			return 1;
-		}
-		case PIR_NOTIFY_USER:
-		{
-			return 1;
-		}
-		default:
-			printk(KERN_ERR "PIR DEVICE DRIVER: No pir Device driver Command defined\n");
-			return -ENXIO;
+
+		return 0;
+	default:
+		printk(KERN_ERR "PIR DEVICE DRIVER: No pir Device driver Command defined\n");
+		return -ENXIO;
 	}
 
 	return 0;
 }
-	
 
 static int
 canopus_pir_open(struct inode *inode, struct file *file)
 {
 	return 0;
 }
-
 
 /* about fasycn funtions */
 static int
@@ -150,6 +146,10 @@ canopus_pir_probe(struct platform_device *pdev)
 	struct class_device *pir_device;
 
 	_pir_major = register_chrdev(0, DEV_NAME, &canopus_pir_fos);
+	if (_pir_major < 0) {
+		printk(KERN_ERR "unable to get a major for canopus pir\n");
+		return _pir_major;
+	}
 
 	_pir_dev_class = class_create(THIS_MODULE, DEV_NAME);
 	if (IS_ERR(_pir_dev_class)) {
@@ -157,11 +157,11 @@ canopus_pir_probe(struct platform_device *pdev)
 		return -1;
 	}
 
-	pir_device = 
-		class_device_create(_pir_dev_class, NULL, MKDEV(_pir_major, 0),
-				NULL, DEV_NAME);
+	pir_device = class_device_create(_pir_dev_class,
+			NULL, MKDEV(_pir_major, 0), NULL, DEV_NAME);
 	if (IS_ERR(pir_device)) {
 		printk( "error creating pir class device\n");
+		class_destroy(_pir_dev_class);
 		return -1;
 	}
 
@@ -180,7 +180,11 @@ canopus_pir_probe(struct platform_device *pdev)
 static int
 canopus_pir_remove(struct device *dev)
 {
+	class_device_destroy(_pir_dev_class, MKDEV(_pir_major, 0));
+	class_destroy(_pir_dev_class);
+
 	unregister_chrdev(_pir_major, DEV_NAME);
+
 	return 0;
 }
 
@@ -198,7 +202,6 @@ platform_driver canopus_pir_driver = {
 		.name	= DRVNAME,
 	},
 };
-
 
 int 
 __init canopus_pir_init(void)
@@ -232,11 +235,11 @@ __exit canopus_pir_exit(void)
 	platform_device_unregister(_pdev);
 }
 
+/*_____________________ Linux Macro _________________________________________*/
 module_init(canopus_pir_init);
 module_exit(canopus_pir_exit);
 
 MODULE_AUTHOR("yongsuk@udcsystems.com");
-MODULE_DESCRIPTION( "DIR senser driver");
+MODULE_DESCRIPTION( "PIR senser driver");
 MODULE_LICENSE( "GPL");
-
 
