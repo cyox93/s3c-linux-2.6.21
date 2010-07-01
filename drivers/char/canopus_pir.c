@@ -58,6 +58,7 @@
 /*_____________________ Type definitions ____________________________________*/
 
 /*_____________________ Imported Variables __________________________________*/
+extern void q_wm8350_notify_pir_event(void);
 
 /*_____________________ Variables Definitions _______________________________*/
 
@@ -73,7 +74,8 @@ static int _is_enabled = false;
 static void
 _pir_irq_work(struct work_struct *work)
 {
-	kill_fasync(&_pir_queue, SIGIO, POLL_IN);
+	if (_is_enabled)
+		q_wm8350_notify_pir_event();
 }
 
 static irqreturn_t

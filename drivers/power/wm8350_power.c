@@ -95,6 +95,7 @@ typedef enum {
 	WM8350_BAT_EVENT_NOTDETECT,
 	WM8350_BAT_EVENT_FULL_CHG,
 	WM8350_BAT_EVENT_FAULT,
+	WM8350_BAT_EVENT_PIR,		/*!< \note temporary code for K5 canopus pir sensor */
 	WM8350_BAT_EVENT_NUM,
 } type_bat_event;
 
@@ -1516,6 +1517,12 @@ void wm8350_power_off(void)
 		val |= (1<<15);
 		wm8350_reg_write(_wm8350, 0x5, val);
 	}
+}
+
+void
+q_wm8350_notify_pir_event(void)
+{
+	wm8350_bat_user_notify_callback((void *)WM8350_BAT_EVENT_PIR);
 }
 #endif
 
