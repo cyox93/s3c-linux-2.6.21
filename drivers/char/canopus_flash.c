@@ -91,7 +91,7 @@ canopus_flash_ioctl(struct inode *inode, struct file *file,
 			enable = (enable) ? true : false;
 
 			if (enable != _is_enabled){
-					if (enable) set_brightness(80);
+					if (enable) set_brightness(10);
 					else set_brightness(0);
 
 					_is_enabled = enable;
