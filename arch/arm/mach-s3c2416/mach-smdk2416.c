@@ -679,10 +679,11 @@ int wm8350_dev_init(struct wm8350 *wm8350)
 	s3c2410_gpio_cfgpin(S3C2410_GPF1, S3C2410_GPF1_EINT1);
 //	set_irq_type(IRQ_EINT1, IRQT_BOTHEDGE);
 
-	/* Shutdown threshold value */
+	/* Shutdown threshold value 3.1v off , 3.2v on */
 	wm8350_reg_unlock(wm8350);
-	data = wm8350_reg_read(wm8350, WM8350_POWER_CHECK_COMPARATOR) & ~(WM8350_PCCMP_OFF_THR_MASK);
-	wm8350_reg_write(wm8350, WM8350_POWER_CHECK_COMPARATOR, data | 0x30);
+	data = wm8350_reg_read(wm8350, WM8350_POWER_CHECK_COMPARATOR)
+		& ~(WM8350_PCCMP_OFF_THR_MASK | WM8350_PCCMP_ON_THR_MASK);
+	wm8350_reg_write(wm8350, WM8350_POWER_CHECK_COMPARATOR, data | 0x23);
 	wm8350_reg_lock(wm8350);
 
 	data = wm8350_reg_read(wm8350, WM8350_DIGITISER_CONTROL_2);
