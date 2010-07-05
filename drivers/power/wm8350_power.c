@@ -156,11 +156,13 @@ static void _wm8350_bat_full_work(struct work_struct *work);
 static void _wm8350_bat_fault_work(struct work_struct *work);
 static void _wm8350_bat_timeout_work(struct work_struct *work);
 static void _wm8350_bat_fault_led_work(struct work_struct *work);
+static void _wm8350_bat_recheck_detect_work(struct work_struct *work);
 
 DECLARE_DELAYED_WORK(_bat_timeout, _wm8350_bat_timeout_work);
 DECLARE_DELAYED_WORK(_bat_full, _wm8350_bat_full_work);
 DECLARE_DELAYED_WORK(_bat_fault, _wm8350_bat_fault_work);
 DECLARE_DELAYED_WORK(_bat_detect, _wm8350_bat_detect_work);
+DECLARE_DELAYED_WORK(_bat_recheck_detect, _wm8350_bat_recheck_detect_work);
 DECLARE_DELAYED_WORK(_bat_fault_led, _wm8350_bat_fault_led_work);
 
 static int wm8350_bat_green_led_show(struct device *dev, struct device_attribute *attr, 
@@ -650,6 +652,7 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 
 		cancel_delayed_work(&_bat_fault);
 		cancel_delayed_work(&_bat_detect);
+		cancel_delayed_work(&_bat_recheck_detect);
 		cancel_delayed_work(&_bat_full);
 		cancel_delayed_work(&_bat_timeout);
 		cancel_delayed_work(&_bat_fault_led);
@@ -696,6 +699,9 @@ static void _wm8350_bat_detect_work(struct work_struct *work)
 
 		event		= WM8350_BAT_EVENT_NOTDETECT;
 		bat_detect	= WM8350_BAT_EVENT_NOTDETECT;
+
+		cancel_delayed_work(&_bat_recheck_detect);
+		schedule_delayed_work(&_bat_recheck_detect, msecs_to_jiffies(3000));
 	}
 	else {
 		printk(KERN_DEBUG "%s battery detect...\n", __func__);
@@ -720,6 +726,31 @@ static void _wm8350_bat_detect_work(struct work_struct *work)
 			temp = list_entry(p, wm8350_bat_event_callback_list_t, list);
 			temp->callback.func(temp->callback.param);
 		}
+	}
+}
+
+static void _wm8350_bat_recheck_detect_work(struct work_struct *work)
+{
+	int event = 0;
+	int state, uvolt;
+	struct list_head *p; struct wm8350 *wm8350 = wm8350_bat;
+	wm8350_bat_event_callback_list_t *temp = NULL;
+
+	state = wm8350_get_supplies(wm8350) & WM8350_LINE_SUPPLY;
+	uvolt = wm8350_read_battery_uvolts(wm8350);
+
+	/* LED Control */
+	if (!state) {
+		printk( "%s battery not detect...\n", __func__);
+	} else {
+		printk( "%s battery detect...\n", __func__);
+		struct wm8350_power *power = &wm8350->power;
+		struct wm8350_charger_policy *policy = power->policy;
+
+		wm8350_charger_config(wm8350, policy);
+		wm8350_charger_enable(wm8350, 1);
+
+		schedule_delayed_work(&_bat_detect, msecs_to_jiffies(500));
 	}
 }
 
@@ -1703,6 +1734,7 @@ static int __devexit wm8350_power_remove(struct platform_device *pdev)
 	cancel_delayed_work(&_bat_fault);
 	cancel_delayed_work(&_bat_full);
 	cancel_delayed_work(&_bat_detect);
+	cancel_delayed_work(&_bat_recheck_detect);
 	cancel_delayed_work(&_bat_timeout);
 	cancel_delayed_work(&_bat_fault_led);
 
