@@ -69,6 +69,13 @@ config LEDS_S3C24XX
 	  This option enables support for LEDs connected to GPIO lines
 	  on Samsung S3C24XX series CPUs, such as the S3C2410 and S3C2440.
 
+config LEDS_S3C_PWM
+	tristate "LED Support for Samsung S3C24XX PWM LEDs"
+	depends on LEDS_CLASS && ARCH_S3C2410
+	help
+	  This option enables support for LEDs connected to PWM lines
+	  on Samsung S3C24XX series CPUs, such as the S3C2410 and S3C2440.
+
 config LEDS_AMS_DELTA
 	tristate "LED Support for the Amstrad Delta (E3)"
 	depends on LEDS_CLASS && MACH_AMS_DELTA
