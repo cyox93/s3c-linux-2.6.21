@@ -36,6 +36,7 @@
 
 #include <asm/arch/regs-gpio.h>
 #include <asm/arch/leds-gpio.h>
+#include <asm/arch/leds-pwm.h>
 #include <asm/arch/regs-irq.h>
 
 #include <asm/arch/nand.h>
@@ -137,6 +138,22 @@ static struct platform_device smdk_led_pir = {
 	},
 };
 
+#ifdef CONFIG_MACH_CANOPUS
+static struct s3c_pwm_led_platdata smdk_pdata_led_cam_flash = {
+	.timer		= 1,
+	.brightness	= 0,
+	.invert		= 0,
+	.name		= "camera-flash",
+};
+
+static struct platform_device smdk_led_cam_flash = {
+	.name		= "s3c_pwm_led",
+	.id		= 6,
+	.dev		= {
+		.platform_data = &smdk_pdata_led_cam_flash,
+	},
+};
+#endif	// CONFIG_MACH_CANOPUS
 
 /* NAND parititon from 2.4.18-swl5 */
 
@@ -311,6 +328,7 @@ static struct platform_device __initdata *smdk_devs[] = {
 #ifdef CONFIG_MACH_CANOPUS
 static struct platform_device __initdata *kt_devs[] = {
     &smdk_led_pir,
+    &smdk_led_cam_flash,
 };
 #endif	// CONFIG_MACH_CANOPUS
 

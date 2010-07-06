@@ -809,16 +809,7 @@ CONFIG_HW_RANDOM=y
 # TPM devices
 #
 # CONFIG_TCG_TPM is not set
-
-#
-# PIR device
-#
 CONFIG_PIR=y
-
-#
-# FLASH device
-#
-CONFIG_FLASH=y
 
 #
 # I2C support
@@ -901,6 +892,7 @@ CONFIG_LEDS_CLASS=y
 #
 # CONFIG_LEDS_WM8350 is not set
 CONFIG_LEDS_S3C24XX=y
+CONFIG_LEDS_S3C_PWM=y
 
 #
 # LED Triggers

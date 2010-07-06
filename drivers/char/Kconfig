@@ -1094,11 +1094,5 @@ config PIR
 	help
 	  Motion detection sensor for canopus
 
-config FLASH 
-	tristate "FLASH Device config"
-	default y
-	help
- 	 Camera Flash control for canopus
-
 endmenu
 
