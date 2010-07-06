@@ -27,6 +27,9 @@
 struct timer_trig_data {
 	unsigned long delay_on;		/* milliseconds on */
 	unsigned long delay_off;	/* milliseconds off */
+#ifdef CONFIG_MACH_CANOPUS
+	int brightness;			/* original brightness */
+#endif	// CONFIG_MACH_CANOPUS
 	struct timer_list timer;
 };
 
@@ -43,7 +46,15 @@ static void led_timer_function(unsigned long data)
 	}
 
 	if (!led_cdev->brightness) {
+#ifndef CONFIG_MACH_CANOPUS
 		brightness = LED_FULL;
+#else	// CONFIG_MACH_CANOPUS
+		if (!timer_data->brightness)
+			brightness = LED_FULL;
+		else
+			brightness = timer_data->brightness;
+#endif	// CONFIG_MACH_CANOPUS
+
 		delay = timer_data->delay_on;
 	}
 
@@ -132,6 +143,9 @@ static void timer_trig_activate(struct led_classdev *led_cdev)
 
 	led_cdev->trigger_data = timer_data;
 
+#ifdef CONFIG_MACH_CANOPUS
+	timer_data->brightness = led_cdev->brightness;
+#endif	// CONFIG_MACH_CANOPUS
 	init_timer(&timer_data->timer);
 	timer_data->timer.function = led_timer_function;
 	timer_data->timer.data = (unsigned long) led_cdev;
