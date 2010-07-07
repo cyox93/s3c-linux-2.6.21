@@ -523,13 +523,15 @@ void lcd_gpio_init(void)
 		s3c2410_gpio_cfgpin(S3C2410_GPG6, S3C2410_GPG6_OUTP);
 	}
 
-	// set lcd interface
-	val = __raw_readl(S3C2410_GPCCON) & 0x0fcc0;
-	__raw_writel(val | 0xaaaa033a, S3C2410_GPCCON);
+	if (!q_hw_ver(KTQOOK_TP)) {
+		// set lcd interface
+		val = __raw_readl(S3C2410_GPCCON) & 0x0fcc0;
+		__raw_writel(val | 0xaaaa033a, S3C2410_GPCCON);
 
-	// set lcd interface
-	val = __raw_readl(S3C2410_GPDCON) & ~(0x003fffff);
-	__raw_writel(val | 0x002aaaaa, S3C2410_GPDCON);
+		// set lcd interface
+		val = __raw_readl(S3C2410_GPDCON) & ~(0x003fffff);
+		__raw_writel(val | 0x002aaaaa, S3C2410_GPDCON);
+	}
 }
 
 void speaker_amp(bool flag)
@@ -614,9 +616,15 @@ void canopus_gpio_init(void)
 
 	if (q_hw_ver(KTQOOK)) {
 		// phone direction
-		s3c2410_gpio_pullup(S3C2410_GPF5, 0);
-		s3c2410_gpio_setpin(S3C2410_GPF5, 0);
-		s3c2410_gpio_cfgpin(S3C2410_GPF5, S3C2410_GPD15_INP);
+		if (!q_hw_ver(KTQOOK_TP)) {
+			s3c2410_gpio_pullup(S3C2410_GPF5, 0);
+			s3c2410_gpio_setpin(S3C2410_GPF5, 0);
+			s3c2410_gpio_cfgpin(S3C2410_GPF5, S3C2410_GPF5_INP);
+		} else {
+			s3c2410_gpio_pullup(S3C2410_GPE6, 0);
+			s3c2410_gpio_setpin(S3C2410_GPE6, 0);
+			s3c2410_gpio_cfgpin(S3C2410_GPE6, S3C2410_GPE6_INP);
+		}
 	}
 }
 

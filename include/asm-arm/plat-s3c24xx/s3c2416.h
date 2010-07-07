@@ -44,6 +44,7 @@ extern  int s3c2443_baseclk_add(void);
 #define q_hw_ver_is_SKBB_PP()	( (q_hw_version() == 0x9) ? 1 : 0 )
 
 #define q_hw_ver_is_KTQOOK()	( !q_hw_ver_is_7800() && (q_hw_version() & 0x4) )
+#define q_hw_ver_is_KTQOOK_TP()	( (q_hw_version() == 0xd) ? 1 : 0 )
 
 extern int q_hw_version(void);
 
