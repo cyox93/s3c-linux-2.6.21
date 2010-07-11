@@ -690,12 +690,6 @@ static struct clk init_clocks_disable[] = {
 		.enable  	= s3c2443_clkcon_enable_h,
 		.ctrlbit 	= S3C2443_HCLKCON_2D,
 	},{
-		.name    	= "ssmc",
-		.id	   	= -1,
-		.parent  	= &clk_h,
-		.enable  	= s3c2443_clkcon_enable_h,
-		.ctrlbit 	= S3C2443_HCLKCON_SSMC,
-	},{
 		.name    	= "hsmmc0",
 		.id	   	= -1,
 		.parent  	= &clk_h,
@@ -749,15 +743,27 @@ static struct clk init_clocks_disable[] = {
 		.parent		= &clk_p,
 		.enable		= s3c2443_clkcon_enable_p,
 		.ctrlbit	= S3C2443_PCLKCON_UART3,
+#endif	// CONFIG_MACH_CANOPUS
+	}
+};
+
+#ifdef CONFIG_MACH_CANOPUS
+static struct clk init_clocks_disable_wpu7800[] = {
+	{
+		.name    	= "ssmc",
+		.id	   	= -1,
+		.parent  	= &clk_h,
+		.enable  	= s3c2443_clkcon_enable_h,
+		.ctrlbit 	= S3C2443_HCLKCON_SSMC,
 	},{
 		.name    	= "ssmcclk",
 		.id	   	= -1,
 		.parent		= &clk_esysclk,
 		.enable  	= s3c2443_clkcon_enable_s,
 		.ctrlbit 	= S3C2443_SCLKCON_SSMCCLK,
-#endif	// CONFIG_MACH_CANOPUS
 	}
 };
+#endif	// CONFIG_MACH_CANOPUS
 
 static struct clk init_clocks[] = {
 	{
@@ -1117,4 +1123,29 @@ void __init s3c2416_init_clocks(int xtal)
 
 		(clkp->enable)(clkp, 0);
 	}
+
 }
+
+#ifdef CONFIG_MACH_CANOPUS
+void
+q_s3c2416_init_clocks(void)
+{
+	struct clk *clkp;
+	int ret;
+	int ptr;
+
+	if (!q_hw_ver(KTQOOK_TP)) {
+		clkp = init_clocks_disable_wpu7800;
+		for (ptr = 0; ptr < ARRAY_SIZE(init_clocks_disable_wpu7800); ptr++, clkp++) {
+
+			ret = s3c24xx_register_clock(clkp);
+			if (ret < 0) {
+				printk(KERN_ERR "Failed to register clock %s (%d)\n",
+				       clkp->name, ret);
+			}
+
+			(clkp->enable)(clkp, 0);
+		}
+	}
+}
+#endif	// CONFIG_MACH_CANOPUS

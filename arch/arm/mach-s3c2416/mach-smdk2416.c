@@ -697,9 +697,11 @@ static int s3c_register_wm8350(void)
 
 static void __init smdk2416_machine_init(void)
 {
+#ifndef CONFIG_MACH_CANOPUS
 	/* SROM init for NFS */
 	//smdk2416_cs89x0_set();
 	smdk2416_smc911x_set();
+#endif	// CONFIG_MACH_CANOPUS
 
 	smdk_machine_init();
 

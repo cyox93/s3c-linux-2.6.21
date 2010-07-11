@@ -13,11 +13,16 @@
 #include <linux/ioctl.h>
 #include <linux/clk.h>
 #include <linux/platform_device.h>
+#include <linux/interrupt.h>
 
 #include <asm/io.h>
 #include <asm/uaccess.h>
+#include <asm/dma.h>
+
+#include <asm/irq.h>
 
 #include <asm/mach/map.h>
+#include <asm/arch/dma.h>
 #include <asm/arch/regs-lcd.h>
 #include <asm/arch/regs-gpio.h>
 #include <asm/arch/regs-timer.h>
@@ -835,7 +840,6 @@ int s3c_fb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 	if( !fbi->map_cpu_f1)
 		return -ENOMEM;
 
-
 //#if !defined(CONFIG_FB_VIRTUAL_SCREEN) && defined(CONFIG_FB_DOUBLE_BUFFERING)
 #if  defined(CONFIG_FB_DOUBLE_BUFFERING)
 	#if defined(CONFIG_CPU_S3C2443) ||  defined(CONFIG_CPU_S3C2450) || defined(CONFIG_CPU_S3C2416)
@@ -910,10 +914,7 @@ int s3c_fb_init_registers(struct s3c_fb_info *fbi)
 
 		__raw_writel(0x7, S3C_SYSIFCON0);
 
-		if (q_boot_flag_get() != Q_BOOT_FLAG_LCD_INIT)
-			lcd_module_init();
-		else
-			q_boot_flag_set(Q_BOOT_FLAG_CLEAR);
+		lcd_module_init();
  	}
 
         /* For buffer start address */
@@ -1526,17 +1527,47 @@ int s3c_fb_set_out_path(struct s3c_fb_info *fbi, int Path)
 }
 
 
+/*_____________________ Type definitions ____________________________________*/
+
+#define _lcd_ili9225b_reg(reg)			_lcd_handle.set_reg(reg)
+#define _lcd_ili9225b_reg_read(reg)		_lcd_handle.reg_read(reg)
+#define _lcd_ili9225b_reg_write(reg, data)	_lcd_handle.reg_write(reg, data)
+#define lcd_prepare_write(x, y)			_lcd_handle.prepare_write(x, y)
+#define lcd_write_pixel(color)			_lcd_handle.write_pixel(color)
+#define lcd_set_command_mode(set)		_lcd_handle.command_mode(set)
+#define lcd_trigger(info)			_lcd_handle.trigger(info)
+
+typedef struct __QLcdHandle {
+	int is_init;
+
+	void (*trigger)(struct fb_info *info);
+
+	void (*set_reg)(int reg);
+	int (*reg_read)(int reg);
+	void (*reg_write)(int reg, int data);
+	void (*prepare_write)(int x, int y);
+	void (*write_pixel)(int color);
+	void (*command_mode)(int set);
+} _QLcdHandle;
+
+/*_____________________ Imported Variables __________________________________*/
 extern void lcd_reset(void);
 extern void lcd_gpio_init(void);
 extern int q_lcd_panel_id(void);
+extern void q_camera_backend_reset(int reset);
 
+/*_____________________ Local Declarations __________________________________*/
+static _QLcdHandle _lcd_handle;
+
+/* lcd handle for s3c2416 lcd module in i80 mode */
 static inline void
 _lcd_i80_cmd(int control)
 {
 	__raw_writel(control | S3C_I80SIFCCON0_COM_ENABLE, S3C_SIFCCON0);
 }
 
-void _lcd_ili9225b_reg(int reg)
+static void
+_lcd_s3c_i80_reg(int reg)
 {
 	// set RS, CS0, WR
 	_lcd_i80_cmd(S3C_I80SIFCCON0_CS0_CON_ENABLE
@@ -1548,7 +1579,8 @@ void _lcd_ili9225b_reg(int reg)
 	_lcd_i80_cmd(S3C_I80SIFCCON0_RS_CON_HIGH);
 }
 
-int _lcd_ili9225b_reg_read(int reg)
+static int
+_lcd_s3c_i80_reg_read(int reg)
 {
 	int data;
 
@@ -1575,7 +1607,8 @@ int _lcd_ili9225b_reg_read(int reg)
 	return data & 0x3ffff;
 }
 
-void _lcd_ili9225b_reg_write(int reg, int data)
+static void
+_lcd_s3c_i80_reg_write(int reg, int data)
 {
 	// set RS, CS0, WR
 	_lcd_i80_cmd(S3C_I80SIFCCON0_CS0_CON_ENABLE
@@ -1598,7 +1631,8 @@ void _lcd_ili9225b_reg_write(int reg, int data)
 	_lcd_i80_cmd(S3C_I80SIFCCON0_RS_CON_HIGH);
 }
 
-void lcd_prepare_write(int x, int y)
+static void
+_lcd_s3c_i80_prepare_write(int x, int y)
 {
 	_lcd_ili9225b_reg_write (0x20, x & 0xff);
 	_lcd_ili9225b_reg_write (0x21, y & 0xff);
@@ -1606,7 +1640,8 @@ void lcd_prepare_write(int x, int y)
 	_lcd_ili9225b_reg (0x22);
 }
 
-void lcd_write_pixel(int color)
+static void
+_lcd_s3c_i80_write_pixel(int color)
 {	
 	// set CS0, WR
 	_lcd_i80_cmd(S3C_I80SIFCCON0_CS0_CON_ENABLE
@@ -1618,7 +1653,8 @@ void lcd_write_pixel(int color)
 	_lcd_i80_cmd(S3C_I80SIFCCON0_RS_CON_HIGH);
 }
 
-void lcd_set_command_mode (int set)
+static void
+_lcd_s3c_i80_set_command_mode (int set)
 {
 	if (set)
 		__raw_writel(S3C_I80SIFCCON0_COM_ENABLE
@@ -1631,9 +1667,151 @@ void lcd_set_command_mode (int set)
 }
 
 static void
+_lcd_s3c_i80_trigger(struct fb_info *info)
+{
+	__raw_writel((1<<0), S3C_CPUTRIGCON2);
+}
+
+static void
+_lcd_s3c_i80_init(int init)
+{
+	if (init)
+		lcd_reset();
+
+	_lcd_handle.set_reg		= _lcd_s3c_i80_reg;
+	_lcd_handle.reg_read		= _lcd_s3c_i80_reg_read;
+	_lcd_handle.reg_write		= _lcd_s3c_i80_reg_write;
+	_lcd_handle.prepare_write	= _lcd_s3c_i80_prepare_write;
+	_lcd_handle.write_pixel		= _lcd_s3c_i80_write_pixel;
+	_lcd_handle.command_mode	= _lcd_s3c_i80_set_command_mode;
+	_lcd_handle.trigger		= _lcd_s3c_i80_trigger;
+
+	_lcd_handle.is_init = true;
+}
+
+/* lcd handle for vc0528 camera backend ic */
+#define _VC0528_PA_ADDRESS		(0x20000000)
+
+typedef struct __QLcdDma {
+	void __iomem *reg_base;
+
+	int is_requested;
+	int on_request;
+} _QLcdDma;
+
+static _QLcdDma _lcd_dma;
+
+static void __iomem *_index_addr;
+static void __iomem *_lcd_data_addr;
+static void __iomem *_be_data_addr;
+
+static void
+_lcd_vc0528_reg(int reg)
+{
+	__raw_writew((unsigned short)reg, _index_addr);
+}
+
+static int
+_lcd_vc0528_reg_read(int reg)
+{
+	int data;
+
+	__raw_writew((unsigned short)reg, _index_addr);
+	data = __raw_readw(_lcd_data_addr);
+
+	return data & 0x3ffff;
+}
+
+static void
+_lcd_vc0528_reg_write(int reg, int data)
+{
+	__raw_writew((unsigned short)reg, _index_addr);
+	__raw_writew((unsigned short)data, _lcd_data_addr);
+}
+
+static void
+_lcd_vc0528_prepare_write(int x, int y)
+{
+	_lcd_vc0528_reg_write(0x20, x & 0xff);
+	_lcd_vc0528_reg_write(0x21, y & 0xff);
+
+	_lcd_vc0528_reg(0x22);
+}
+
+static void
+_lcd_vc0528_write_pixel(int color)
+{
+	__raw_writew(color, _lcd_data_addr);
+}
+
+static void
+_lcd_vc0528_set_command_mode(int set)
+{
+
+}
+
+static void
+_lcd_vc0528_trigger(struct fb_info *info)
+{
+	int i, size;
+	struct s3c_fb_info *fbi = container_of(info, struct s3c_fb_info, fb);
+	unsigned short *fb_ptr = (unsigned short *)fbi->map_cpu_f1;
+
+	size = fbi->map_size_f1 / sizeof(unsigned short);
+
+	for (i = 0; i < size; i++) {
+		__raw_writew(*fb_ptr++, _lcd_data_addr);
+	}
+}
+
+static void
+_lcd_vc0528_init(int init)
+{
+	int ret = -1;
+	uint val;
+
+	if (_lcd_handle.is_init) return ;
+
+	_index_addr    = ioremap(_VC0528_PA_ADDRESS, 0x100);
+	_be_data_addr  = _index_addr + 0x08;
+	_lcd_data_addr = _index_addr + 0x04;
+
+	if (init) {
+		q_camera_backend_reset(1);
+		msleep(50);
+		q_camera_backend_reset(0);
+		msleep(10);
+
+		// set bus witdh to 16bit
+		__raw_writeb(0xb4, _index_addr);
+		__raw_writeb(0x18, _be_data_addr);
+		__raw_writeb(0xb2, _index_addr);
+		__raw_writeb(0x8c, _be_data_addr);
+		__raw_writeb(0xb0, _index_addr);
+		__raw_writeb(0x1, _be_data_addr);
+
+		// set through mode
+		__raw_writew(0x1890, _index_addr);
+		__raw_writew(0x1, _be_data_addr);
+
+		lcd_reset();
+	}
+
+	_lcd_handle.set_reg		= _lcd_vc0528_reg;
+	_lcd_handle.reg_read		= _lcd_vc0528_reg_read;
+	_lcd_handle.reg_write		= _lcd_vc0528_reg_write;
+	_lcd_handle.prepare_write	= _lcd_vc0528_prepare_write;
+	_lcd_handle.write_pixel		= _lcd_vc0528_write_pixel;
+	_lcd_handle.command_mode	= _lcd_vc0528_set_command_mode;
+	_lcd_handle.trigger		= _lcd_vc0528_trigger;
+}
+
+static void
 lcd_ili9225b_power(int set)
 {
 	int id = q_lcd_panel_id();
+
+	if (!_lcd_handle.is_init) return ;
 
 	if (!set) {
 		lcd_power_state = set;
@@ -1693,14 +1871,14 @@ lcd_ili9225b_power(int set)
 		mdelay(2);
 		lcd_power_state = set;
 
-		__raw_writel((1<<0), S3C_CPUTRIGCON2);
+		lcd_trigger(info);
 	}
 }
 
 static void s3c_fb_change_fb(struct fb_info *info)
 {
 	if (lcd_power_state)
-		__raw_writel((1<<0), S3C_CPUTRIGCON2);
+		lcd_trigger(info);
 }
 
 #define _LCD_PANEL_BYD		0
@@ -2008,7 +2186,23 @@ void lcd_module_init (void)
 	/* set window size */
 	int i = _h_resolution * _v_resolution;
 	u16 *logo = NULL;
-	
+
+	if (q_boot_flag_get() != Q_BOOT_FLAG_LCD_INIT) {
+		if (q_hw_ver(KTQOOK_TP))
+			_lcd_vc0528_init(1);
+		else
+			_lcd_s3c_i80_init(1);
+	} else {
+		if (q_hw_ver(KTQOOK_TP))
+			_lcd_vc0528_init(0);
+		else
+			_lcd_s3c_i80_init(0);
+
+		q_boot_flag_set(Q_BOOT_FLAG_CLEAR);
+
+		return ;
+	}
+
 	if (q_hw_ver(7800))
 		logo = (u16 *)&_mylg070_logo[12];
 	else if (q_hw_ver(SKBB))
@@ -2016,7 +2210,6 @@ void lcd_module_init (void)
 	else if (q_hw_ver(KTQOOK))
 		logo = (u16 *)&_kt_logo[12];
 
-	lcd_reset();
 	lcd_set_command_mode(1);
 
 	_lcd_panel_init();

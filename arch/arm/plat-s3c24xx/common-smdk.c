@@ -531,7 +531,25 @@ void lcd_gpio_init(void)
 		// set lcd interface
 		val = __raw_readl(S3C2410_GPDCON) & ~(0x003fffff);
 		__raw_writel(val | 0x002aaaaa, S3C2410_GPDCON);
+	} else {
+		// set camera backend reset
+		s3c2410_gpio_setpin(S3C2410_GPG7, 1);
+		s3c2410_gpio_cfgpin(S3C2410_GPG7, S3C2410_GPG7_OUTP);
+
+		// set clockout0 to 12MHz
+		s3c2410_gpio_cfgpin(S3C2443_GPH13, S3C2443_GPH13_CLKOUT0);
+
+		// set camera backend ic LDO on
+		s3c2410_gpio_setpin(S3C2410_GPF5, 1);
+		s3c2410_gpio_cfgpin(S3C2410_GPF5, S3C2410_GPF5_OUTP);
 	}
+}
+
+void
+q_camera_backend_reset(int reset)
+{
+	if (q_hw_ver(KTQOOK_TP))
+		s3c2410_gpio_setpin(S3C2410_GPF5, (reset ? 0 : 1));
 }
 
 void speaker_amp(bool flag)
@@ -658,6 +676,7 @@ void __init smdk_machine_init(void)
 	s3c_device_nand.dev.platform_data = &smdk_nand_info;
 #else
 	canopus_gpio_init();
+	q_s3c2416_init_clocks();
 #endif	// CONFIG_MACH_CANOPUS
 	
 	//For s3c nand partition
@@ -686,5 +705,6 @@ EXPORT_SYMBOL(q_hw_version);
 EXPORT_SYMBOL(q_boot_flag_set);
 EXPORT_SYMBOL(q_boot_flag_get);
 EXPORT_SYMBOL(q_lcd_panel_id);
+EXPORT_SYMBOL(q_camera_backend_reset);
 #endif	// CONFIG_MACH_CANOPUS
 
