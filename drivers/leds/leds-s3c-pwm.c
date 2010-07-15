@@ -167,9 +167,16 @@ s3c_pwm_led_remove(struct platform_device *dev)
 static int
 s3c_pwm_led_probe(struct platform_device *dev)
 {
+	unsigned long tcfg0;
 	struct s3c_pwm_led_platdata *pdata = dev->dev.platform_data;
 	struct s3c_pwm_led *led;
 	int ret;
+
+	/* when 66MHz PCLK, */
+	tcfg0 = __raw_readl(S3C2410_TCFG0);
+	tcfg0 &= ~S3C2410_TCFG_PRESCALER0_MASK;
+	tcfg0 |= (PRESCALE - 1);
+	__raw_writel(tcfg0, S3C2410_TCFG0);
 
 	led = kzalloc(sizeof(struct s3c_pwm_led), GFP_KERNEL);
 	if (led == NULL) {
