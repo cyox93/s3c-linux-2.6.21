@@ -211,12 +211,16 @@ s3c_pwm_led_probe(struct platform_device *dev)
 
 
 #ifdef CONFIG_PM
+unsigned long _tcfg0;
+
 static int
 s3c_pwm_led_suspend(struct platform_device *dev, pm_message_t state)
 {
 	struct s3c_pwm_led *led = _pdev_to_pwm(dev);
 
 	led_classdev_suspend(&led->cdev);
+
+	_tcfg0 = __raw_readl(S3C2410_TCFG0);
 	return 0;
 }
 
@@ -224,6 +228,8 @@ static int
 s3c_pwm_led_resume(struct platform_device *dev)
 {
 	struct s3c_pwm_led *led = _pdev_to_pwm(dev);
+
+	__raw_writel(_tcfg0, S3C2410_TCFG0);
 
 	led_classdev_resume(&led->cdev);
 	return 0;
