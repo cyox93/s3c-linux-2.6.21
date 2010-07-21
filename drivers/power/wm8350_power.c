@@ -137,7 +137,7 @@ static struct circ_buf wm8350_event;
 static struct list_head wm8350_bat_events[WM8350_BAT_EVENT_NUM];
 static struct wm8350 *wm8350_bat = NULL;
 
-static int bat_detect = 0;
+static int bat_detect = WM8350_BAT_EVENT_NOTDETECT;
 static int bat_detect_retry = 0;
 static bool _is_fault = false;
 static bool _is_temp_fault = false;
@@ -598,9 +598,10 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 
 		cancel_delayed_work(&_bat_full);
 
-		if (_is_fault) {
+		if (_is_fault || bat_detect == WM8350_BAT_EVENT_NOTDETECT) {
 			bat_detect_retry = 0;
-			schedule_delayed_work(&_bat_detect, msecs_to_jiffies(700));
+			cancel_delayed_work(&_bat_detect);
+			schedule_delayed_work(&_bat_detect, msecs_to_jiffies(100));
 			_is_fault = false;
 		}
 
@@ -609,9 +610,10 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 		/* we are ready to fast charge */
 		printk(KERN_DEBUG "wm8350-power: fast charger ready\n");
 
-		if (_is_fault) {
+		if (_is_fault || bat_detect == WM8350_BAT_EVENT_NOTDETECT) {
 			bat_detect_retry = 0;
-			schedule_delayed_work(&_bat_detect, msecs_to_jiffies(700));
+			cancel_delayed_work(&_bat_detect);
+			schedule_delayed_work(&_bat_detect, msecs_to_jiffies(100));
 			_is_fault = false;
 		}
 
@@ -655,7 +657,7 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 		cancel_delayed_work(&_bat_fault_led);
 
 		bat_detect_retry = 0;
-		schedule_delayed_work(&_bat_detect, msecs_to_jiffies(700));
+		schedule_delayed_work(&_bat_detect, msecs_to_jiffies(100));
 		break;
 	case WM8350_IRQ_EXT_BAT_FB:
 		printk(KERN_DEBUG "wm8350-power: Battery is now supply\n");
@@ -676,7 +678,7 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 /*********************************************************************
  *		Timer Driver	
  *********************************************************************/
-#define DEF_BAT_DETECT_RETRY	10
+#define DEF_BAT_DETECT_RETRY	(900 / 50)
 static void _wm8350_bat_detect_work(struct work_struct *work)
 {
 	int event = 0;
@@ -702,7 +704,7 @@ static void _wm8350_bat_detect_work(struct work_struct *work)
 
 	if (bat_detect_retry < DEF_BAT_DETECT_RETRY) {
 		bat_detect_retry++;
-		schedule_delayed_work(&_bat_detect, msecs_to_jiffies(30));
+		schedule_delayed_work(&_bat_detect, msecs_to_jiffies(50));
 		return;
 	}
 		
