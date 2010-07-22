@@ -480,13 +480,11 @@ void lcd_reset(void)
 	if (q_hw_ver(7800_ES1)) pin = S3C2410_GPB1;
 	else pin = S3C2410_GPG6;
 
-	mdelay(10);
+	mdelay(1);
 	s3c2410_gpio_setpin(pin, 0);
-	//mdelay(10);
-	mdelay(20);
+	mdelay(10);
 	s3c2410_gpio_setpin(pin, 1);
-	//mdelay(50);
-	mdelay(150);
+	mdelay(50);
 }
 
 static int _lcd_panel_id;

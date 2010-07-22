@@ -137,6 +137,7 @@ int lcd_power_state = 1;
 void set_brightness(int);
 void backlight_power(int);
 static void lcd_ili9225b_power(int set);
+static void _lcd_panel_init(void);
 
 struct s3c_fb_mach_info mach_info = {
 
@@ -1812,6 +1813,7 @@ lcd_ili9225b_power(int set)
 	int id = q_lcd_panel_id();
 
 	if (!_lcd_handle.is_init) return ;
+	if (lcd_power_state == set) return ;
 
 	if (!set) {
 		lcd_power_state = set;
@@ -1835,7 +1837,7 @@ lcd_ili9225b_power(int set)
 			mdelay(50);
 			_lcd_ili9225b_reg_write(0x0011,0x0007);
 			mdelay(50);
-			_lcd_ili9225b_reg_write(0x0010,0x0A01);
+			_lcd_ili9225b_reg_write(0x0010,0x0A02);
 		}
 
 		lcd_set_command_mode(0);
@@ -1861,9 +1863,11 @@ lcd_ili9225b_power(int set)
 			_lcd_ili9225b_reg_write(0x0007, 0x0133); // 262K color and display ON
 		} else {
 			_lcd_ili9225b_reg_write(0x0010,0x0A00);
-			_lcd_ili9225b_reg_write(0x0011,0x1038);
-			mdelay(50);
-			_lcd_ili9225b_reg_write(0x0007,0x1017);
+			lcd_set_command_mode(0);
+
+			lcd_reset();
+			lcd_set_command_mode(1);
+			_lcd_panel_init();
 			lcd_prepare_write(0, 0);
 		}
 
