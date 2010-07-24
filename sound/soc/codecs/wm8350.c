@@ -28,6 +28,8 @@
 #include <sound/initval.h>
 #include <sound/tlv.h>
 
+#include <asm/plat-s3c24xx/s3c2416.h> 
+
 #define AUDIO_NAME "WM8350"
 #define WM8350_VERSION "0.6"
 
@@ -1516,6 +1518,14 @@ static int wm8350_codec_init(struct snd_soc_codec *codec,
 	wm8350_reg_write(wm8350, WM8350_ROUT2_VOLUME, 0);
 	wm8350_set_bits(wm8350, WM8350_LOUT2_VOLUME, WM8350_OUT2_VU);
 
+#ifdef CONFIG_MACH_CANOPUS
+	/* KTQOOK_TP is differential input, the others are single ended input */
+	if (!q_hw_ver(KTQOOK_TP))
+		wm8350_clear_bits(wm8350, WM8350_INPUT_CONTROL, WM8350_IN1LP_ENA); 
+
+	/* +20dB mic gain */		
+	wm8350_set_bits(wm8350, WM8350_INPUT_MIXER_VOLUME_L, WM8350_INL_MIXINL_VOL);
+#endif
 	return 0;
 }
 
