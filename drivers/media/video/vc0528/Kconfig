@@ -1,0 +1,7 @@
+config VC0528
+	tristate "VIMICRO Image Processor and Control Chip support"
+	depends on  VIDEO_V4L1&VIDEO_V4L1&VIDEO_DEV
+	default y
+
+	---help---
+	Vimicro VC0528 : Mobile phone video processor

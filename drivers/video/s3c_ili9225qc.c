@@ -1751,7 +1751,7 @@ _lcd_vc0528_set_command_mode(int set)
 
 }
 
-static void
+int _lcd_vc0528_trigger_lock = 0x1;
 _lcd_vc0528_trigger(struct fb_info *info)
 {
 	int i, size;
@@ -1881,8 +1881,9 @@ lcd_ili9225b_power(int set)
 
 static void s3c_fb_change_fb(struct fb_info *info)
 {
-	if (lcd_power_state)
+	if ((lcd_power_state)&&(_lcd_vc0528_trigger_lock)){
 		lcd_trigger(info);
+	}
 }
 
 #define _LCD_PANEL_BYD		0
@@ -2098,6 +2099,11 @@ _lcd_panel_init_hsd24(void)
 	_lcd_ili9225b_reg_write(0x0092, 0x0000);
 	_lcd_ili9225b_reg_write(0x0007, 0x0133); // 262K color and display ON
 	_lcd_ili9225b_reg(0x22);
+}
+
+void _lcd_prepare_write(void)
+{
+	lcd_prepare_write(0, 0);
 }
 
 static void

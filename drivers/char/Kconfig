@@ -1094,5 +1094,11 @@ config PIR
 	help
 	  Motion detection sensor for canopus
 
+config VC0528
+	tristate "VC0528 Test Device config"
+	default y
+	help
+	  video controller chip test code
+
 endmenu
 
