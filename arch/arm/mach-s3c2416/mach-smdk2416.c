@@ -360,10 +360,10 @@ static struct regulator_init_data dcdc3_data = {
 /* System IO - High */
 static struct regulator_init_data dcdc4_data = {
 	.constraints = {
-		.min_uV = 3300000,
-		.max_uV = 3300000,
+		.min_uV = 3400000,
+		.max_uV = 3400000,
 		.state_mem = {
-			.uV = 3300000,
+			.uV = 3400000,
 			.mode = REGULATOR_MODE_NORMAL,
 			.enabled = 1,
 		},
