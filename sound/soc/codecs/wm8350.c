@@ -1520,7 +1520,9 @@ static int wm8350_codec_init(struct snd_soc_codec *codec,
 
 #ifdef CONFIG_MACH_CANOPUS
 	/* KTQOOK_TP is differential input, the others are single ended input */
-	if (!q_hw_ver(KTQOOK_TP))
+	if (q_hw_ver(7800_ES2)
+			|| q_hw_ver(7800_TP)
+			|| q_hw_ver(7800_MP))
 		wm8350_clear_bits(wm8350, WM8350_INPUT_CONTROL, WM8350_IN1LP_ENA); 
 
 	/* +20dB mic gain */		
