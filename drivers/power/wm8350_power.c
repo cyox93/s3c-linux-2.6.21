@@ -760,7 +760,7 @@ static void _wm8350_bat_full_work(struct work_struct *work)
 		bool over_39v = false;
 		int vol;
 
-		if (q_hw_ver(7800_ES1) || q_hw_ver(7800_ES2)) {
+		if (q_hw_ver(7800_ES2)) {
 			if ((vol = wm8350_read_battery_uvolts(wm8350)) > 3900000)
 				over_39v = true;
 		} else {
@@ -806,7 +806,7 @@ static void _wm8350_bat_fault_work(struct work_struct *work)
 		_is_temp_fault = false;
 
 
-		if (q_hw_ver(7800_ES1) || q_hw_ver(7800_ES2)) {
+		if (q_hw_ver(7800_ES2)) {
 			if ((vol = wm8350_read_battery_uvolts(wm8350)) > 3900000)
 				over_39v = true;
 		} else {
@@ -857,7 +857,7 @@ static void _wm8350_bat_timeout_work(struct work_struct *work)
 	struct wm8350 *wm8350 = wm8350_bat;
 	wm8350_bat_event_callback_list_t *temp = NULL;
 
-	if (q_hw_ver(7800_ES1) || q_hw_ver(7800_ES2)) {
+	if (q_hw_ver(7800_ES2)) {
 		uVolt = wm8350_read_battery_uvolts(wm8350);
 		if (uVolt > 3800000) is_full = 1;
 	} else {
