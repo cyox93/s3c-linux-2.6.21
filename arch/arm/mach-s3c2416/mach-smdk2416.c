@@ -360,10 +360,10 @@ static struct regulator_init_data dcdc3_data = {
 /* System IO - High */
 static struct regulator_init_data dcdc4_data = {
 	.constraints = {
-		.min_uV = 3400000,
-		.max_uV = 3400000,
+		.min_uV = 3300000,
+		.max_uV = 3300000,
 		.state_mem = {
-			.uV = 3400000,
+			.uV = 3300000,
 			.mode = REGULATOR_MODE_NORMAL,
 			.enabled = 1,
 		},
@@ -655,12 +655,34 @@ int wm8350_dev_init(struct wm8350 *wm8350)
 	wm8350_unmask_irq(wm8350, WM8350_IRQ_WKUP_ONKEY);
 #endif
 
+#ifndef CONFIG_MACH_CANOPUS
 	for (i = 0; i < ARRAY_SIZE(wm8350_regulator_devices); i++) {
 		platform_set_drvdata(&wm8350_regulator_devices[i], wm8350);
 		ret = platform_device_register(&wm8350_regulator_devices[i]);
 		if (ret < 0)
 			goto unwind;
 	}
+#else	// CONFIG_MACH_CANOPUS
+	struct regulator_init_data *reg_data = NULL;
+
+	for (i = 0; i < ARRAY_SIZE(wm8350_regulator_devices); i++) {
+		if (wm8350_regulator_devices[i].id == WM8350_DCDC_4) {
+			if (q_hw_ver(7800_ES2)
+					|| q_hw_ver(7800_TP)
+					|| q_hw_ver(7800_MP)) {
+				reg_data = (struct regulator_init_data *)wm8350_regulator_devices[i].dev.platform_data;
+				reg_data->constraints.min_uV = 3400000;
+				reg_data->constraints.max_uV = 3400000;
+				reg_data->constraints.state_mem.uV = 3400000;
+			}
+		}
+
+		platform_set_drvdata(&wm8350_regulator_devices[i], wm8350);
+		ret = platform_device_register(&wm8350_regulator_devices[i]);
+		if (ret < 0)
+			goto unwind;
+	}
+#endif	// CONFIG_MACH_CANOPUS
 
 	/* now register other clients */
 	return s3c_wm8350_device_register(wm8350);
