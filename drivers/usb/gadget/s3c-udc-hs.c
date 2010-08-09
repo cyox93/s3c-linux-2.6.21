@@ -36,6 +36,7 @@
 #include <asm/arch/regs-s3c2450-clock.h>
 #elif defined(CONFIG_CPU_S3C2416)
 #include <asm/arch/regs-s3c2416-clock.h>
+#include <asm/plat-s3c24xx/s3c2416.h>
 #else
 #error "Unknown CPU configuration, Select right configuration!!"
 #endif
@@ -1978,6 +1979,9 @@ static struct s3c_udc memory = {
  * 	probe - binds to the platform device
  */
 static struct clk	*udc_clock = NULL;
+#ifdef CONFIG_MACH_CANOPUS
+static struct clk	*clkout0 = NULL;
+#endif	// CONFIG_MACH_CANOPUS
 
 static int s3c_udc_probe(struct platform_device *pdev)
 {
@@ -2003,6 +2007,14 @@ static int s3c_udc_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, dev);
 
 	udc_reinit(dev);
+
+#ifdef CONFIG_MACH_CANOPUS
+	if (q_hw_ver(SWP2000)) {
+		clkout0 = clk_get(NULL, "clkout0");
+	}
+
+	if (clkout0) clk_enable(clkout0);
+#endif	// CONFIG_MACH_CANOPUS
 
 	udc_clock = clk_get(&pdev->dev, "usb-device");
 	if (udc_clock == NULL) {
@@ -2058,6 +2070,9 @@ s3c_udc_suspend(struct platform_device *pdev, pm_message_t state)
 	printk(KERN_INFO "usb device suspend\n");
 	udc_disable(dev);
 	clk_disable(udc_clock);
+#ifdef CONFIG_MACH_CANOPUS
+	if (clkout0) clk_disable(clkout0);
+#endif	// CONFIG_MACH_CANOPUS
 
 	return 0;
 }
@@ -2068,6 +2083,9 @@ s3c_udc_resume(struct platform_device *pdev)
 	struct s3c_udc *dev = platform_get_drvdata(pdev);
 
 	printk(KERN_INFO "usb device resume\n");
+#ifdef CONFIG_MACH_CANOPUS
+	if (clkout0) clk_enable(clkout0);
+#endif	// CONFIG_MACH_CANOPUS
 	clk_enable(udc_clock);
 	udc_enable(dev);
 

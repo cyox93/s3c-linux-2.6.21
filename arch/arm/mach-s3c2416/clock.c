@@ -1030,6 +1030,10 @@ static struct clk *clks[] __initdata = {
 	&clk_hsspi,
 	&clk_hsmmc_div,
 	&clk_hsmmc,
+#ifdef CONFIG_MACH_CANOPUS
+	&s3c24xx_dclk0,
+	&s3c24xx_clkout0,
+#endif	// CONFIG_MACH_CANOPUS
 };
 
 void __init s3c2416_init_clocks(int xtal)

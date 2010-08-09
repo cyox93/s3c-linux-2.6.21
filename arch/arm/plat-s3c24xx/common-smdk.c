@@ -621,6 +621,11 @@ void canopus_gpio_init(void)
 			s3c2410_gpio_cfgpin(S3C2410_GPE6, S3C2410_GPE6_INP);
 		}
 	}
+
+	// set clockout0 for usb
+	if (q_hw_ver(SWP2000)) {
+		s3c2410_gpio_cfgpin(S3C2443_GPH13, S3C2443_GPH13_CLKOUT0);
+	}
 }
 
 int q_boot_flag_get(void)
@@ -631,6 +636,51 @@ int q_boot_flag_get(void)
 void q_boot_flag_set(int flag)
 {
 	__raw_writel(flag, S3C2443_INFORM3);
+}
+
+void q_usb_clock_init(void)
+{
+	struct clk *dclk, *uclk, *clkout0;
+	uint32_t freq = 0, div, cmp, val, usb_freq = 48000000;
+
+	uclk = clk_get(NULL, "upll");
+	if (IS_ERR(uclk)) {
+		printk(KERN_ERR "%s : failed to get upll\n", __func__);
+	} else {
+		clk_put(uclk);
+
+		dclk = clk_get(NULL, "dclk0");
+		if (IS_ERR(dclk)) {
+			printk(KERN_ERR "%s : failed to get dclk0\n", __func__);
+		} else {
+			clk_put(dclk);
+
+			clkout0 = clk_get(NULL, "clkout0");
+			if (IS_ERR(clkout0)) {
+				printk(KERN_ERR "%s : failed to get clkout0\n", __func__);
+			} else {
+				clk_set_parent(dclk, uclk);
+				clk_set_parent(clkout0, dclk);
+
+				// clk_enable(clkout0);
+
+				freq = clk_get_rate(uclk);
+				div = freq / usb_freq;
+
+				if (div > 0) div--;
+				cmp = div/2;
+
+				usb_freq = freq / (div + 1);
+
+				val = __raw_readl(S3C2410_DCLKCON) & ~((0xf << 8) | (0xf << 4));
+				__raw_writel(val | (div << 4) | (cmp << 8), S3C2410_DCLKCON);
+
+				clk_put(uclk);
+
+				// printk("upll[%d], div[%d], usb[%d]\n", freq, div, usb_freq);
+			}
+		}
+	}
 }
 
 #endif	// CONFIG_MACH_CANOPUS
@@ -654,6 +704,10 @@ void __init smdk_machine_init(void)
 #else
 	canopus_gpio_init();
 	q_s3c2416_init_clocks();
+
+	if (q_hw_ver(SWP2000)) {
+		q_usb_clock_init();
+	}
 #endif	// CONFIG_MACH_CANOPUS
 	
 	//For s3c nand partition
