@@ -675,6 +675,23 @@ int wm8350_dev_init(struct wm8350 *wm8350)
 				reg_data->constraints.max_uV = 3400000;
 				reg_data->constraints.state_mem.uV = 3400000;
 			}
+		} else if (wm8350_regulator_devices[i].id == WM8350_LDO_3) {
+			if (q_hw_ver(SWP2000)) {
+				reg_data = (struct regulator_init_data *)wm8350_regulator_devices[i].dev.platform_data;
+
+				reg_data->constraints.min_uV = 1200000;
+				reg_data->constraints.max_uV = 1200000;
+				reg_data->num_consumer_supplies = ARRAY_SIZE(ldo4_consumers);
+				reg_data->consumer_supplies = ldo4_consumers;
+			}
+		} else if (wm8350_regulator_devices[i].id == WM8350_LDO_4) {
+			if (q_hw_ver(SWP2000)) {
+				reg_data = (struct regulator_init_data *)wm8350_regulator_devices[i].dev.platform_data;
+				reg_data->constraints.min_uV = 3300000;
+				reg_data->constraints.max_uV = 3300000;
+				reg_data->num_consumer_supplies = ARRAY_SIZE(ldo3_consumers);
+				reg_data->consumer_supplies = ldo3_consumers;
+			}
 		}
 
 		platform_set_drvdata(&wm8350_regulator_devices[i], wm8350);
