@@ -1277,6 +1277,10 @@ static int wm8350_set_bias_level(struct snd_soc_codec *codec,
 	snd_assert(wm8350 != NULL, return -EINVAL);
 	snd_assert(platform != NULL, return -EINVAL);
 
+	if (codec->bias_level == SND_SOC_BIAS_OFF &&
+	    (level == SND_SOC_BIAS_ON || level == SND_SOC_BIAS_PREPARE))
+		wm8350_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
+
 	switch (level) {
 	case SND_SOC_BIAS_ON:	/* full On */
 #ifdef CONFIG_HAS_WAKELOCK
@@ -1461,22 +1465,13 @@ static int wm8350_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	struct snd_soc_codec *codec = platform_get_drvdata(pdev);
 
-	wm8350_set_bias_level(codec, SND_SOC_BIAS_OFF);
+	if (codec->bias_level != SND_SOC_BIAS_OFF)
+		wm8350_set_bias_level(codec, SND_SOC_BIAS_OFF);
 	return 0;
 }
 
 static int wm8350_resume(struct platform_device *pdev)
 {
-	struct snd_soc_codec *codec = platform_get_drvdata(pdev);
-
-	wm8350_set_bias_level(codec, SND_SOC_BIAS_STANDBY); 
-	
-	/* charge wm8350 caps */
-	if (codec->suspend_bias_level == SND_SOC_BIAS_ON) {
-		wm8350_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
-		codec->bias_level = SND_SOC_BIAS_ON;
-	}
-
 	return 0;
 }
 
