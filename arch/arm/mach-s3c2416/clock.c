@@ -1033,6 +1033,7 @@ static struct clk *clks[] __initdata = {
 #ifdef CONFIG_MACH_CANOPUS
 	&s3c24xx_dclk0,
 	&s3c24xx_clkout0,
+	&s3c24xx_clkout1,
 #endif	// CONFIG_MACH_CANOPUS
 };
 

@@ -623,8 +623,11 @@ void canopus_gpio_init(void)
 	}
 
 	// set clockout0 for usb
-	if (q_hw_ver(SWP2000)) {
+	if (q_hw_ver(SWP2000)
+			|| q_hw_ver(7800_MP2)) {
 		s3c2410_gpio_cfgpin(S3C2443_GPH13, S3C2443_GPH13_CLKOUT0);
+	} else if (q_hw_ver(KTQOOK_TP2)) {
+		s3c2410_gpio_cfgpin(S3C2443_GPH14, S3C2443_GPH14_CLKOUT1);
 	}
 }
 
@@ -638,7 +641,7 @@ void q_boot_flag_set(int flag)
 	__raw_writel(flag, S3C2443_INFORM3);
 }
 
-void q_usb_clock_init(void)
+void q_usb_clock_init(int clkout)
 {
 	struct clk *dclk, *uclk, *clkout0;
 	uint32_t freq = 0, div, cmp, val, usb_freq = 48000000;
@@ -649,13 +652,21 @@ void q_usb_clock_init(void)
 	} else {
 		clk_put(uclk);
 
-		dclk = clk_get(NULL, "dclk0");
+		if (clkout == 0)
+			dclk = clk_get(NULL, "dclk0");
+		else
+			dclk = clk_get(NULL, "dclk1");
+
 		if (IS_ERR(dclk)) {
 			printk(KERN_ERR "%s : failed to get dclk0\n", __func__);
 		} else {
 			clk_put(dclk);
 
-			clkout0 = clk_get(NULL, "clkout0");
+			if (clkout == 0)
+				clkout0 = clk_get(NULL, "clkout0");
+			else
+				clkout0 = clk_get(NULL, "clkout1");
+
 			if (IS_ERR(clkout0)) {
 				printk(KERN_ERR "%s : failed to get clkout0\n", __func__);
 			} else {
@@ -672,8 +683,13 @@ void q_usb_clock_init(void)
 
 				usb_freq = freq / (div + 1);
 
-				val = __raw_readl(S3C2410_DCLKCON) & ~((0xf << 8) | (0xf << 4));
-				__raw_writel(val | (div << 4) | (cmp << 8), S3C2410_DCLKCON);
+				if (clkout == 0) {
+					val = __raw_readl(S3C2410_DCLKCON) & ~((0xf << 8) | (0xf << 4));
+					__raw_writel(val | (div << 4) | (cmp << 8), S3C2410_DCLKCON);
+				} else {
+					val = __raw_readl(S3C2410_DCLKCON) & ~((0xf << 24) | (0xf << 20));
+					__raw_writel(val | (div << 20) | (cmp << 24), S3C2410_DCLKCON);
+				}
 
 				clk_put(uclk);
 
@@ -705,8 +721,11 @@ void __init smdk_machine_init(void)
 	canopus_gpio_init();
 	q_s3c2416_init_clocks();
 
-	if (q_hw_ver(SWP2000)) {
-		q_usb_clock_init();
+	if (q_hw_ver(SWP2000)
+			|| q_hw_ver(7800_MP2)) {
+		q_usb_clock_init(0);
+	} else if (q_hw_ver(KTQOOK_TP2)) {
+		q_usb_clock_init(1);
 	}
 #endif	// CONFIG_MACH_CANOPUS
 	

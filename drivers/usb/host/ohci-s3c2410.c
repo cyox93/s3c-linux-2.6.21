@@ -446,8 +446,11 @@ static int usb_hcd_s3c2410_probe (const struct hc_driver *driver,
 	}
 
 #ifdef CONFIG_MACH_CANOPUS
-	if (q_hw_ver(SWP2000)) {
+	if (q_hw_ver(SWP2000)
+			|| q_hw_ver(7800_MP2)) {
 		clkout0 = clk_get(NULL, "clkout0");
+	} else if (q_hw_ver(KTQOOK_TP2)) {
+		clkout0 = clk_get(NULL, "clkout1");
 	}
 #endif	// CONFIG_MACH_CANOPUS
 

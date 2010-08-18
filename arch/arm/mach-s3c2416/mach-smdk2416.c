@@ -667,6 +667,7 @@ int wm8350_dev_init(struct wm8350 *wm8350)
 
 	for (i = 0; i < ARRAY_SIZE(wm8350_regulator_devices); i++) {
 		if (wm8350_regulator_devices[i].id == WM8350_DCDC_4) {
+			// for LCD
 			if (q_hw_ver(7800_ES2)
 					|| q_hw_ver(7800_TP)
 					|| q_hw_ver(7800_MP)) {
@@ -676,7 +677,10 @@ int wm8350_dev_init(struct wm8350 *wm8350)
 				reg_data->constraints.state_mem.uV = 3400000;
 			}
 		} else if (wm8350_regulator_devices[i].id == WM8350_LDO_3) {
-			if (q_hw_ver(SWP2000)) {
+			// for PMIC LDO
+			if (q_hw_ver(SWP2000)
+					|| q_hw_ver(7800_MP2)
+					|| q_hw_ver(KTQOOK_TP2)) {
 				reg_data = (struct regulator_init_data *)wm8350_regulator_devices[i].dev.platform_data;
 
 				reg_data->constraints.min_uV = 1200000;
@@ -685,7 +689,10 @@ int wm8350_dev_init(struct wm8350 *wm8350)
 				reg_data->consumer_supplies = ldo4_consumers;
 			}
 		} else if (wm8350_regulator_devices[i].id == WM8350_LDO_4) {
-			if (q_hw_ver(SWP2000)) {
+			// for PMIC LDO
+			if (q_hw_ver(SWP2000)
+					|| q_hw_ver(7800_MP2)
+					|| q_hw_ver(KTQOOK_TP2)) {
 				reg_data = (struct regulator_init_data *)wm8350_regulator_devices[i].dev.platform_data;
 				reg_data->constraints.min_uV = 3300000;
 				reg_data->constraints.max_uV = 3300000;

@@ -38,16 +38,18 @@ extern  int s3c2443_baseclk_add(void);
 #define q_hw_ver_is_7800_ES2()	( (q_hw_version() == 0x10) ? 1 : 0 )
 #define q_hw_ver_is_7800_TP()	( (q_hw_version() == 0x11) ? 1 : 0 )
 #define q_hw_ver_is_7800_MP()	( (q_hw_version() == 0x12) ? 1 : 0 )
-#define q_hw_ver_is_7800_MP1()	( (q_hw_version() == 0x13) ? 1 : 0 )
+#define q_hw_ver_is_7800_MP1()	( (q_hw_version() == 0x13) ? 1 : 0 )	// MP 1.2-1
+#define q_hw_ver_is_7800_MP2()	( (q_hw_version() == 0x14) ? 1 : 0 )	// MP 1.3
 
-#define q_hw_ver_is_SWP2000()	( (q_hw_version() == 0x15) ? 1 : 0 )
+#define q_hw_ver_is_SWP2000()	( (q_hw_version() == 0x15) ? 1 : 0 )	// TP 1.0
 
 #define q_hw_ver_is_SKBB()	( ((q_hw_version() & 0x1c) == 0x18) ? 1 : 0 )
 #define q_hw_ver_is_SKBB_ES()	( (q_hw_version() == 0x18) ? 1 : 0 )
 #define q_hw_ver_is_SKBB_PP()	( (q_hw_version() == 0x19) ? 1 : 0 )
 
 #define q_hw_ver_is_KTQOOK()	( ((q_hw_version() & 0x1c) == 0x1c) ? 1 : 0 )
-#define q_hw_ver_is_KTQOOK_TP()	( (q_hw_version() == 0x1d) ? 1 : 0 )
+#define q_hw_ver_is_KTQOOK_TP()	( (q_hw_version() == 0x1d) ? 1 : 0 )	// TP
+#define q_hw_ver_is_KTQOOK_TP2() ( (q_hw_version() == 0x1e) ? 1 : 0 )	// TP2
 
 extern int q_hw_version(void);
 
