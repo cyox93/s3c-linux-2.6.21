@@ -2198,12 +2198,12 @@ void lcd_module_init (void)
 	u16 *logo = NULL;
 
 	if (q_boot_flag_get() != Q_BOOT_FLAG_LCD_INIT) {
-		if (q_hw_ver(KTQOOK_TP))
+		if (q_hw_ver(KTQOOK))
 			_lcd_vc0528_init(1);
 		else
 			_lcd_s3c_i80_init(1);
 	} else {
-		if (q_hw_ver(KTQOOK_TP))
+		if (q_hw_ver(KTQOOK))
 			_lcd_vc0528_init(0);
 		else
 			_lcd_s3c_i80_init(0);

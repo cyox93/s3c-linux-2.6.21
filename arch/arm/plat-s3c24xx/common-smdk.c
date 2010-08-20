@@ -495,7 +495,7 @@ void lcd_gpio_init(void)
 	s3c2410_gpio_setpin(S3C2410_GPG6, 1);
 	s3c2410_gpio_cfgpin(S3C2410_GPG6, S3C2410_GPG6_OUTP);
 
-	if (!q_hw_ver(KTQOOK_TP)) {
+	if (!q_hw_ver(KTQOOK)) {
 		// set lcd interface
 		val = __raw_readl(S3C2410_GPCCON) & 0x0fcc0;
 		__raw_writel(val | 0xaaaa033a, S3C2410_GPCCON);
@@ -520,7 +520,7 @@ void lcd_gpio_init(void)
 void
 q_camera_backend_reset(int reset)
 {
-	if (q_hw_ver(KTQOOK_TP))
+	if (q_hw_ver(KTQOOK))
 		s3c2410_gpio_setpin(S3C2410_GPF5, (reset ? 0 : 1));
 }
 
@@ -611,15 +611,9 @@ void canopus_gpio_init(void)
 
 	if (q_hw_ver(KTQOOK)) {
 		// phone direction
-		if (!q_hw_ver(KTQOOK_TP)) {
-			s3c2410_gpio_pullup(S3C2410_GPF5, 0);
-			s3c2410_gpio_setpin(S3C2410_GPF5, 0);
-			s3c2410_gpio_cfgpin(S3C2410_GPF5, S3C2410_GPF5_INP);
-		} else {
-			s3c2410_gpio_pullup(S3C2410_GPE6, 0);
-			s3c2410_gpio_setpin(S3C2410_GPE6, 0);
-			s3c2410_gpio_cfgpin(S3C2410_GPE6, S3C2410_GPE6_INP);
-		}
+		s3c2410_gpio_pullup(S3C2410_GPE6, 0);
+		s3c2410_gpio_setpin(S3C2410_GPE6, 0);
+		s3c2410_gpio_cfgpin(S3C2410_GPE6, S3C2410_GPE6_INP);
 	}
 
 	// set clockout0 for usb

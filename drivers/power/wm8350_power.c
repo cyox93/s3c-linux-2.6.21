@@ -1224,10 +1224,7 @@ static int wm8350_bat_ioctl(struct inode *inode, struct file *file,
 
 		case WM8350_PHONE_DIR:
 			if (q_hw_ver(KTQOOK)) {
-				if (!q_hw_ver(KTQOOK_TP))
-					online = s3c2410_gpio_getpin(S3C2410_GPF5) ? 1 : 0;
-				else
-					online = s3c2410_gpio_getpin(S3C2410_GPE6) ? 1 : 0;
+				online = s3c2410_gpio_getpin(S3C2410_GPE6) ? 1 : 0;
 			} else {
 				online = 0;
 			}

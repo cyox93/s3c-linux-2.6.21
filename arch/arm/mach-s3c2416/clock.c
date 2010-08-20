@@ -1032,6 +1032,7 @@ static struct clk *clks[] __initdata = {
 	&clk_hsmmc,
 #ifdef CONFIG_MACH_CANOPUS
 	&s3c24xx_dclk0,
+	&s3c24xx_dclk1,
 	&s3c24xx_clkout0,
 	&s3c24xx_clkout1,
 #endif	// CONFIG_MACH_CANOPUS
@@ -1139,7 +1140,7 @@ q_s3c2416_init_clocks(void)
 	int ret;
 	int ptr;
 
-	if (!q_hw_ver(KTQOOK_TP)) {
+	if (!q_hw_ver(KTQOOK)) {
 		clkp = init_clocks_disable_wpu7800;
 		for (ptr = 0; ptr < ARRAY_SIZE(init_clocks_disable_wpu7800); ptr++, clkp++) {
 
