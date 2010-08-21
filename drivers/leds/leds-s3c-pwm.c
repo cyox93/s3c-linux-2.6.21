@@ -135,14 +135,16 @@ _s3c_pwm_led_set(struct led_classdev *led_cdev, enum led_brightness value)
 		__raw_writel(tcnt, S3C2410_TCNTB(pd->timer));
 		__raw_writel(tcmp, S3C2410_TCMPB(pd->timer));
 
-		tcon |= manual;
-		__raw_writel(tcon, S3C2410_TCON);
+		if (!(tcon & start)) {
+			tcon |= manual;
+			__raw_writel(tcon, S3C2410_TCON);
 
-		tcon &= ~(manual);
-		tcon |= (start | reload) ;
-		if (pd->invert) tcon |= invert;
+			tcon &= ~(manual);
+			tcon |= (start | reload) ;
+			if (pd->invert) tcon |= invert;
 
-		__raw_writel(tcon, S3C2410_TCON);
+			__raw_writel(tcon, S3C2410_TCON);
+		}
 	} else {
 		tcon &= ~(manual | start | reload);
 		__raw_writel(tcon, S3C2410_TCON);

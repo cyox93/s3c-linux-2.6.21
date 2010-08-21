@@ -347,12 +347,14 @@ _backlight_set_pwm(unsigned long tcnt, unsigned long tcmp)
 		__raw_writel(tcnt, S3C2410_TCNTB(2));
 		__raw_writel(tcmp, S3C2410_TCMPB(2));
 
-		tcon |= S3C2410_TCON_T2MANUALUPD;
-		__raw_writel(tcon, S3C2410_TCON);
+		if (!(tcon & S3C2410_TCON_T2START)) {
+			tcon |= S3C2410_TCON_T2MANUALUPD;
+			__raw_writel(tcon, S3C2410_TCON);
 
-		tcon &= ~(S3C2410_TCON_T2MANUALUPD);
-		tcon |= (S3C2410_TCON_T2START | S3C2410_TCON_T2RELOAD) ;
-		__raw_writel(tcon, S3C2410_TCON);
+			tcon &= ~(S3C2410_TCON_T2MANUALUPD);
+			tcon |= (S3C2410_TCON_T2START | S3C2410_TCON_T2RELOAD) ;
+			__raw_writel(tcon, S3C2410_TCON);
+		}
 	} else {
 		tcon &= ~(S3C2410_TCON_T2MANUALUPD | S3C2410_TCON_T2START | S3C2410_TCON_T2RELOAD);
 		__raw_writel(tcon, S3C2410_TCON);
