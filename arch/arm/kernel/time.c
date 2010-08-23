@@ -292,6 +292,17 @@ int do_settimeofday(struct timespec *tv)
 }
 
 EXPORT_SYMBOL(do_settimeofday);
+
+void do_update_xtime(struct timespec *tv)
+{
+	write_seqlock_irq(&xtime_lock);
+	set_normalized_timespec(&xtime, tv->tv_sec, tv->tv_nsec);
+	write_sequnlock_irq(&xtime_lock);
+	clock_was_set();
+}
+
+EXPORT_SYMBOL(do_update_xtime);
+
 #endif /* !CONFIG_GENERIC_TIME */
 
 /**

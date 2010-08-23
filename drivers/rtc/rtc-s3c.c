@@ -737,7 +737,7 @@ static int s3c_rtc_resume(struct platform_device *pdev)
 #else	// CONFIG_MACH_CANOPUS
 	s3c_rtc_gettime(&pdev->dev, &tm);
 	rtc_tm_to_time(&tm, &time.tv_sec);
-	do_settimeofday(&time);	/* restore from RTC */
+	do_update_xtime(&time);	  /* restore from RTC */
 #endif	// CONFIG_MACH_CANOPUS
 	return 0;
 }
