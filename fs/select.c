@@ -415,7 +415,7 @@ asmlinkage long sys_select(int n, fd_set __user *inp, fd_set __user *outp,
 		rtv.tv_sec = timeout;
 		if (timeval_compare(&rtv, &tv) >= 0)
 			rtv = tv;
-		if (copy_to_user(tvp, &rtv, sizeof(rtv))) {
+		if (copy_to_user(tvp, &rtv, sizeof(rtv)) == 0) {
 sticky:
 			/*
 			 * If an application puts its timeval in read-only
@@ -482,7 +482,7 @@ asmlinkage long sys_pselect7(int n, fd_set __user *inp, fd_set __user *outp,
 		rts.tv_sec = timeout;
 		if (timespec_compare(&rts, &ts) >= 0)
 			rts = ts;
-		if (copy_to_user(tsp, &rts, sizeof(rts))) {
+		if (copy_to_user(tsp, &rts, sizeof(rts)) == 0) {
 sticky:
 			/*
 			 * If an application puts its timeval in read-only
@@ -821,7 +821,7 @@ asmlinkage long sys_ppoll(struct pollfd __user *ufds, unsigned int nfds,
 		rts.tv_sec = timeout;
 		if (timespec_compare(&rts, &ts) >= 0)
 			rts = ts;
-		if (copy_to_user(tsp, &rts, sizeof(rts))) {
+		if (copy_to_user(tsp, &rts, sizeof(rts)) == 0) {
 		sticky:
 			/*
 			 * If an application puts its timeval in read-only

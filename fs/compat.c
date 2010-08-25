@@ -1775,7 +1775,7 @@ asmlinkage long compat_sys_select(int n, compat_ulong_t __user *inp,
 		rtv.tv_sec = timeout;
 		if (compat_timeval_compare(&rtv, &tv) >= 0)
 			rtv = tv;
-		if (copy_to_user(tvp, &rtv, sizeof(rtv))) {
+		if (copy_to_user(tvp, &rtv, sizeof(rtv)) == 0) {
 sticky:
 			/*
 			 * If an application puts its timeval in read-only
@@ -1855,7 +1855,7 @@ asmlinkage long compat_sys_pselect7(int n, compat_ulong_t __user *inp,
 		}
 		if (compat_timespec_compare(&rts, &ts) >= 0)
 			rts = ts;
-		if (copy_to_user(tsp, &rts, sizeof(rts))) {
+		if (copy_to_user(tsp, &rts, sizeof(rts)) == 0) {
 sticky:
 			/*
 			 * If an application puts its timeval in read-only
@@ -1967,7 +1967,7 @@ asmlinkage long compat_sys_ppoll(struct pollfd __user *ufds,
 		rts.tv_sec = timeout;
 		if (compat_timespec_compare(&rts, &ts) >= 0)
 			rts = ts;
-		if (copy_to_user(tsp, &rts, sizeof(rts))) {
+		if (copy_to_user(tsp, &rts, sizeof(rts)) == 0) {
 sticky:
 			/*
 			 * If an application puts its timeval in read-only
