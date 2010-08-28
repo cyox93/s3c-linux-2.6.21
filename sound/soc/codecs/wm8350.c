@@ -249,20 +249,13 @@ static void wm8350_pga_work(struct work_struct *work)
 	struct wm8350_output *out1 = &wm8350_data->out1,
 	    *out2 = &wm8350_data->out2;
 	int i, out1_complete, out2_complete;
+	int out1_req, out2_req;
 
 _restart:
-	if (atomic_read(&out1->ramp_req) != WM8350_RAMP_NONE) {
-		if (atomic_cmpxchg(&out1->ramp_req, WM8350_RAMP_UP, WM8350_RAMP_NONE) == WM8350_RAMP_UP)
-			out1->ramp = WM8350_RAMP_UP;
-		else if (atomic_cmpxchg(&out1->ramp_req, WM8350_RAMP_DOWN, WM8350_RAMP_NONE) == WM8350_RAMP_DOWN)
-			out1->ramp = WM8350_RAMP_DOWN;
-	}
-	if (atomic_read(&out2->ramp_req) != WM8350_RAMP_NONE) {
-		if (atomic_cmpxchg(&out2->ramp_req, WM8350_RAMP_UP, WM8350_RAMP_NONE) == WM8350_RAMP_UP)
-			out2->ramp = WM8350_RAMP_UP;
-		else if (atomic_cmpxchg(&out2->ramp_req, WM8350_RAMP_DOWN, WM8350_RAMP_NONE) == WM8350_RAMP_DOWN)
-			out2->ramp = WM8350_RAMP_DOWN;
-	}
+	out1_req = atomic_read(&out1->ramp_req);
+	out2_req = atomic_read(&out2->ramp_req);
+	out1->ramp = (out1_req > 0) ? WM8350_RAMP_UP : WM8350_RAMP_DOWN;
+	out2->ramp = (out2_req > 0) ? WM8350_RAMP_UP : WM8350_RAMP_DOWN;
 	
 	/* do we need to ramp at all ? */
 	if (out1->ramp == WM8350_RAMP_NONE && out2->ramp == WM8350_RAMP_NONE)
@@ -270,8 +263,8 @@ _restart:
 
 	/* PGA volumes have 6 bits of resolution to ramp */
 	for (i = 0; i <= 63; i++) {
-		if (atomic_read(&out1->ramp_req) != WM8350_RAMP_NONE ||
-		    atomic_read(&out2->ramp_req) != WM8350_RAMP_NONE)
+		if (atomic_read(&out1->ramp_req) != out1_req ||
+		    atomic_read(&out2->ramp_req) != out2_req)
 			goto _restart;
 		
 		out1_complete = 1, out2_complete = 1;
@@ -298,8 +291,8 @@ _restart:
 			udelay(50);	/* doesn't matter if we delay longer */
 	}
 
-	if (atomic_read(&out1->ramp_req) != WM8350_RAMP_NONE ||
-	    atomic_read(&out2->ramp_req) != WM8350_RAMP_NONE)
+	if (atomic_read(&out1->ramp_req) != out1_req ||
+	    atomic_read(&out2->ramp_req) != out2_req)
 		goto _restart;
 	out1->ramp = WM8350_RAMP_NONE;
 	out2->ramp = WM8350_RAMP_NONE;
@@ -323,11 +316,11 @@ static int pga_event(struct snd_soc_dapm_widget *w,
 		switch (w->reg) {
 		case WM8350_LOUT1_VOLUME:
 		case WM8350_ROUT1_VOLUME:
-			atomic_set(&out1->ramp_req, WM8350_RAMP_UP);
+			atomic_inc(&out1->ramp_req);
 			break;
 		case WM8350_LOUT2_VOLUME:
 		case WM8350_ROUT2_VOLUME:
-			atomic_set(&out2->ramp_req, WM8350_RAMP_UP);
+			atomic_inc(&out2->ramp_req);
 			break;
 		}
 		if (!delayed_work_pending(&codec->delayed_work))
@@ -339,11 +332,11 @@ static int pga_event(struct snd_soc_dapm_widget *w,
 		switch (w->reg) {
 		case WM8350_LOUT1_VOLUME:
 		case WM8350_ROUT1_VOLUME:
-			atomic_set(&out1->ramp_req, WM8350_RAMP_DOWN);
+			atomic_dec(&out1->ramp_req);
 			break;
 		case WM8350_LOUT2_VOLUME:
 		case WM8350_ROUT2_VOLUME:
-			atomic_set(&out2->ramp_req, WM8350_RAMP_DOWN);
+			atomic_dec(&out2->ramp_req);
 			break;
 		}
 		if (!delayed_work_pending(&codec->delayed_work))
@@ -1502,10 +1495,12 @@ static int wm8350_codec_init(struct snd_soc_codec *codec,
 			  WM8350_OUT1L_VOL_MASK) >> WM8350_OUT1L_VOL_SHIFT;
 	out1->right_vol = (wm8350_reg_read(wm8350, WM8350_ROUT1_VOLUME) &
 			   WM8350_OUT1R_VOL_MASK) >> WM8350_OUT1R_VOL_SHIFT;
+	atomic_xchg(&out1->ramp_req, 0);
 	out2->left_vol = (wm8350_reg_read(wm8350, WM8350_LOUT2_VOLUME) &
 			  WM8350_OUT2L_VOL_MASK) >> WM8350_OUT1L_VOL_SHIFT;
 	out2->right_vol = (wm8350_reg_read(wm8350, WM8350_ROUT2_VOLUME) &
 			   WM8350_OUT2R_VOL_MASK) >> WM8350_OUT1R_VOL_SHIFT;
+	atomic_xchg(&out2->ramp_req, 0);
 	wm8350_reg_write(wm8350, WM8350_LOUT1_VOLUME, 0);
 	wm8350_reg_write(wm8350, WM8350_ROUT1_VOLUME, 0);
 	wm8350_set_bits(wm8350, WM8350_LOUT1_VOLUME, WM8350_OUT1_VU);
