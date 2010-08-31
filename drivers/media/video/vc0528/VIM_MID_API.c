@@ -776,6 +776,7 @@ void VIM_MAPI_InitCapInterrupt(void)
 		// set jpeg done 
 		VIM_JPEG_RegisterISR(VIM_INT_JPEG_ENC_DONE,VIM_MAPI_ISR_OneFrameDone);
 		VIM_JPEG_SetIntEnable(VIM_INT_JPEG_ENC_DONE,ENABLE);
+		//printk("INIT ISR: VIM_MULTISHOT\n");
 		break;
 	case VIM_CAPTUREVIDEO:
 	case VIM_CAPTURESTILL:
@@ -788,10 +789,12 @@ void VIM_MAPI_InitCapInterrupt(void)
 		// set jpeg done 
 		//VIM_JPEG_RegisterISR(VIM_INT_JPEG_ENC_DONE,VIM_MAPI_ISR_OneFrameDone);
 		//VIM_JPEG_SetIntEnable(VIM_INT_JPEG_ENC_DONE,ENABLE);
+		//printk("INIT ISR: VIM_CAPTUREVIDEO, VIM_CAPTURESTILL\n");
 		break;
 	case VIM_CAPTURECAPTURE:
 		VIM_MARB_RegisterISR(MARB_INT_RECAP,VIM_MAPI_ISR_Recapture);
 		VIM_MARB_SetIntEnable(MARB_INT_RECAP,ENABLE);	
+		//printk("INIT ISR: VIM_CAPTURECAPTURE\n");
 		break;
 	default:
 		break;

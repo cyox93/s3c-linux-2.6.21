@@ -401,7 +401,7 @@ extern void Uart_Printf(char *fmt,...);
 void VIM_USER_PrintHex(char *string,UINT32 data)
 {
 	//Uart_Printf("\n%s0x%x",string,data);
-	printk("\n%s0x%x",string,data);
+	printk("%s0x%x\n",string,data);
 }
 /***************************************************************
 Description:
@@ -418,7 +418,7 @@ Returns:
 void VIM_USER_PrintDec(char *string,UINT32 data)
 {
 //->	Uart_Printf("\n%s%d",string,data);
-	printk("\n%s%d",string,data);
+	printk("%s%d\n",string,data);
 }
 
 /***************************************************************
@@ -435,7 +435,7 @@ Returns:
 void VIM_USER_PrintString(char *string)
 {
 //->	Uart_Printf("\n%s",string);
-	printk("\n%s",string);
+	printk("%s\n",string);
 }
 /***************************************************************
 Description:

@@ -13,6 +13,13 @@ config VIDEO_VM_VC0528
      ---help---
        Support for VC0528 Mobiile phone video processor
 
+config VC0528
+	tristate "VC0528 Test Device config"
+	depends on VIDEO_VC0528_V4L2
+	default y
+	help
+	  video controller chip test code
+
 config VIDEO_ADV_DEBUG
 	bool "Enable advanced debug functionality"
 	depends on VIDEO_DEV

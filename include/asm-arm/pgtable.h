@@ -349,6 +349,14 @@ static inline pte_t *pmd_page_vaddr(pmd_t pmd)
 
 #define pgd_offset(mm, addr)	((mm)->pgd+pgd_index(addr))
 
+/* test */
+#define test_pgd_index()	  ((0xc1234567) >> PGDIR_SHIFT)
+#define test_pgd_offset_k()		pgd_offset(&init_mm, 0xc1234567)
+#define test1_pgd_offset(mm)	  ((mm)->pgd)
+#define test2_pgd_offset(mm)	  ((mm)->pgd+1)
+#define test1_pgd() 		      test1_pgd_offset(&init_mm)
+#define test2_pgd() 		      test2_pgd_offset(&init_mm)
+
 /* to find an entry in a kernel page-table-directory */
 #define pgd_offset_k(addr)	pgd_offset(&init_mm, addr)
 

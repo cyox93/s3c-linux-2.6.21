@@ -177,6 +177,8 @@ typedef enum tag_VIM_HAPI_SENSORMODE
  typedef enum _VIM_HAPI_CPTURE_QUALITY
 {
 	VIM_HAPI_CPTURE_RATIO_MODE=0,
+	VIM_HAPI_CPTURE_QUALITY_LIMITE=50,
+	VIM_HAPI_CPTURE_QUALITY_VERY_LOW=30,
 	VIM_HAPI_CPTURE_QUALITY_LOW=20,
 	VIM_HAPI_CPTURE_QUALITY_MID=14,
 	VIM_HAPI_CPTURE_QUALITY_HIGH=10,
@@ -324,12 +326,14 @@ UINT16 VIM_HAPI_UpdateLCD(VIM_HAPI_LAYER BLayer,UINT16 startx, UINT16 starty,UIN
 
 /////////////capture//////////////////////////////////////////////
 void VIM_HAPI_Timer(void);
+UINT32 VIM_HAPI_Timer2(void);
 UINT16 VIM_HAPI_SetCaptureQuality(VIM_HAPI_CPTURE_QUALITY Quality);
 UINT16 VIM_HAPI_SetCaptureRatio(UINT8 ratio);
 UINT16 VIM_HAPI_CaptureStill(VIM_HAPI_SAVE_MODE SaveMode,HUGE void *StillBuf,UINT32 BUF_Length,VIM_HAPI_CallBack pUCallBack);
 UINT16 VIM_HAPI_CaptureThumbStill(VIM_HAPI_SAVE_MODE SaveMode,HUGE void *StillBuf,HUGE void *ThumbBuf,UINT32 BUF_Length,VIM_HAPI_CallBack pUCallBack);
 UINT32 VIM_HAPI_GetCaptureLength(void);
 UINT16 VIM_HAPI_SetCaptureVideoInfo(VIM_HAPI_SAVE_MODE SaveMode,UINT8 bFramRate,UINT32 dwMaxFrameCount );
+UINT16 VIM_HAPI_BufferPosition(HUGE void *StillBuf,UINT32 BUF_Length,UINT8 bFramRate,UINT32 dwMaxFrameCount);
 UINT16 VIM_HAPI_StartCaptureVideo(HUGE void *StillBuf,UINT32 BUF_Length,VIM_HAPI_CallBack pUCallBack);
 UINT16 VIM_HAPI_GetOneJpeg(HUGE void *StillBuf,UINT32 BUF_Length,UINT32 *dwOneLen);
 UINT16 VIM_HAPI_StopCapture(void);

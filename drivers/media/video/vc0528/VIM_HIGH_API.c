@@ -559,15 +559,17 @@ Parameters:
 *********************************************************************************/
 UINT16 VIM_HAPI_SetCaptureQuality(VIM_HAPI_CPTURE_QUALITY Quality)
 {
-  VIM_RESULT Result;
-       if(gVc0528_Info.ChipWorkMode!=VIM_HAPI_MODE_CAMERAON)
+	VIM_RESULT Result;
+
+	if(gVc0528_Info.ChipWorkMode!=VIM_HAPI_MODE_CAMERAON)
 		return VIM_ERROR_WORKMODE;
-       gVc0528_Info.CaptureStatus.QualityMode=Quality;
-       if (gVc0528_Info.PreviewStatus.Mode == VIM_HAPI_PREVIEW_OFF)
+	gVc0528_Info.CaptureStatus.QualityMode=Quality;
+	if (gVc0528_Info.PreviewStatus.Mode == VIM_HAPI_PREVIEW_OFF)
 		return VIM_SUCCEED;
 	Result=VIM_MAPI_SetCaptureRatio(Quality);
 	return (UINT16)Result;		 
 }
+
 /********************************************************************************
 Description:
 	set capture ratio 
@@ -893,6 +895,28 @@ UINT16 VIM_HAPI_SetCaptureVideoInfo(VIM_HAPI_SAVE_MODE SaveMode,UINT8 bFramRate,
 	return VIM_SUCCEED;
 }
 
+
+UINT16 VIM_HAPI_BufferPosition(HUGE void *StillBuf,UINT32 BUF_Length,UINT8 bFramRate,UINT32 dwMaxFrameCount)
+{
+	if(gVc0528_Info.CaptureStatus.SaveMode==VIM_HAPI_RAM_SAVE)
+		gVc0528_Info.CaptureStatus.BufPoint=StillBuf;
+
+	gVc0528_Info.CaptureStatus.BufLength=BUF_Length;	
+	gVc0528_Info.VideoStatus.VideoFrameRate=bFramRate;
+	gVc0528_Info.VideoStatus.MaxFrame=dwMaxFrameCount;
+	
+	if(gVc0528_Info.VideoStatus.VideoFrameRate)
+	{
+		gVc0528_Info.VideoStatus.VideoFrameRate=1000/gVc0528_Info.VideoStatus.VideoFrameRate;
+		
+		#if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
+		VIM_USER_PrintDec("\n start TIMER interval is ",gVc0528_Info.VideoStatus.VideoFrameRate);
+		#endif	
+	}
+
+	return VIM_SUCCEED;
+}
+
 /********************************************************************************
 Description:
 	start Capture a stream still(jpeg)
@@ -995,6 +1019,7 @@ UINT16 VIM_HAPI_StartCaptureVideo(HUGE void *StillBuf,UINT32 BUF_Length,VIM_HAPI
 	{
 		VIM_JPEG_ResetState();
      		VIM_MARB_StartCapture();
+		//printk("*************** MAXFRAME 0\n ");
 	}
 	return VIM_SUCCEED;
 }
@@ -1032,8 +1057,9 @@ UINT16 VIM_HAPI_GetOneJpeg(HUGE void *StillBuf,UINT32 BUF_Length,UINT32 *dwOneLe
        	return VIM_ERROR_VIDEO_MODE;		
 	
 #if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
-		VIM_USER_PrintDec("\n get one frame video length is ",gVc0528_Info.VideoStatus.VideoLength);
-		VIM_USER_PrintHex(" JPUF size    ",gVc0528_Info.MarbStatus.MapList.jbufsize);
+		VIM_USER_PrintDec("\nget one frame video length is ",gVc0528_Info.VideoStatus.VideoLength);
+		VIM_USER_PrintHex("JPUF size :",gVc0528_Info.MarbStatus.MapList.jbufsize);
+		VIM_USER_PrintDec("MaxFrame  :",gVc0528_Info.VideoStatus.MaxFrame);
 #endif	
 
       	if(gVc0528_Info.CaptureStatus.SaveMode==VIM_HAPI_RAM_SAVE)
@@ -1132,9 +1158,9 @@ UINT16 VIM_HAPI_GetQuickOneJpeg(HUGE void *StillBuf,UINT32 BUF_Length,UINT32 *dw
 	if(gVc0528_Info.VideoStatus.Mode!=VIM_VIDEO_STARTCAPTURE)
        	return VIM_ERROR_VIDEO_MODE;		
 	
-#if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
-	//VIM_USER_PrintDec("\n NowFrame is ",gVc0528_Info.VideoStatus.NowFrame);
-#endif
+//#if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
+	VIM_USER_PrintDec("\n NowFrame is ",gVc0528_Info.VideoStatus.NowFrame);
+//#endif
 
 
 	gVc0528_Info.CaptureStatus.BufPoint=StillBuf;
@@ -1175,9 +1201,9 @@ UINT16 VIM_HAPI_GetQuickOneJpeg(HUGE void *StillBuf,UINT32 BUF_Length,UINT32 *dw
      				VIM_MARB_StartCapture();
 			}
 		}
-#if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
+//#if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
 		VIM_USER_PrintDec("no int length=",VIM_MARB_GetJbufRWSize(gVc0528_Info.MarbStatus.Jpgpoint));
-#endif
+//#endif
 		return VIM_ERROR_NOINITERRUPT;
 
 	}
@@ -1327,6 +1353,7 @@ UINT16 VIM_HAPI_SetLCDWorkMode(VIM_HAPI_LCDWORKMODE byABLayerMode, UINT16 wValue
 			VIM_SIF_EnableSyncGen(DISABLE);
  			VIM_DISP_SetLayerEnable(VIM_DISP_ALAYER,DISABLE);
 			VIM_DISP_SetWorkMode(VIM_DISP_BFIRST);
+			printk("***************  VIM_HAPI_LCDMODE_BLONLY\n");
 			break;
 		case VIM_HAPI_LCDMODE_OVERLAY:
 			// Enable A Layer, enable overlay, disable blending
@@ -3213,6 +3240,57 @@ Remarks:
 state: 
 	valid
 *********************************************************************************/
+UINT32 VIM_HAPI_Timer2(void)
+{
+	UINT32 dwOnelen;
+	UINT16 result;
+	if(gVc0528_Info.ChipWorkMode==VIM_HAPI_MODE_BYPASS ||gVc0528_Info.ChipWorkMode==VIM_HAPI_MODE_DIRECTDISPLAY)
+       		return ;
+	 if((gVc0528_Info.VideoStatus.Mode==VIM_VIDEO_STARTCAPTURE)&&(gVc0528_Info.VideoStatus.VideoFrameRate))
+	 {
+	 	result=VIM_HAPI_GetOneJpeg(gVc0528_Info.CaptureStatus.BufPoint,gVc0528_Info.CaptureStatus.BufLength,&dwOnelen);
+//		printk("> Jpeg-BufPoint:0x%08lx,size:0x%08x\n",gVc0528_Info.CaptureStatus.BufPoint,dwOnelen);
+//		printk("> BufLength:0x%08lx\n",gVc0528_Info.CaptureStatus.BufLength);
+	 	if(result)
+	 	{
+	 		if(gVc0528_Info.VideoStatus.CapCallback)
+	 		{
+	 			if((result!=VIM_ERROR_CAPTURE_BUFFULL)&&(result!=VIM_ERROR_MAX_FRAMECOUNT))
+	 				gVc0528_Info.VideoStatus.CapCallback(VIM_HAPI_BUF_ERROR,result);
+	 		}
+	 		VIM_HAPI_StopCapture();
+	 	}
+	 	else
+	 	{
+	 		if(gVc0528_Info.VideoStatus.CapCallback)
+	 			gVc0528_Info.VideoStatus.CapCallback(VIM_HAPI_ONEFRAME_END,dwOnelen);
+	 	}
+	 }
+#if VIM_USER_SURPORT_AVI
+	else  if((gVc0528_Info.VideoStatus.Mode==VIM_VIDEO_STARTCAPTURE)&&(!gVc0528_Info.VideoStatus.VideoFrameRate))
+	//->	&&(AVI_Status.NowStuatus==AVI_OPEN))
+	 {
+	 	//->Avi_Timer();
+	 }
+#endif
+	 else if((gVc0528_Info.VideoStatus.Mode==VIM_VIDEO_STARTDISPLAYE)&&(gVc0528_Info.VideoStatus.VideoFrameRate))
+	 {
+	      	result=VIM_HAPI_DisplayOneFrame(NULL,0);
+		if (result)
+   			VIM_HAPI_StopDisplayVideo();
+		else
+	 	{
+	 		if(gVc0528_Info.VideoStatus.CapCallback)
+	 			gVc0528_Info.VideoStatus.CapCallback(VIM_HAPI_ONEFRAME_END,0);
+	 	}	
+	 }
+	 else
+	 	_ISR_HIF_IntHandle();
+
+	 return dwOnelen;
+}
+
+#if 1
 void VIM_HAPI_Timer(void)
 {
 	UINT32 dwOnelen;
@@ -3222,6 +3300,7 @@ void VIM_HAPI_Timer(void)
 	 if((gVc0528_Info.VideoStatus.Mode==VIM_VIDEO_STARTCAPTURE)&&(gVc0528_Info.VideoStatus.VideoFrameRate))
 	 {
 	 	result=VIM_HAPI_GetOneJpeg(gVc0528_Info.CaptureStatus.BufPoint,gVc0528_Info.CaptureStatus.BufLength,&dwOnelen);
+		printk("Jpeg-BufPoint:0x%08lx,size:0x%08x\n",gVc0528_Info.CaptureStatus.BufPoint,dwOnelen);
 	 	if(result)
 	 	{
 	 		if(gVc0528_Info.VideoStatus.CapCallback)
@@ -3259,6 +3338,7 @@ void VIM_HAPI_Timer(void)
 	 	_ISR_HIF_IntHandle();
 	 return ;
 }
+#endif 
 
 #if VIM_USER_SUPPORT_REALTIME_ROTATION
 /********************************************************************************

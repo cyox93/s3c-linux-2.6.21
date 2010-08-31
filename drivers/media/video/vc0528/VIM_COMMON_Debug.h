@@ -35,7 +35,7 @@ extern "C" {
 #ifndef DEBUG_FLAG
 #define DEBUG_FLAG
 
-
+#if 1 
 #define		VIM_528RDK_DEBUG		0
 
 #define		VIM_HIGH_API_DEBUG		0
@@ -48,6 +48,20 @@ extern "C" {
 #define		VIM_JPEG_DEBUG			0
 #define		VIM_DISP_DEBUG			0
 #define		VIM_USER_DEBUG			0
+#else 
+#define		VIM_528RDK_DEBUG		1
+
+#define		VIM_HIGH_API_DEBUG		1
+#define		VIM_MID_API_DEBUG		1
+#define		VIM_SIF_DEBUG			1
+#define		VIM_HIF_DEBUG			1
+#define		VIM_LCDIF_DEBUG			1
+#define		VIM_IPP_DEBUG			1
+#define		VIM_MARB_DEBUG			1
+#define		VIM_JPEG_DEBUG			1
+#define		VIM_DISP_DEBUG			1
+#define		VIM_USER_DEBUG			1
+#endif
 
 
 

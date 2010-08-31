@@ -105,7 +105,6 @@ obj-$(CONFIG_IPMI_HANDLER)	+= ipmi/
 obj-$(CONFIG_HANGCHECK_TIMER)	+= hangcheck-timer.o
 obj-$(CONFIG_TCG_TPM)		+= tpm/
 obj-$(CONFIG_PIR) 			+= canopus_pir.o
-obj-$(CONFIG_VC0528) 		+= canopus_vc0528.o
 
 obj-$(CONFIG_CPU_S3C6400)	+= s3c-dvfs/
 obj-$(CONFIG_CPU_S3C6410)	+= s3c-dvfs/

@@ -49,6 +49,8 @@ MODULE_LICENSE("GPL");
 
 #define dprintk(level, fmt, arg...)	if (debug >= level) \
 	printk(KERN_DEBUG "vbuf: " fmt , ## arg)
+//#define dprintk(level, fmt, arg...)	 \
+//	printk("vbuf  : " fmt , ## arg)
 
 struct scatterlist*
 videobuf_vmalloc_to_sg(unsigned char *virt, int nr_pages)
@@ -554,6 +556,7 @@ videobuf_status(struct v4l2_buffer *b, struct videobuf_buffer *vb,
 	case V4L2_MEMORY_MMAP:
 		b->m.offset  = vb->boff;
 		b->length    = vb->bsize;
+		b->reserved  = vb->jpeg_size;
 		break;
 	case V4L2_MEMORY_USERPTR:
 		b->m.userptr = vb->baddr;
@@ -1302,8 +1305,12 @@ int videobuf_mmap_mapper(struct videobuf_queue *q,
 			 struct vm_area_struct *vma)
 {
 	struct videobuf_mapping *map;
-	unsigned int first,last,size,i;
+	unsigned int first,last,size;
+	static unsigned int i;
 	int retval;
+	struct page *page;
+	unsigned long paddr,pstart,psize,pg_off;
+	void  *vmalloc_addr;
 
 	mutex_lock(&q->lock);
 	retval = -EINVAL;
@@ -1359,17 +1366,47 @@ int videobuf_mmap_mapper(struct videobuf_queue *q,
 	for (size = 0, i = first; i <= last; size += q->bufs[i++]->bsize) {
 		q->bufs[i]->map   = map;
 		q->bufs[i]->baddr = vma->vm_start + size;
+#if 0
+	dprintk(1,"***** buffer index: [0x%x]\n",i);
+	dprintk(1,"+++++ map:0x%08lx, baddr:%08lx, bsize:%08lx, bufs:%d-%d\n",
+			q->bufs[i]->map,q->bufs[i]->baddr,q->bufs[i]->bsize,first,last);
+#endif
 	}
+#if 0	
+	dprintk (1,"***** vma_start:0x%08lx, vma_end:0x%08lx, vma_pgoff=0x%08lx\n",
+			(unsigned long)vma->vm_start,
+			(unsigned long)vma->vm_end,
+			(unsigned long)vma->vm_pgoff);
+#endif
+	pstart   = vma->vm_start;
+	psize    = vma->vm_end - vma->vm_start;
+	pg_off   = vma->vm_pgoff;
+	paddr    = vmalloc(psize);
+	q->bufs[first]->remap = (unsigned long*)paddr;
+//	dprintk(1,"***** pg_off:0x%08lx, uvm_start:0x%08lx,kvm_start:0x%08lx, psize:0x%08lx\n",pg_off,pstart,paddr,psize);
+
+	while(psize >0){
+		page = vmalloc_to_page((void*)paddr);
+		if(vm_insert_page(vma,pstart,page) < 0)
+			break;
+		
+		pstart += PAGE_SIZE;
+		paddr  += PAGE_SIZE;
+		psize  -= PAGE_SIZE;
+//	dprintk(1,"+++++ page_addr:0x%x, uvm_addr:0x%x, kvm_addr:0x%x, psize:0x%x\n",page,pstart,paddr,psize);
+	}
+
 	map->count    = 1;
 	map->start    = vma->vm_start;
 	map->end      = vma->vm_end;
 	map->q        = q;
+	map->remap 	  = 0x1;
 	vma->vm_ops   = &videobuf_vm_ops;
 	vma->vm_flags |= VM_DONTEXPAND | VM_RESERVED;
 	vma->vm_flags &= ~VM_IO; /* using shared anonymous pages */
 	vma->vm_private_data = map;
-	dprintk(1,"mmap %p: q=%p %08lx-%08lx pgoff %08lx bufs %d-%d\n",
-		map,q,vma->vm_start,vma->vm_end,vma->vm_pgoff,first,last);
+//	dprintk(1,"----- mmap:0x%p, q:0x%p, vma:0x%08lx-0x%08lx, pgoff:%d, bufs:%d-%d\n",
+//			map,q,vma->vm_start,vma->vm_end,vma->vm_pgoff,first,last);
 	retval = 0;
 
  done:
@@ -1424,4 +1461,5 @@ EXPORT_SYMBOL_GPL(videobuf_mmap_mapper);
  * Local variables:
  * c-basic-offset: 8
  * End:
- */
+*/
+

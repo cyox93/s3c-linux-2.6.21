@@ -45,22 +45,28 @@
 #include <linux/freezer.h>
 #include "font.h"
 
+#include <asm/pgtable.h>
+#include <asm/plat-s3c24xx/s3c2416.h>
+#include "unidata_logo.h"
+#include "vc0528.h"
+
 /*_____________________ Constants Definitions _______________________________*/
 /* Wake up at about 30 fps */
-#define VC0528_WAKE_NUMERATOR 	   	30
-//#define VC0528_WAKE_DENOMINATOR   1001
-//#define VC0528_BUFFER_TIMEOUT     msecs_to_jiffies(500) 	/* 0.5 seconds */
+#define VC0528_WAKE_NUMERATOR 30
+#define VC0528_WAKE_DENOMINATOR 1001
+#define VC0528_BUFFER_TIMEOUT     msecs_to_jiffies(10000)  /* 0.3 seconds */
 
 /* These timers are for 1 fps - used only for testing */
-#define VC0528_WAKE_DENOMINATOR 	30  					/* hack for testing purposes */
-#define VC0528_BUFFER_TIMEOUT     	msecs_to_jiffies(5000)  /* 5 seconds */
+//#define VC0528_WAKE_DENOMINATOR 30 /* hack for testing purposes */
+//#define VC0528_BUFFER_TIMEOUT     msecs_to_jiffies(5000)  /* 5 seconds */
 
 /* Debug for vc0528 v4l2 interface */
 #define VC0528_IOCTL_CMD_TEST  		0
-#define VC0528_DEBUG_INFO 	  		0 
+#define VC0528_DEBUG_INFO 	  		0
+
 #if VC0528_DEBUG_INFO 
 #define dprintk(level,fmt, arg...)					\
-			printk("vc0528_dbg: " fmt , ## arg);
+			printk("vc0528: " fmt , ## arg);
 #else
 #define dprintk(level,fmt, arg...)					\
 	do {								\
@@ -80,6 +86,16 @@
 static unsigned int vid_limit = 16;	/* Video memory limit, in Mb */
 static struct video_device vc0528;	/* Video device */
 static int video_nr = -1;		 	/* /dev/videoN, -1 for autodetect */
+
+static int __iomem *_test_addr;
+
+char testv4l2_buf[5] = {
+	0x0,
+	0x1,
+	0x2,
+	0x3,
+	0x4
+};
 
 /* supported controls */
 static struct v4l2_queryctrl 
@@ -430,6 +446,125 @@ vc0528_fillbuff(struct vc0528_dev *dev,struct vc0528_buffer *buf)
 	int hmax  = buf->vb.height;
 	int wmax  = buf->vb.width;
 	struct timeval ts;
+	unsigned int test_value = 0x1;
+	ctrl_jpeg_read jpeg;
+#ifdef CONFIG_VC0528_SCATTER
+	struct sg_to_addr *to_addr=buf->to_addr;
+	struct videobuf_buffer *vb=&buf->vb;
+#else
+	char *tmpbuf;
+#endif
+
+#ifdef CONFIG_VC0528_SCATTER
+	/* Test if DMA mapping is ready */
+	if (!sg_dma_address(&vb->dma.sglist[0]))
+		return;
+
+	prep_to_addr(to_addr,vb);
+
+	/* Check if there is enough memory */
+	BUG_ON(buf->vb.dma.nr_pages << PAGE_SHIFT < (buf->vb.width*buf->vb.height)*2);
+#else
+	if (buf->vb.dma.varea) {
+		tmpbuf=kmalloc (wmax*2, GFP_KERNEL);
+	} else {
+		tmpbuf=buf->vb.dma.vmalloc;
+	}
+
+#endif
+
+
+#if 0
+	dprintk(2,"vb:boff:0x%x, bsize:0x%x, baddr:0x%x\n, ",
+			(unsigned long)buf->vb.boff,
+   			(unsigned long)buf->vb.bsize,
+			(unsigned long)buf->vb.baddr);
+	dprintk(2,"size:0x%x, bytesperline:0x%x, remap:0x%x\n",
+			(unsigned long)buf->vb.size,
+   			(unsigned long)buf->vb.bytesperline,
+   			(unsigned long)buf->vb.remap);
+
+	dprintk(2,"dma:offset:0x%x, pages:0x%x, nr_pages:0x%x\n",
+			(unsigned long)buf->vb.dma.offset,
+   			(unsigned long)buf->vb.dma.pages,
+			(unsigned long)buf->vb.dma.nr_pages);
+	dprintk(2,"vmalloc:0x%x, sglen:0x%x\n",
+			(unsigned long)buf->vb.dma.vmalloc,
+			(unsigned long)buf->vb.dma.sglen);
+#endif
+
+    _test_addr = buf->vb.remap; 
+	/* Updates stream time */
+
+	dev->us+=jiffies_to_usecs(jiffies-dev->jiffies);
+	dev->jiffies=jiffies;
+	if (dev->us>=1000000) {
+		dev->us-=1000000;
+		dev->s++;
+		if (dev->s>=60) {
+			dev->s-=60;
+			dev->m++;
+			if (dev->m>60) {
+				dev->m-=60;
+				dev->h++;
+				if (dev->h>24)
+					dev->h-=24;
+			}
+		}
+	}
+
+	dprintk(2,"kvm_addr: 0x%08lx size= %d\n",(unsigned long)_test_addr,(unsigned long)buf->vb.size);
+	sprintf(dev->timestr,"%02d:%02d:%02d:%03d", dev->h,dev->m,dev->s,(dev->us+500)/1000);
+	dprintk(2,"[buffer fill start  :%s]\n",dev->timestr);
+
+	jpeg.frame_buf  = buf->vb.remap;
+	jpeg.frbuf_size = buf->vb.size;
+	jpeg.frame_rate = 1;
+	jpeg.frame_max  = 0xffff;
+	canopus_bedev_ioctl(VC0528_CAMERA_JPEG_READ,&jpeg);
+	buf->vb.jpeg_size = jpeg.frame_size;
+	dprintk(2,"[jpeg_size  :0x%x]\n",buf->vb.jpeg_size);
+
+	/* Updates stream time */
+	dev->us+=jiffies_to_usecs(jiffies-dev->jiffies);
+	dev->jiffies=jiffies;
+	if (dev->us>=1000000) {
+		dev->us-=1000000;
+		dev->s++;
+		if (dev->s>=60) {
+			dev->s-=60;
+			dev->m++;
+			if (dev->m>60) {
+				dev->m-=60;
+				dev->h++;
+				if (dev->h>24)
+					dev->h-=24;
+			}
+		}
+	}
+
+	sprintf(dev->timestr,"%02d:%02d:%02d:%03d", dev->h,dev->m,dev->s,(dev->us+500)/1000);
+	dprintk(2,"[buffer fill end  :%s]\n", dev->timestr);
+
+	/* Advice that buffer was filled */
+	buf->vb.state = STATE_DONE;
+	buf->vb.field_count++;
+	do_gettimeofday(&ts);
+	buf->vb.ts = ts;
+
+	list_del(&buf->vb.queue);
+	wake_up(&buf->vb.done);
+}
+
+
+#if 0
+static void 
+vc0528_fillbuff(struct vc0528_dev *dev,struct vc0528_buffer *buf)
+{
+	int h,pos=0;
+	int hmax  = buf->vb.height;
+	int wmax  = buf->vb.width;
+	struct timeval ts;
 #ifdef CONFIG_VC0528_SCATTER
 	struct sg_to_addr *to_addr=buf->to_addr;
 	struct videobuf_buffer *vb=&buf->vb;
@@ -460,10 +595,16 @@ vc0528_fillbuff(struct vc0528_dev *dev,struct vc0528_buffer *buf)
 		gen_line(to_addr,pos,vb->dma.nr_pages,wmax,hmax,h,dev->timestr);
 #else
 		if (buf->vb.dma.varea) {
+#if 0			
+			printk("tempbuf: 0x%x\n",tmpbuf);
+			printk("wmax:%d, hmax:%d\n",wmax,hmax);
+			printk("h:%d dev->timestr:0x%x\n",h,dev->timestr);
+#endif 
 			gen_line(tmpbuf,0,wmax,hmax,h,dev->timestr);
+
 			/* FIXME: replacing to __copy_to_user */
-			if (copy_to_user(buf->vb.dma.varea+pos,tmpbuf,wmax*2)!=0)
-				dprintk(2,"vc0528fill copy_to_user failed.\n");
+			//if (copy_to_user(buf->vb.dma.varea+pos,tmpbuf,wmax*2)!=0)
+			//	dprintk(2,"vc0528fill copy_to_user failed.\n");
 		} else {
 			gen_line(tmpbuf,pos,wmax,hmax,h,dev->timestr);
 		}
@@ -520,11 +661,12 @@ vc0528_fillbuff(struct vc0528_dev *dev,struct vc0528_buffer *buf)
 	list_del(&buf->vb.queue);
 	wake_up(&buf->vb.done);
 }
+#endif 
 
 static int 
 restart_video_queue(struct vc0528_dmaqueue *dma_q);
 
-//static void vc0528_thread_tick(struct vc0528_dmaqueue  *dma_q)
+//static void 
 void 
 vc0528_thread_tick(struct vc0528_dmaqueue  *dma_q)
 {
@@ -536,10 +678,10 @@ vc0528_thread_tick(struct vc0528_dmaqueue  *dma_q)
 	/* Announces videobuf that all went ok */
 	for (bc = 0;; bc++) {
 		if (list_empty(&dma_q->active)) {
-			dprintk(1,"No active queue to serve bc: %d\n",bc);
+  		dprintk(1,"No active queue to serve bc: %d\n",bc);
 			break;
 		}
-		printk("vc0828: empty buf cnt %x\n",bc);
+ 		dprintk(1,"vc0828: empty buf cnt %x\n",bc);
 
 		buf = list_entry(dma_q->active.next,
 				 struct vc0528_buffer, vb.queue);
@@ -555,7 +697,6 @@ vc0528_thread_tick(struct vc0528_dmaqueue  *dma_q)
 
 		/* Fill buffer */
 		vc0528_fillbuff(dev,buf);
-		printk("Fill buffer\n");
 
 		if (list_empty(&dma_q->active)) {
 			del_timer(&dma_q->timeout);
@@ -563,8 +704,10 @@ vc0528_thread_tick(struct vc0528_dmaqueue  *dma_q)
 			mod_timer(&dma_q->timeout, jiffies+VC0528_BUFFER_TIMEOUT);
 		}
 	}
-	if (bc != 1)
+#if 0
+  	if (bc != 1)
 		dprintk(1,"%s: %d buffers handled (should be 1)\n",__FUNCTION__,bc);
+#endif	
 }
 
 static void 
@@ -573,7 +716,7 @@ vc0528_sleep(struct vc0528_dmaqueue  *dma_q)
 	int timeout;
 	DECLARE_WAITQUEUE(wait, current);
 
-	dprintk(1,"%s dma_q=0x%08lx\n",__FUNCTION__,(unsigned long)dma_q);
+//  dprintk(1,"%s dma_q=0x%08lx\n",__FUNCTION__,(unsigned long)dma_q);
 
 	add_wait_queue(&dma_q->wq, &wait);
 	if (!kthread_should_stop()) {
@@ -588,11 +731,12 @@ vc0528_sleep(struct vc0528_dmaqueue  *dma_q)
 
 			timeout=dma_q->ini_jiffies+msecs_to_jiffies((dma_q->frame*VC0528_WAKE_NUMERATOR*1000)/VC0528_WAKE_DENOMINATOR)-jiffies;
 
-			dprintk(1,"underrun, losed %d frames. "
-				  "Now, frame is %d. Waking on %d jiffies\n",
-					dma_q->frame-old,dma_q->frame,timeout);
-		} else
-			dprintk(1,"will sleep for %i jiffies\n",timeout);
+//			dprintk(1,"underrun, losed %d frames. "
+//				  "Now, frame is %d. Waking on %d jiffies\n",
+//					dma_q->frame-old,dma_q->frame,timeout);
+		}else{
+//			dprintk(1,"will sleep for %i jiffies\n",timeout);
+		}
 
 		vc0528_thread_tick(dma_q);
 
@@ -723,13 +867,14 @@ vc0528_vid_timeout(unsigned long data)
 	struct vc0528_dev      *dev  = (struct vc0528_dev*)data;
 	struct vc0528_dmaqueue *vidq = &dev->vidq;
 	struct vc0528_buffer   *buf;
+	dprintk(1,"********* time out ************\n");
 
 	while (!list_empty(&vidq->active)) {
 		buf = list_entry(vidq->active.next, struct vc0528_buffer, vb.queue);
 		list_del(&buf->vb.queue);
 		buf->vb.state = STATE_ERROR;
 		wake_up(&buf->vb.done);
-		printk("vc0528/0: [%p/%d] timeout\n", buf, buf->vb.i);
+		dprintk(1,"vc0528/0: [%p/%d] timeout\n", buf, buf->vb.i);
 	}
 
 	restart_video_queue(vidq);
@@ -1034,8 +1179,8 @@ vidioc_try_fmt_cap(struct file *file, void *priv,
 		return -EINVAL;
 	}
 
-	maxw  = norm_maxw();
-	maxh  = norm_maxh();
+	maxw  = norm_maxw();  // 1024
+	maxh  = norm_maxh();  // 768 
 
 	f->fmt.pix.field = field;
 	if (f->fmt.pix.height < 32)
@@ -1165,6 +1310,7 @@ vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type i)
 	if (i != fh->type)
 		return -EINVAL;
 
+	canopus_bedev_ioctl(VC0528_BYPASS_MODE,NULL);   // lcd bypass mode change 
 	videobuf_streamoff(&fh->vb_vidq);
 	res_free(dev,fh);
 
@@ -1280,12 +1426,15 @@ vc0528_open(struct inode *inode, struct file *file)
 	/*__________________ list check !!_________________*/
 	_list = &vc0528_devlist;
 	list = _list->next;
-	printk("___________ start  open_____________\n");
+	dprintk(1,"___________ start  open_____________\n");
 	while(list != _list){
-		printk("list: 0x%x , _list: 0x%x\n",list,_list);
+		dprintk(1,"list: 0x%x , _list: 0x%x\n",list,_list);
 		list = list->next;	
 	}
-	printk("list: 0x%x , _list: 0x%x\n",list,_list);
+	dprintk(1,"list: 0x%x , _list: 0x%x\n",list,_list);
+
+	dprintk(1,"_unidata_logo[] size : 0x%x\n",sizeof(_unidata_logo));
+
 	/*__________________ list check !!_________________*/
 #endif
 
@@ -1352,6 +1501,13 @@ vc0528_open(struct inode *inode, struct file *file)
 			V4L2_FIELD_INTERLACED,
 			sizeof(struct vc0528_buffer),fh);
 #endif
+
+	/* VC0528 init */
+	canopus_bedev_ioctl(VC0528_RESET_CORE,NULL);
+	canopus_bedev_ioctl(SSMC_INIT,NULL);
+	canopus_bedev_ioctl(VC0528_SET_MULTI16,NULL);
+	canopus_bedev_ioctl(VC0528_INIT,NULL);
+	canopus_bedev_ioctl(VC0528_CAMERA_CAPTURE_STILL,NULL);
 	return 0;
 }
 
@@ -1427,16 +1583,44 @@ vc0528_mmap(struct file *file, struct vm_area_struct * vma)
 	struct vc0528_fh        *fh = file->private_data;
 	int ret;
 
-	dprintk (1,"mmap called, vma=0x%08lx\n",(unsigned long)vma);
+	static void __iomem	*_user_addr;
+	unsigned int addr1,addr2;
+
+    pgd_t *pgd;     
+	pud_t *pud;     
+	pmd_t *pmd;     
+	pte_t *pte;
 
 	ret=videobuf_mmap_mapper(&fh->vb_vidq, vma);
 
-	dprintk (1,"vma start=0x%08lx, size=%ld, pgoff=0x%x, ret=%d\n",
-		(unsigned long)vma->vm_start,
-		(unsigned long)vma->vm_end-(unsigned long)vma->vm_start,
-		(unsigned long)vma->vm_pgoff,
-		ret);
+	/* videobuf_querybuif */
+//	_user_addr = (unsigned int *)(vma->vm_start);
+//	printk("buffer2: addr: 0x%x, 0x%x\n",vma->vm_start,_user_addr);
+//	memcpy(_user_addr,testv4l2_buf,5);
 
+#if 0
+	dprintk (1," vma start=0x%08lx\n size=%ld\n pgoff=0x%x\n ret=%d\n",
+			(unsigned long)vma->vm_start,
+			(unsigned long)vma->vm_end-(unsigned long)vma->vm_start,
+			(unsigned long)vma->vm_pgoff,
+			ret);
+#endif
+
+#if 0
+	dprintk (1,"vm_mm:pgd_t = 0x%x\n",(unsigned long*)vma->vm_mm->pgd);
+	dprintk (1,"vm_mm:pgd_t = 0x%x\n",*((unsigned long*)vma->vm_mm->pgd));
+
+	pgd = (unsigned long)vma->vm_mm->pgd;
+	pud = pud_offset(pgd,(unsigned long)vma->vm_start);
+	pmd = pmd_offset(pud,(unsigned long)vma->vm_start);
+	pte = pte_offset_kernel(pgd,(unsigned long)vma->vm_start);			 
+
+	printk("pud:0x%x\n, pgd:0x%x\n, pmd:0x%x\n, pte:0x%x\n",
+			((unsigned long*)pud),
+			((unsigned long*)pgd),
+			((unsigned long*)pmd),
+			((unsigned long*)pte));
+#endif
 	return ret;
 }
 
@@ -1449,15 +1633,86 @@ v4l2_do_ioctl(struct inode *inode, struct file *file,
 	struct video_device *vdev = video_devdata(file);
 	struct vc0528_dev *video = video_get_drvdata(vdev);
 	struct vc0528_fh *handle = (struct vc0528_fh*)file->private_data;
-	
+	struct v4l2_buffer *buf=arg;
+
 	int ret = 0;
+	int size,cnt=0;
+	unsigned int addr1,addr2,addr3,addr4;
+	static void __iomem	*_user_addr;
+	unsigned long __user_addr;
+	unsigned long __user_addr2;
+    pgd_t *pgd;     
+	pud_t *pud;     
+	pmd_t *pmd;     
+	pte_t *pte;
+
+
+	size = _IOC_SIZE(cmd);
 
 	switch(cmd){
 	case VIDIOC_REQBUFS:
 		/* videobuf_reqbufs */
 		break;
 	case VIDIOC_QUERYBUF:
+
+	_user_addr = 0xc1234567; 
+	__user_addr = 0xc1234567; 
+
+#if 0	
+	_user_addr = (unsigned long)0xc0006000; 
+	while(cnt!=1024){
+		printk("%04d: 0x%08lx: 0x%08lx\n",cnt,(_user_addr+(cnt*4)),*((unsigned long*)_user_addr+(cnt++)));
+	};
+#endif
+
+#if 1
+	dprintk (1," mmap called, vma=0x%08lx\n",(unsigned long)_user_addr);
+	dprintk (1,"_____________________________________________\n");
+	dprintk (1," VMALLOC_START:0x%x\n",VMALLOC_START);
+	dprintk (1," VMALLOC_OFFSET:0x%x\n",VMALLOC_OFFSET);
+	dprintk (1," high_memory:0x%x\n",high_memory);
+	dprintk (1," PGDIR_SHIFT: %d\n",PGDIR_SHIFT);
+	dprintk (1," PAGE_SHIFT: %d\n",PAGE_SHIFT);
+	dprintk (1," ARCH_PFN_OFFSET: 0x%08lx\n",ARCH_PFN_OFFSET); 		 
+	dprintk (1," mem_map: 0x%08lx\n",mem_map); 						 
+	dprintk (1," &init_mm: 0x%08lx\n",(init_mm).pgd);
+
+	pgd = pgd_offset_k(( unsigned long)_user_addr);
+	pud = pud_offset(pgd,( unsigned long)_user_addr);
+	pmd = pmd_offset(pud,( unsigned long)_user_addr);
+	pte = pte_offset_kernel(pmd,(unsigned long)_user_addr);			 
+	printk("pgd:0x%x, pud:0x%x, pmd:0x%x, pte:0x%x \n",pgd,pud,pmd,pte);
+
+//	dprintk (1," __pfn_to_page(pfn)",__pfn_to_page(pfn)); 	// __pfn_to_page(pfn)  : (mem_map + ((pfn) - ARCH_PFN_OFFSET)) 
+//	dprintk (1," __page_to_pfn(page)",__page_to_pfn(page)); // __page_to_pfn(page) : ((unsigned long)((page) - mem_map) + ARCH_PFN_OFFSET) 
+//	dprintk (1," pte_pfn(pte)",pte_pfn(pte));  				// pte_pfn(pte)  :	(pte_val(pte) >> PAGE_SHIFT) 
+//	dprintk (1," pte_page(pte)",pte_page(pte));      		// pte_page(pte) :	(pfn_to_page(pte_pfn(pte))) 
+//	dprintk (1," pte_pfn(pte)",pte_pfn(pte));        		// pte_pfn(pte)  :  (pte_val(pte) >> PAGE_SHIFT)
+//	dprintk (1," pte_val(pte)",pte_val(pte)); 		 		// pte_val(x)    :  (x)
+	dprintk (1," pgd_offset_k(addr): 0x%08lx\n",(unsigned long*)test_pgd_offset_k());  			 	
+	dprintk (1," pgd_offset_k(addr): 0x%08lx\n",(unsigned long*)((init_mm).pgd+test_pgd_index())); 
+	dprintk (1," pgd_offset_k(addr): 0x%08lx\n",(unsigned long*)(((init_mm).pgd+test_pgd_index()))); 
+	dprintk (1," pgd_offset_k(addr): 0x%08lx\n",(unsigned long*)((init_mm).pgd)+test_pgd_index());  
+	dprintk (1," pgd_offset_k(addr): 0x%08lx\n",(unsigned long*)((init_mm).pgd+((unsigned long)(_user_addr)>>21)));  
+	dprintk (1," test_pgd_index(addr) 0x%08lx\n",(unsigned long*)test_pgd_index()); 		
+
+	__user_addr2 = ((init_mm).pgd)+test_pgd_index();
+	dprintk (1," pgd_offset_k(addr): 0x%08lx\n",(unsigned long*)__user_addr2);  
+
+	__user_addr2 = (unsigned long*)((init_mm).pgd)+test_pgd_index();
+	dprintk (1," pgd_offset_k(addr): 0x%08lx\n",(unsigned long*)__user_addr2); 
+
+	dprintk (1," pgd_offset_k(addr): 0x%08lx\n",__user_addr2);  
+	dprintk (1,"_____________________________________________\n");
+#endif
+
+#if 0		
 		/* videobuf_querybuif */
+		_user_addr = (unsigned int *)(buf->reserved);
+		printk("buffer: addr: 0x%x, 0x%x\n",buf->reserved,_user_addr);
+		memcpy(_user_addr,testv4l2_buf,5);
+		printk("index: 0x%x\n",buf->index);
+#endif
 		break;
 	case VIDIOC_QBUF:
 		/* videobuf_dqbuf */
@@ -1483,6 +1738,24 @@ vc0528_v4l2_ioctl(struct inode *inode, struct file *file,
 }
 #endif 
 
+int video_ioctl_device(struct inode *inode, struct file *file,
+	       unsigned int cmd, unsigned long arg)
+{
+	switch(_IOC_TYPE(cmd))
+	{
+	case 'V':
+		video_ioctl2(inode,file,cmd,arg); 		  // v4l2 command
+		break;
+	case 'Q':
+	//	canopus_bedev_ioctl(inode,file,cmd,arg);  // vc0528 direct control command
+		break;
+	default:
+		return -EINVAL;
+		break;
+	}
+
+}
+
 static const struct 
 file_operations vc0528_fops = {
 
@@ -1491,10 +1764,10 @@ file_operations vc0528_fops = {
 	.release    = vc0528_release,
 	.read       = vc0528_read,
 	.poll		= vc0528_poll,
-#if 0	
-    .ioctl      = vc0528_v4l2_ioctl, /* V4L2 ioctl handler only test !! */
+#if VC0528_IOCTL_CMD_TEST
+    .ioctl      = vc0528_v4l2_ioctl, 	 /* V4L2 ioctl handler only test !! */
 #else
-	.ioctl      = video_ioctl2, 	 /* V4L2 ioctl handler */
+	.ioctl      = video_ioctl_device, 	 /* V4L2 ioctl handler */
 #endif	
 	.mmap		= vc0528_mmap,
 	.llseek     = no_llseek,

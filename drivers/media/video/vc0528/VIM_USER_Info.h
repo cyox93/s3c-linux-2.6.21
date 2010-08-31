@@ -178,7 +178,7 @@ extern UINT8 FastPreview;
 #define VIM_USER_QFONESTEP	10
 #define VIM_USER_CAPTURE_TIMER   5 //(MS ) means when capture ,timer interval check done interrupt
 #define VIM_USER_GETQUICKPIC_TIMES   5//(MS ) when use VIM_HAPI_GetQuickOneJpeg this funciton ,if no interrupt times more than this value,it  will restart capture
-#define VIM_USER_SURPORT_AVI	1	// 1 means support avi capture ,0 means not
+#define VIM_USER_SURPORT_AVI	0	// 1 means support avi capture ,0 means not
 #define VIM_USER_MAX_ARRAY_AE	  10	//the max number of array which store the AE register value. add by guoying 12/28/2007
 //#define VIM_USER_MCLK_45M		1			//if 1, MCLK=45M, CLKIN=13Mhz ; if 0, MCLK=24M, CLKIN=24Mhz.
 
