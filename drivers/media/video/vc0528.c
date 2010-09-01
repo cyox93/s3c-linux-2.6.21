@@ -70,9 +70,10 @@
 #define canopus_bedev_suspend 	NULL
 #define canopus_bedev_resume  	NULL
 
+static int debug = 3;
 #define dprintk(level,fmt, arg...)					\
 	do {								\
-		if (3 >= (level))				\
+		if (debug >= (level))				\
 			printk("dev528: " fmt , ## arg);	\
 	} while (0)
 

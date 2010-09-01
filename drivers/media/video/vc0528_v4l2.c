@@ -61,19 +61,16 @@
 //#define VC0528_BUFFER_TIMEOUT     msecs_to_jiffies(5000)  /* 5 seconds */
 
 /* Debug for vc0528 v4l2 interface */
-#define VC0528_IOCTL_CMD_TEST  		0
+#define VC0528_IOCTL_CMD_TEST  		0	
 #define VC0528_DEBUG_INFO 	  		0
 
-#if VC0528_DEBUG_INFO 
-#define dprintk(level,fmt, arg...)					\
-			printk("vc0528: " fmt , ## arg);
-#else
+static int debug = 3;
 #define dprintk(level,fmt, arg...)					\
 	do {								\
 		if (vc0528.debug >= (level))				\
-			printk(KERN_DEBUG "vc0528: " fmt , ## arg);	\
+		printk(KERN_DEBUG "vc0528: " fmt , ## arg);	  \
 	} while (0)
-#endif
+
 
 //#define CONFIG_VC0528_SCATTER  	1
 #define VC0528_MAJOR_VERSION 		0
@@ -1572,6 +1569,7 @@ vc0528_release(struct inode *inode, struct file *file)
 
 	dev->users--;
 
+	canopus_bedev_ioctl(VC0528_BYPASS_MODE,NULL);
 	printk(KERN_DEBUG "vc0528: close called (minor=%d, users=%d)\n",minor,dev->users);
 
 	return 0;
