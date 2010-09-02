@@ -137,7 +137,7 @@ static struct circ_buf wm8350_event;
 static struct list_head wm8350_bat_events[WM8350_BAT_EVENT_NUM];
 static struct wm8350 *wm8350_bat = NULL;
 
-static int bat_detect = WM8350_BAT_EVENT_NOTDETECT;
+static int bat_detect = WM8350_BAT_EVENT_DETECT;
 static int bat_detect_retry = 0;
 static bool _is_fault = false;
 static bool _is_temp_fault = false;
