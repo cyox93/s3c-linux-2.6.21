@@ -90,6 +90,12 @@ static struct s3c24xx_led_platdata smdk_pdata_led_pir = {
 	.name		= "monitor-indicator",
 };
 
+static struct s3c24xx_led_platdata smdk_pdata_led_moter = {
+	.gpio		= S3C2410_GPH5,
+	.flags		= 0,
+	.name		= "moter",
+};
+
 static struct platform_device smdk_led4 = {
 	.name		= "s3c24xx_led",
 	.id		= 0,
@@ -135,6 +141,14 @@ static struct platform_device smdk_led_pir = {
 	.id		= 5,
 	.dev		= {
 		.platform_data = &smdk_pdata_led_pir,
+	},
+};
+
+static struct platform_device smdk_led_moter = {
+	.name		= "s3c24xx_led",
+	.id		= 6,
+	.dev		= {
+		.platform_data = &smdk_pdata_led_moter,
 	},
 };
 
@@ -322,6 +336,7 @@ static struct platform_device __initdata *smdk_devs[] = {
 	&smdk_led7,
 #else
 	&smdk_led_key_bl,
+	&smdk_led_moter,
 #endif	// CONFIG_MACH_CANOPUS
 };
 
@@ -602,6 +617,10 @@ void canopus_gpio_init(void)
 	// key LED
 	s3c2410_gpio_cfgpin(S3C2410_GPD15, S3C2410_GPD15_OUTP);
 	s3c2410_gpio_setpin(S3C2410_GPD15, 0);
+
+	// moter
+	s3c2410_gpio_cfgpin(S3C2410_GPH5, S3C2410_GPH5_OUTP);
+	s3c2410_gpio_setpin(S3C2410_GPH5, 0);
 
    	 // Wi-Fi
 	wifi_gpio_init();
