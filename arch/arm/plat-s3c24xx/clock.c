@@ -422,6 +422,15 @@ struct clk s3c24xx_dclk0 = {
 	.set_parent	= s3c24xx_dclk_setparent,
 };
 
+#ifdef CONFIG_MACH_CANOPUS
+struct clk s3c24xx_dclk1 = {
+	.name		= "dclk1",
+	.id		= -1,
+	.ctrlbit	= S3C2410_DCLKCON_DCLK1EN,
+	.enable		= s3c24xx_dclk_enable,
+	.set_parent	= s3c24xx_dclk_setparent,
+};
+#else	// CONFIG_MACH_CANOPUS
 struct clk s3c24xx_dclk1 = {
 	.name		= "dclk1",
 	.id		= -1,
@@ -429,6 +438,7 @@ struct clk s3c24xx_dclk1 = {
 	.enable		= s3c24xx_dclk_enable,
 	.set_parent	= s3c24xx_dclk_setparent,
 };
+#endif	// CONFIG_MACH_CANOPUS
 
 struct clk s3c24xx_clkout0 = {
 	.name		= "clkout0",
