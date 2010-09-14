@@ -52,7 +52,8 @@
 
 /*_____________________ Constants Definitions _______________________________*/
 /* Wake up at about 30 fps */
-#define VC0528_WAKE_NUMERATOR 30
+//#define VC0528_WAKE_NUMERATOR 30
+#define VC0528_WAKE_NUMERATOR 60
 #define VC0528_WAKE_DENOMINATOR 1001
 #define VC0528_BUFFER_TIMEOUT     msecs_to_jiffies(10000)  /* 0.3 seconds */
 
@@ -864,7 +865,6 @@ vc0528_vid_timeout(unsigned long data)
 	struct vc0528_dev      *dev  = (struct vc0528_dev*)data;
 	struct vc0528_dmaqueue *vidq = &dev->vidq;
 	struct vc0528_buffer   *buf;
-	dprintk(1,"********* time out ************\n");
 
 	while (!list_empty(&vidq->active)) {
 		buf = list_entry(vidq->active.next, struct vc0528_buffer, vb.queue);
@@ -1736,16 +1736,39 @@ vc0528_v4l2_ioctl(struct inode *inode, struct file *file,
 }
 #endif 
 
+void
+vc0528_turning_mode_init(void)
+{
+	/* VC0528 init */
+	canopus_bedev_ioctl(VC0528_RESET_CORE,NULL);
+	canopus_bedev_ioctl(SSMC_INIT,NULL);
+	canopus_bedev_ioctl(VC0528_SET_MULTI16,NULL);
+	canopus_bedev_ioctl(VC0528_INIT,NULL);
+	canopus_bedev_ioctl(VC0528_CAMERA_CAPTURE_STILL,NULL);
+}
+
 int video_ioctl_device(struct inode *inode, struct file *file,
 	       unsigned int cmd, unsigned long arg)
 {
+	int size;
+
 	switch(_IOC_TYPE(cmd))
 	{
 	case 'V':
-		video_ioctl2(inode,file,cmd,arg); 		  // v4l2 command
+		video_ioctl2(inode,file,cmd,arg);  // v4l2 command
 		break;
 	case 'Q':
-	//	canopus_bedev_ioctl(inode,file,cmd,arg);  // vc0528 direct control command
+		switch(cmd){
+		case VC0528_CAMERA_SENSOR_NEW_SET: 
+		case VC0528_CAMERA_SENSOR_ORG_SET:
+		case VC0528_CAMERA_SENSOR_CHECK_NEW:
+		case VC0528_CAMERA_SENSOR_CHECK_ORG:
+			canopus_bedev_ioctl(cmd,arg);  // vc0528 direct control command
+			break;
+		case VC0528_CAMERA_TEST_INIT:
+			vc0528_turning_mode_init();
+			break;
+		}
 		break;
 	default:
 		return -EINVAL;

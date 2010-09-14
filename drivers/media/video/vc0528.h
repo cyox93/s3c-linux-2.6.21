@@ -63,6 +63,12 @@ typedef struct
 	unsigned long *pdata_idx; 
 } __attribute__((packed)) ctrl_jpeg_read;
 
+typedef struct
+{
+	unsigned int size;
+	unsigned int data[300][2];
+} __attribute__((packed)) ctrl_sensor_test;
+
 
 /*_____________________ Constants Definitions _______________________________*/
 
@@ -177,17 +183,22 @@ typedef struct
 #define VC0528_CAMERA_CAPTURE_STILL 	_IO   ('Q', _CMD3(0x09))
 #define VC0528_CAMERA_JPEG_READ 		_IOWR ('Q', _CMD3(0x0A) , ctrl_jpeg_read)
 #define VC0528_CAMERA_JPEG_WRITE 		_IOWR ('Q', _CMD3(0x0B) , ctrl_jpeg_file)
+#define VC0528_CAMERA_TEST_INIT 		_IOWR ('Q', _CMD3(0x0C) , ctrl_sensor_test)
+#define VC0528_CAMERA_SENSOR_NEW_SET	_IOWR ('Q', _CMD3(0x0D) , ctrl_sensor_test)
+#define VC0528_CAMERA_SENSOR_ORG_SET	_IOWR ('Q', _CMD3(0x0E) , ctrl_sensor_test)
+#define VC0528_CAMERA_SENSOR_CHECK_NEW	_IOWR ('Q', _CMD3(0x0F) , ctrl_sensor_test)
+#define VC0528_CAMERA_SENSOR_CHECK_ORG	_IOWR ('Q', _CMD3(0x10) , ctrl_sensor_test)
 
 // lcd control cmd
-#define VC0528_LCD_GUI_DROW_1 			_IO   ('Q', _CMD3(0x0C))
-#define VC0528_LCD_GUI_DROW_2 			_IO   ('Q', _CMD3(0x0D))
-#define VC0528_LCD_MODE_AFIRST 			_IO   ('Q', _CMD3(0x0E))
-#define VC0528_LCD_MODE_BLONLY_0		_IO   ('Q', _CMD3(0x0F))
-#define VC0528_LCD_MODE_BLONLY_1		_IO   ('Q', _CMD3(0x10))
-#define VC0528_LCD_MODE_BLEND 			_IO   ('Q', _CMD3(0x11))
+#define VC0528_LCD_GUI_DROW_1 			_IO   ('Q', _CMD3(0x11))
+#define VC0528_LCD_GUI_DROW_2 			_IO   ('Q', _CMD3(0x12))
+#define VC0528_LCD_MODE_AFIRST 			_IO   ('Q', _CMD3(0x13))
+#define VC0528_LCD_MODE_BLONLY_0		_IO   ('Q', _CMD3(0x14))
+#define VC0528_LCD_MODE_BLONLY_1		_IO   ('Q', _CMD3(0x15))
+#define VC0528_LCD_MODE_BLEND 			_IO   ('Q', _CMD3(0x16))
 
 #define V5_FUNC_STARTNR 				_CMD3(0x00)
-#define V5_FUNC_ENDNR 					_CMD3(0x11)
+#define V5_FUNC_ENDNR 					_CMD3(0x16)
 
 /*_____________________ Function Declarations _______________________________*/
 extern int canopus_bedev_ioctl(unsigned int cmd, void *args);

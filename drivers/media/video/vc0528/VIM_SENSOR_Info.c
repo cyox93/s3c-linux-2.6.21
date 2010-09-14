@@ -218,7 +218,7 @@ const TReg gSnrSizeRegValVGA_SIV120D[] =
 	//bank0
 	{0x00,0x00,1},
 	{0x04,0x00,1}, // valiable v sync mode
-	//{0x04,0x80,1},   // fix 30f v sync fix mode 
+	{0x04,0x80,1},   // fix 30f v sync fix mode 
 	{0x05,0x03,1},
 	{0x10,0x34,1},
 	{0x11,0x27,1},
@@ -558,6 +558,53 @@ const TSnrInfo gSensorInfo_SIV120D =
 		0x20,			10
 	},
 };
+
+
+void SensorSetReg_size(UINT16 init_size)
+{
+	gSensorInfo_SIV120D.Initpoweron.len = init_size;
+}
+
+/* new paramete write */
+void SensorSetReg_data(UINT32 index, UINT32 addr, UINT16 data)
+{
+	gSnrSizeRegValVGA_SIV120D[index].adr  = addr; 	//register address
+	gSnrSizeRegValVGA_SIV120D[index].val  = data; 	//register setting value
+	gSnrSizeRegValVGA_SIV120D[index].wait = 1; 		//ms
+}
+
+/* new paramete check */
+void SensorSetReg_check1(UINT32 size)
+{
+	UINT32 cnt;
+
+	printk("size: %04d  %04d\n",size,gSensorInfo_SIV120D.Initpoweron.len);
+	for(cnt=0; cnt<size; cnt++){
+		printk("%03d   0x%02x   0x%02x   0x%02x\n",
+				cnt,
+				gSnrSizeRegValVGA_SIV120D[cnt].adr, 	//register address
+				gSnrSizeRegValVGA_SIV120D[cnt].val, 	//register setting value
+				gSnrSizeRegValVGA_SIV120D[cnt].wait 	//ms		
+			  );
+	}
+}
+
+/* orgenal paramete check */
+void SensorSetReg_check2(void)
+{
+	UINT32 size = sizeof(gSnrSizeRegValVGA_SIV120D) / sizeof(TReg);
+	UINT32 cnt; 
+
+	printk("size: %04d  %04d\n",size, gSensorInfo_SIV120D.Initpoweron.len);
+	for(cnt=0; cnt<size; cnt++){
+		printk("%03d   0x%02x   0x%02x   0x%02x\n",
+				cnt,
+				gSnrSizeRegValVGA_SIV120D[cnt].adr, 	//register address
+				gSnrSizeRegValVGA_SIV120D[cnt].val, 	//register setting value
+				gSnrSizeRegValVGA_SIV120D[cnt].wait 	//ms		
+			  );
+	}
+}
 
 #endif
 

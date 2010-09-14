@@ -153,7 +153,10 @@ extern const PTSnrInfo gPSensorInfo[];
 #define FAILED FALSE
 #define SUCCEED TRUE
 
-
+extern void SensorSetReg_size(UINT16 init_size);
+extern void SensorSetReg_data(UINT32 index, UINT32 addr, UINT16 data);
+extern void SensorSetReg_check1(UINT32 size);
+extern void SensorSetReg_check2(void);
 #ifdef __cplusplus
 }
 #endif
