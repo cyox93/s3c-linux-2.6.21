@@ -364,7 +364,7 @@ const TReg gSnrSizeRegValVGA_SIV120D[] =
 	{0x1F,0x3f,1},  // NRTHRSLP( [7:4] @ Normal | [3:0] @ Dark )	0x2f
 	{0x20,0x04,1},  // IllumiInfo STRTNOR
 	{0x21,0x0f,1},  // IllumiInfo STRTDRK
-	//Gamma                     
+	//Gamma                   ssignme  
 	{0x30,0x00,1}, 	//0x0 
 	{0x31,0x04,1}, 	//0x3 
 	{0x32,0x0b,1}, 	//0xb 
@@ -374,7 +374,7 @@ const TReg gSnrSizeRegValVGA_SIV120D[] =
 	{0x36,0x7C,1},	//0x74
 	{0x37,0x8D,1},	//0x85
 	{0x38,0x9B,1},	//0x94
-	{0x39,0xAA,1},	//0xA2
+	{0x39,0xAA,1},	//0xA2ssignme
 	{0x3a,0xb6,1},	//0xAF
 	{0x3b,0xca,1},	//0xC6
 	{0x3c,0xdc,1},	//0xDB
@@ -457,7 +457,7 @@ const TReg gSnrSizeRegValVGA_SIV120D[] =
 
 	{0x8d,0x04,1},	//programmable edge
 	{0x8e,0x02,1},	//PROGEVAL
-	{0x8f,0x00,1},	//Cb/Cr coring
+	{0x8f,0x00,1},	//Cb/Cr coring assignme
 	    	
 	{0x90,0x10,1},	//GEUGAIN
 	{0x91,0x10,1},	//GEDGAIN
@@ -559,7 +559,7 @@ const TSnrInfo gSensorInfo_SIV120D =
 	},
 };
 
-
+#if 0
 void SensorSetReg_size(UINT16 init_size)
 {
 	gSensorInfo_SIV120D.Initpoweron.len = init_size;
@@ -605,7 +605,7 @@ void SensorSetReg_check2(void)
 			  );
 	}
 }
-
+#endif
 #endif
 
 

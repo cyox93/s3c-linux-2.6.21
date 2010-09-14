@@ -828,6 +828,7 @@ canopus_bedev_ioctl(unsigned int cmd, void *args)
 			break;
 
 			/* hw test code */
+#if 0			
 	case VC0528_CAMERA_SENSOR_NEW_SET:
 			copy_from_user((void*)&ctrl_test,(unsigned long*)args,size);
 			SensorSetReg_size(ctrl_test.size);
@@ -840,7 +841,7 @@ canopus_bedev_ioctl(unsigned int cmd, void *args)
 	case VC0528_CAMERA_SENSOR_CHECK_ORG:
 			SensorSetReg_check2();
 			break;
-
+#endif
 			/* 16/8bit read/write command */ 			
 	case VC0528_8_WRITE:
 			copy_from_user((void*)&ctrl_info,args,size);
