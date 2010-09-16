@@ -31,8 +31,7 @@ struct waker {
 	struct list_head    link;
 	char                name[24];
 	unsigned long       second;
-	struct rtc_time     tm;
-	struct rtc_time     last;
+	unsigned long       expired;
 };
 
 /*_____________________ Type definitions ____________________________________*/
@@ -52,13 +51,14 @@ static ssize_t rtc_sysfs_store_wakers(struct class_device *dev, const char *buf,
 static const CLASS_DEVICE_ATTR(wakers, S_IRUGO | S_IWUSR,
 		rtc_sysfs_show_wakers, rtc_sysfs_store_wakers);
 
-static void alarm_triggered_func(void *p);
+static void _alarm_triggered_func(void *p);
 static struct rtc_task alarm_rtc_task = {
-	.func = alarm_triggered_func
+	.func = _alarm_triggered_func
 };
 
 /*_____________________ internal functions __________________________________*/
-static void alarm_triggered_func(void *p)
+static void
+_alarm_triggered_func(void *p)
 {
 	struct rtc_device *rtc = (struct rtc_device *)p;
 	if (!(rtc->irq_data & RTC_AF))
@@ -68,25 +68,23 @@ static void alarm_triggered_func(void *p)
 #endif
 }
 
-static int print_waker(char *buf, struct waker *waker, struct rtc_time *now)
+static int
+_print_waker(char *buf, struct waker *waker, unsigned long now)
 {
-	int expired = 0, tm = 0;
+	struct rtc_time tm;
 
-	rtc_tm_to_time(now, &expired);
-	rtc_tm_to_time(&waker->tm, &tm);
-
-	expired = tm - expired;
-	if (expired < 0) expired = -1;
+	rtc_time_to_tm(waker->expired, &tm);
 
 	return sprintf(buf, "%s\t%d\t%d/%d/%d %02d:%02d:%02d\t%d\n",
 			waker->name,
 			waker->second,
-			waker->tm.tm_year + 1900, waker->tm.tm_mon, waker->tm.tm_mday,
-			waker->tm.tm_hour, waker->tm.tm_min, waker->tm.tm_sec,
-			expired);
+			tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+			tm.tm_hour, tm.tm_min, tm.tm_sec,
+			(int)(waker->expired - now));
 }
 
-static int cmp_rtc_time(struct rtc_time *tm1, struct rtc_time *tm2)
+static int
+_cmp_rtc_time(struct rtc_time *tm1, struct rtc_time *tm2)
 {
 	int *t1 = &tm1->tm_sec;
 	int *t2 = &tm2->tm_sec;
@@ -100,53 +98,63 @@ static int cmp_rtc_time(struct rtc_time *tm1, struct rtc_time *tm2)
 	return 0;
 }
 
-static struct waker *get_waker(struct class_device *dev, const char *name)
+static int
+_cmp_time(unsigned long time1, unsigned long time2)
+{
+	return (int)(time1 - time2);
+}
+
+static unsigned long
+_get_now(struct class_device *dev)
+{
+	struct rtc_time tm;
+	unsigned long now;
+
+	rtc_read_time(dev, &tm);
+	rtc_tm_to_time(&tm, &now);
+
+	return now;
+}
+
+static struct waker *
+_get_waker(struct class_device *dev, const char *name)
 {
 	struct waker *waker, *nwaker;
-	struct rtc_time now;
-
-	rtc_read_time(dev, &now);
 
 	list_for_each_entry_safe(waker, nwaker, &list_wakers, link) {
 		if (!strcmp(waker->name, name))
 			return waker;
-
-		if (cmp_rtc_time(&waker->tm, &now) <= 0) {
-			list_del(&waker->link);
-			kfree(waker);
-		}
 	}
 
 	return NULL;
 }
 
-static int get_alarm_time(struct class_device *dev, struct rtc_time *tm)
+static int
+_get_alarm_time(struct class_device *dev)
 {
 	struct waker *waker, *nwaker;
-	struct rtc_time now;
-	int ret = 0;
+	unsigned long now;
+	int diff = -10, min = 10000;
 
-	rtc_read_time(dev, &now);
-
+	now = _get_now(dev);
 	list_for_each_entry_safe(waker, nwaker, &list_wakers, link) {
-		if (cmp_rtc_time(&waker->tm, &now) <= 0) {
+		diff = _cmp_time(waker->expired, now);
+		if (diff <= -5) {
 			list_del(&waker->link);
 			kfree(waker);
 		} else {
-			if (!ret) {
-				memcpy(tm, &waker->tm, sizeof(struct rtc_time));
-				ret = 1;
-			} else {
-				if (cmp_rtc_time(&waker->tm, tm) < 0)
-					memcpy(tm, &waker->tm, sizeof(struct rtc_time));
-			}
+			if (diff < min) min = diff;
 		}
 	}
 
-	return ret;
+	if (min < 2) min = now + 2;
+	else min = now + min;
+
+	return min;
 }
 
-static int parse_waker(const char *buf, char **name, long *second)
+static int
+_parse_waker(const char *buf, char **name, long *second)
 {
 	char *p = buf, *n = NULL;
 
@@ -185,14 +193,15 @@ _end_parse:
 	return ret;
 }
 
-static void waker_set(struct class_device *dev, const char *name, long second)
+static void
+_waker_set(struct class_device *dev, const char *name, long second)
 {
 	struct waker *waker;
 	unsigned long now;
 
 	if (!name) return ;
 
-	waker = get_waker(dev, name);
+	waker = _get_waker(dev, name);
 	if (second > 0) {
 		if (!waker) {
 			waker = kzalloc(sizeof(*waker), GFP_KERNEL);
@@ -202,10 +211,7 @@ static void waker_set(struct class_device *dev, const char *name, long second)
 		}
 
 		waker->second = second;
-		rtc_read_time(dev, &waker->last);
-		rtc_tm_to_time(&waker->last, &now);
-		now += second;
-		rtc_time_to_tm(now, &waker->tm);
+		waker->expired = _get_now(dev) + second;
 	} else {
 		if (waker) {
 			list_del(&waker->link);
@@ -216,23 +222,24 @@ static void waker_set(struct class_device *dev, const char *name, long second)
 
 static ssize_t rtc_sysfs_show_wakers(struct class_device *dev, char *buf)
 {
-	unsigned long irqflags;
-	struct rtc_time now;
+	unsigned long irqflags, now;
+	struct rtc_time tm;
 	struct waker *waker;
 	int len = 0;
 	char *p = buf;
 
 	spin_lock_irqsave(&list_lock, irqflags);
 
-	rtc_read_time(dev, &now);
+	rtc_read_time(dev, &tm);
 	p += sprintf(p, "---------------- %d/%d/%d %02d:%02d:%02d ----------------\n",
-			now.tm_year + 1900, now.tm_mon + 1, now.tm_mday,
-			now.tm_hour, now.tm_min, now.tm_sec);
+			tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+			tm.tm_hour, tm.tm_min, tm.tm_sec);
 
 	p += sprintf(p, "name\tsecond\talarm_time\t\tremain\n");
 
+	rtc_tm_to_time(&tm, &now);
 	list_for_each_entry(waker, &list_wakers, link) {
-		p += print_waker(p, waker, &now);
+		p += _print_waker(p, waker, now);
 	}
 
 	spin_unlock_irqrestore(&list_lock, irqflags);
@@ -250,11 +257,11 @@ static ssize_t rtc_sysfs_store_wakers(struct class_device *dev, const char *buf,
 	int ret = -1;
 
 	spin_lock_irqsave(&list_lock, irqflags);
-	ret = parse_waker(buf, &name, &second);
+	ret = _parse_waker(buf, &name, &second);
 	if (ret < 0 || second < 0)
 		goto bad_name;
 
-	waker_set(dev, name, second);
+	_waker_set(dev, name, second);
 
 	if (name) kfree(name);
 
@@ -268,13 +275,14 @@ int wakers_set_alarm(struct class_device *dev)
 {
 	struct rtc_wkalrm alarm;
 	unsigned long irqflags = 0;
-	int ret = 0;
+	unsigned long ret = 0;
 
 	spin_lock_irqsave(&list_lock, irqflags);
-	ret = get_alarm_time(dev, &alarm.time);
+	ret = _get_alarm_time(dev);
 	spin_unlock_irqrestore(&list_lock, irqflags);
 
 	if (ret) {
+		rtc_time_to_tm(ret, &alarm.time);
 		alarm.enabled = 0;
 		alarm.pending = 0;
 		alarm.time.tm_wday = -1;
