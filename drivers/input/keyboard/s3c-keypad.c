@@ -120,14 +120,35 @@ static void keypad_irq_ack(void)
 
 static int keypad_scan_gpio_data(bool flag)
 {
-	u32 msk;
+	u32 mskd, mskh;
 
-	msk = __raw_readl(S3C2410_GPDDAT) & ~(0x00007800);
+	mskd = __raw_readl(S3C2410_GPDDAT) & ~(0x00007800);
+	mskh = __raw_readl(S3C2410_GPHDAT) & ~(0x00000010);
 
-	if (flag) 
-		__raw_writel(msk | 0x00007800, S3C2410_GPDDAT);
-	else
-		__raw_writel(msk, S3C2410_GPDDAT);
+	if (flag) {
+		__raw_writel(mskd | 0x00007800, S3C2410_GPDDAT);
+		__raw_writel(mskh | 0x00000010, S3C2410_GPHDAT);
+	} else {
+		__raw_writel(mskd, S3C2410_GPDDAT);
+		__raw_writel(mskh, S3C2410_GPHDAT);
+	}
+
+	udelay(KEYPAD_DELAY);
+
+	return 0;
+}
+
+static int keypad_scan_gpio_gph_data(bool flag)
+{
+	u32 mskh;
+
+	mskh = __raw_readl(S3C2410_GPHDAT) & ~(0x00000010);
+
+	if (flag) {
+		__raw_writel(mskh | 0x00000010, S3C2410_GPHDAT);
+	} else {
+		__raw_writel(mskh, S3C2410_GPHDAT);
+	}
 
 	udelay(KEYPAD_DELAY);
 
@@ -137,19 +158,32 @@ static int keypad_scan_gpio_data(bool flag)
 static int keypad_scan_gpio_configure(int port)
 {
 	u32 con, udp, dat;
-	
-	/* GPDCON */
-	con = __raw_readl(S3C2410_GPDCON) & ~(0x3fc00000);
-	__raw_writel(con | (0x01 << (22 + (2 * port))), S3C2410_GPDCON);
 
-	/* GPDUDP */
-	udp = __raw_readl(S3C2410_GPDUP) & ~(0x3fc00000);
-	__raw_writel(udp | (0x01 << (22 + (2 * port))), S3C2410_GPDUP);
+	if (port < 4) {
+		/* GPDCON */
+		con = __raw_readl(S3C2410_GPDCON) & ~(0x3fc00000);
+		__raw_writel(con | (0x01 << (22 + (2 * port))), S3C2410_GPDCON);
 
-	/* GPDDAT */
-	dat = __raw_readl(S3C2410_GPDDAT) & ~(0x00007800);
-	__raw_writel(dat | (~(0x01 << (11 + port)) & 0x00007800), S3C2410_GPDDAT);
-	
+		/* GPDUDP */
+		udp = __raw_readl(S3C2410_GPDUP) & ~(0x3fc00000);
+		__raw_writel(udp | (0x01 << (22 + (2 * port))), S3C2410_GPDUP);
+
+		/* GPDDAT */
+		dat = __raw_readl(S3C2410_GPDDAT) & ~(0x00007800);
+		__raw_writel(dat | (~(0x01 << (11 + port)) & 0x00007800), S3C2410_GPDDAT);
+	} else {
+		/* GPHCON */
+		con = __raw_readl(S3C2410_GPHCON) & ~(0x00000300);
+		__raw_writel(con | (0x01 << 8), S3C2410_GPHCON);
+
+		/* GPHUDP */
+		udp = __raw_readl(S3C2410_GPHUP) & ~(0x00000300);
+		__raw_writel(udp | (0x01 << 8), S3C2410_GPHUP);
+		
+		/* GPHDAT */
+		dat = __raw_readl(S3C2410_GPHDAT) & ~(0x00000010);
+		__raw_writel(dat | (~(0x01 << 4) & 0x00000010), S3C2410_GPHDAT);
+	}
 	udelay(KEYPAD_DELAY);
 
 	return 0;
@@ -157,17 +191,26 @@ static int keypad_scan_gpio_configure(int port)
 
 static int keypad_irq_configure(void)
 {
-	u32 con, udp, dat, msk;
+	u32 cond, udpd, datd, conh, udph, dath, msk;
 
 	msk = __raw_readl(S3C2410_GPGCON) & ~(0x00000fff);
-	con = __raw_readl(S3C2410_GPDCON) & ~(0x3fc00000);
-	udp = __raw_readl(S3C2410_GPDUP) & ~(0x3fc00000);
-	dat = __raw_readl(S3C2410_GPDDAT) & ~(0x00007800);
+	cond = __raw_readl(S3C2410_GPDCON) & ~(0x3fc00000);
+	udpd = __raw_readl(S3C2410_GPDUP) & ~(0x3fc00000);
+	datd = __raw_readl(S3C2410_GPDDAT) & ~(0x00007800);
+	
+	conh = __raw_readl(S3C2410_GPHCON) & ~(0x00000300);
+	udph = __raw_readl(S3C2410_GPHUP) & ~(0x00000300);
+	dath = __raw_readl(S3C2410_GPHDAT) & ~(0x00000010);
+
 
 	__raw_writel(msk | 0x00000aaa, S3C2410_GPGCON);
-	__raw_writel(con | 0x15400000, S3C2410_GPDCON);
-	__raw_writel(udp | 0x15400000, S3C2410_GPDUP);
-	__raw_writel(dat, S3C2410_GPDDAT);
+	__raw_writel(cond | 0x15400000, S3C2410_GPDCON);
+	__raw_writel(udpd | 0x15400000, S3C2410_GPDUP);
+	__raw_writel(datd, S3C2410_GPDDAT);
+
+	__raw_writel(conh | 0x00000100, S3C2410_GPHCON);
+	__raw_writel(udph | 0x00000100, S3C2410_GPHUP);
+	__raw_writel(dath, S3C2410_GPHDAT);
 
 	return 0;
 }
@@ -197,6 +240,12 @@ static int keypad_scan(struct s3c_keypad *pdata)
 		rval &= 0x3f;
 		rval_sum += rval;
 
+
+		DPRINTK("keypad_scan : i[%d], rval[%d], rval_sum[%d]\n", i, rval, rval_sum);
+		if (col_cnt || row_val) {
+			break;
+		}
+
 		if ((rval != 0x3f)) {
 			row_cnt = 0;
 			for (j=0; j<KEYPAD_ROWS; j++) {
@@ -216,9 +265,11 @@ static int keypad_scan(struct s3c_keypad *pdata)
 	
 	value = (col_val * 6) + row_val;
 
+	DPRINTK("keypad_scan : col_cnt[%d], row_cnt[%d], col_val[%d], row_val[%d], key_press[%d], value[%d]\n", col_cnt, row_cnt, col_val, row_val, key_press, value);
+	
 	/* key press event */
 	if (col_cnt && row_cnt && !key_press && 
-			((rval_sum/4) != 0x3f)) {
+			((rval_sum/KEYPAD_COLUMNS) != 0x3f)) {
 
 		input_report_key(dev, pdata->keycodes[value], 1);
 		DPRINTK("key pressed : %d\n", pdata->keycodes[value]);
@@ -234,7 +285,7 @@ static int keypad_scan(struct s3c_keypad *pdata)
 	
 	/* key release event */
 	if (col_cnt && row_cnt && key_press && 
-			((rval_sum/4) != 0x3f) && (key_value != value)) {
+			((rval_sum/KEYPAD_COLUMNS) != 0x3f) && (key_value != value)) {
 		input_report_key(dev, pdata->keycodes[key_value], 0);
 		DPRINTK("key released : %d\n", pdata->keycodes[key_value]);
 
@@ -247,7 +298,7 @@ static int keypad_scan(struct s3c_keypad *pdata)
 	}
 
 	/* key release event */
-	if (!col_cnt && !row_cnt && ((rval_sum/4) == 0x3f)) {
+	if (!col_cnt && !row_cnt && ((rval_sum/KEYPAD_COLUMNS) == 0x3f)) {
 		input_report_key(dev, pdata->keycodes[key_value], 0);
 		DPRINTK("key released : %d\n", pdata->keycodes[key_value]);
 
