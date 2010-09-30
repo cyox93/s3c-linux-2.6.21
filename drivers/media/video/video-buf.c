@@ -40,17 +40,17 @@
 #define MAGIC_CHECK(is,should)	if (unlikely((is) != (should))) \
 	{ printk(KERN_ERR "magic mismatch: %x (expected %x)\n",is,should); BUG(); }
 
-static int debug = 3;
+static int debug = 0;
 module_param(debug, int, 0644);
 
 MODULE_DESCRIPTION("helper module to manage video4linux pci dma buffers");
 MODULE_AUTHOR("Gerd Knorr <kraxel@bytesex.org> [SuSE Labs]");
 MODULE_LICENSE("GPL");
 
-#define dprintk(level, fmt, arg...) 				\	
+#define dprintk(level, fmt, arg...) 				\
 	do { 											\
 		if (debug >= level) 						\
-		printk(KERN_DEBUG "vbuf: " fmt , ## arg); 	\
+		printk("vbuf: " fmt , ## arg); 	            \
 	}while(0)	
 
 struct scatterlist*

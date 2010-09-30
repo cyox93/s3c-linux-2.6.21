@@ -55,7 +55,7 @@
 //#define VC0528_WAKE_NUMERATOR 30
 #define VC0528_WAKE_NUMERATOR 60
 #define VC0528_WAKE_DENOMINATOR 1001
-#define VC0528_BUFFER_TIMEOUT     msecs_to_jiffies(10000)  /* 0.3 seconds */
+#define VC0528_BUFFER_TIMEOUT     msecs_to_jiffies(600)  /* 0.3 seconds */
 
 /* These timers are for 1 fps - used only for testing */
 //#define VC0528_WAKE_DENOMINATOR 30 /* hack for testing purposes */
@@ -65,11 +65,11 @@
 #define VC0528_IOCTL_CMD_TEST  		0	
 #define VC0528_DEBUG_INFO 	  		0
 
-static int debug = 3;
+static int debug = 0;
 #define dprintk(level,fmt, arg...)					\
 	do {								\
-		if (vc0528.debug >= (level))				\
-		printk(KERN_DEBUG "vc0528: " fmt , ## arg);	  \
+		if (debug >= (level))				\
+		printk("vc0528: " fmt , ## arg);	  \
 	} while (0)
 
 
@@ -221,6 +221,7 @@ struct vc0528_fh {
 	enum v4l2_buf_type      type;
 };
 
+static struct vc0528_dev   *bend_dev;
 
 /*_____________________ DMA and thread functions _______________________________*/
 
@@ -437,6 +438,7 @@ end:
 	return;
 #endif
 }
+
 static void 
 vc0528_fillbuff(struct vc0528_dev *dev,struct vc0528_buffer *buf)
 {
@@ -449,8 +451,6 @@ vc0528_fillbuff(struct vc0528_dev *dev,struct vc0528_buffer *buf)
 #ifdef CONFIG_VC0528_SCATTER
 	struct sg_to_addr *to_addr=buf->to_addr;
 	struct videobuf_buffer *vb=&buf->vb;
-#else
-	char *tmpbuf;
 #endif
 
 #ifdef CONFIG_VC0528_SCATTER
@@ -462,13 +462,6 @@ vc0528_fillbuff(struct vc0528_dev *dev,struct vc0528_buffer *buf)
 
 	/* Check if there is enough memory */
 	BUG_ON(buf->vb.dma.nr_pages << PAGE_SHIFT < (buf->vb.width*buf->vb.height)*2);
-#else
-	if (buf->vb.dma.varea) {
-		tmpbuf=kmalloc (wmax*2, GFP_KERNEL);
-	} else {
-		tmpbuf=buf->vb.dma.vmalloc;
-	}
-
 #endif
 
 
@@ -518,7 +511,7 @@ vc0528_fillbuff(struct vc0528_dev *dev,struct vc0528_buffer *buf)
 	jpeg.frame_buf  = buf->vb.remap;
 	jpeg.frbuf_size = buf->vb.size;
 	jpeg.frame_rate = 1;
-	jpeg.frame_max  = 0xffff;
+	jpeg.frame_max  = 0xffffffff;
 	canopus_bedev_ioctl(VC0528_CAMERA_JPEG_READ,&jpeg);
 	buf->vb.jpeg_size = jpeg.frame_size;
 	dprintk(2,"[jpeg_size  :0x%x]\n",buf->vb.jpeg_size);
@@ -679,14 +672,14 @@ vc0528_thread_tick(struct vc0528_dmaqueue  *dma_q)
   		dprintk(1,"No active queue to serve bc: %d\n",bc);
 			break;
 		}
- 		dprintk(1,"vc0828: empty buf cnt %x\n",bc);
+ 		//dprintk(1,"empty buf cnt %x\n",bc);
 
 		buf = list_entry(dma_q->active.next,
 				 struct vc0528_buffer, vb.queue);
 
 		/* Nobody is waiting something to be done, just return */
 		if (!waitqueue_active(&buf->vb.done)) {
-			mod_timer(&dma_q->timeout, jiffies+VC0528_BUFFER_TIMEOUT);
+			//mod_timer(&dma_q->timeout, jiffies+VC0528_BUFFER_TIMEOUT);
 			return;
 		}
 
@@ -697,9 +690,9 @@ vc0528_thread_tick(struct vc0528_dmaqueue  *dma_q)
 		vc0528_fillbuff(dev,buf);
 
 		if (list_empty(&dma_q->active)) {
-			del_timer(&dma_q->timeout);
+			//del_timer(&dma_q->timeout);
 		} else {
-			mod_timer(&dma_q->timeout, jiffies+VC0528_BUFFER_TIMEOUT);
+			//mod_timer(&dma_q->timeout, jiffies+VC0528_BUFFER_TIMEOUT);
 		}
 	}
 #if 0
@@ -738,7 +731,8 @@ vc0528_sleep(struct vc0528_dmaqueue  *dma_q)
 
 		vc0528_thread_tick(dma_q);
 
-		schedule_timeout_interruptible (timeout);
+		if (timeout >= 0)
+			schedule_timeout_interruptible (timeout);
 	}
 
 	remove_wait_queue(&dma_q->wq, &wait);
@@ -752,7 +746,7 @@ vc0528_thread(void *data)
 
 	dprintk(1,"thread started\n");
 
-	mod_timer(&dma_q->timeout, jiffies+VC0528_BUFFER_TIMEOUT);
+	//mod_timer(&dma_q->timeout, jiffies+VC0528_BUFFER_TIMEOUT);
 
 	for (;;) {
 		vc0528_sleep(dma_q);
@@ -821,7 +815,7 @@ restart_video_queue(struct vc0528_dmaqueue *dma_q)
 			buf->vb.state = STATE_ERROR;
 			wake_up(&buf->vb.done);
 		}
-		mod_timer(&dma_q->timeout, jiffies+VC0528_BUFFER_TIMEOUT);
+		//mod_timer(&dma_q->timeout, jiffies+VC0528_BUFFER_TIMEOUT);
 
 		return 0;
 	}
@@ -840,7 +834,7 @@ restart_video_queue(struct vc0528_dmaqueue *dma_q)
 			vc0528_start_thread(dma_q);
 
 			buf->vb.state = STATE_ACTIVE;
-			mod_timer(&dma_q->timeout, jiffies+VC0528_BUFFER_TIMEOUT);
+			//mod_timer(&dma_q->timeout, jiffies+VC0528_BUFFER_TIMEOUT);
 			dprintk(2,"[%p/%d] restart_queue - first active\n",
 				buf,buf->vb.i);
 
@@ -862,6 +856,7 @@ restart_video_queue(struct vc0528_dmaqueue *dma_q)
 static void 
 vc0528_vid_timeout(unsigned long data)
 {
+#if 0	
 	struct vc0528_dev      *dev  = (struct vc0528_dev*)data;
 	struct vc0528_dmaqueue *vidq = &dev->vidq;
 	struct vc0528_buffer   *buf;
@@ -871,10 +866,11 @@ vc0528_vid_timeout(unsigned long data)
 		list_del(&buf->vb.queue);
 		buf->vb.state = STATE_ERROR;
 		wake_up(&buf->vb.done);
-		dprintk(1,"vc0528/0: [%p/%d] timeout\n", buf, buf->vb.i);
+		dprintk(1,"[%p/%d] timeout\n", buf, buf->vb.i);
 	}
 
 	restart_video_queue(vidq);
+#endif	
 }
 
 
@@ -983,7 +979,7 @@ buffer_queue(struct videobuf_queue *vq, struct videobuf_buffer *vb)
 		list_add_tail(&buf->vb.queue,&vidq->active);
 
 		buf->vb.state = STATE_ACTIVE;
-		mod_timer(&vidq->timeout, jiffies+VC0528_BUFFER_TIMEOUT);
+		//mod_timer(&vidq->timeout, jiffies+VC0528_BUFFER_TIMEOUT);
 		dprintk(2,"[%p/%d] buffer_queue - first active\n",
 			buf, buf->vb.i);
 
@@ -1296,6 +1292,26 @@ vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 	return (videobuf_streamon(&fh->vb_vidq));
 }
 
+
+void
+vc0528_vid_close(struct vc0528_dev *dev)
+{
+//	struct vc0528_dev      *dev  = bend_dev;
+	struct vc0528_dmaqueue *vidq = &dev->vidq;
+	struct vc0528_buffer   *buf;
+
+	while (!list_empty(&vidq->active)) {
+		buf = list_entry(vidq->active.next, struct vc0528_buffer, vb.queue);
+		list_del(&buf->vb.queue);
+		buf->vb.state = STATE_ERROR;
+		wake_up(&buf->vb.done);
+		dprintk(1,"[%p/%d] list clear\n", buf, buf->vb.i);
+	}
+
+	restart_video_queue(vidq);
+}
+
+
 static int 
 vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type i)
 {
@@ -1307,6 +1323,7 @@ vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type i)
 	if (i != fh->type)
 		return -EINVAL;
 
+	vc0528_vid_close(dev);
 	canopus_bedev_ioctl(VC0528_BYPASS_MODE,NULL);   // lcd bypass mode change 
 	videobuf_streamoff(&fh->vb_vidq);
 	res_free(dev,fh);
@@ -1570,7 +1587,7 @@ vc0528_release(struct inode *inode, struct file *file)
 	dev->users--;
 
 	canopus_bedev_ioctl(VC0528_BYPASS_MODE,NULL);
-	printk(KERN_DEBUG "vc0528: close called (minor=%d, users=%d)\n",minor,dev->users);
+	dprintk(1,"close called (minor=%d, users=%d)\n",minor,dev->users);
 
 	return 0;
 }
@@ -1744,9 +1761,21 @@ vc0528_turning_mode_init(void)
 	canopus_bedev_ioctl(SSMC_INIT,NULL);
 	canopus_bedev_ioctl(VC0528_SET_MULTI16,NULL);
 	canopus_bedev_ioctl(VC0528_INIT,NULL);
-	canopus_bedev_ioctl(VC0528_CAMERA_CAPTURE_STILL,NULL);
+	canopus_bedev_ioctl(VC0528_CAMERA_PREVIEW,NULL);
 }
 
+void
+vc0528_turning_mode_close(void)
+{
+	
+}
+
+void
+vc0528_camera_preview(void)
+{
+	canopus_bedev_ioctl(VC0528_CAMERA_PREVIEW,NULL);
+}
+		
 int video_ioctl_device(struct inode *inode, struct file *file,
 	       unsigned int cmd, unsigned long arg)
 {
@@ -1770,6 +1799,12 @@ int video_ioctl_device(struct inode *inode, struct file *file,
 			break;
 		}
 		break;
+//		case VC0528_CAMERA_TEST_CLOSE:
+//			vc0528_turning_mode_close();
+//		break;
+		case VC0528_CAMERA_PREVIEW:
+			vc0528_camera_preview();
+
 	default:
 		return -EINVAL;
 		break;
@@ -1853,10 +1888,13 @@ __init vc0528_init(void)
 
 	/* initialize locks */
 	init_MUTEX(&dev->lock);
-
+#if 0	
 	dev->vidq.timeout.function = vc0528_vid_timeout;
 	dev->vidq.timeout.data     = (unsigned long)dev;
 	init_timer(&dev->vidq.timeout);
+#else	
+	bend_dev = (unsigned long)dev; 
+#endif
 
 	ret = video_register_device(&vc0528, VFL_TYPE_GRABBER, video_nr);
 	printk(KERN_INFO "Unidata Systems vc0528 device driver (Load status: %d)\n", ret);

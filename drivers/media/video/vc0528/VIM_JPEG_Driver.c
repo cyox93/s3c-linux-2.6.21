@@ -1487,6 +1487,9 @@ static const UINT8 gLbufIntPriority[VIM_JPEG_LBUF_INT_NUM] = { VIM_INT_JPEG_LINB
 		bySecondLevelInt = gLbufIntPriority[i];
 		if(TSTINT(wIntFlag, bySecondLevelInt-3))
 		{
+#if(VIM_JPEG_DEBUG)&&(VIM_528RDK_DEBUG)
+			printk("[_ISR_JpegLbufIntHandle] bySecondLevelInt:%02d\n",bySecondLevelInt);
+#endif
 			if(gVc0528_Isr.jpegisr[bySecondLevelInt])
 			{
 				gVc0528_Isr.jpegisr[bySecondLevelInt]();

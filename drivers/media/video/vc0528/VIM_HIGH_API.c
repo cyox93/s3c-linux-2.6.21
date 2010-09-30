@@ -1353,7 +1353,6 @@ UINT16 VIM_HAPI_SetLCDWorkMode(VIM_HAPI_LCDWORKMODE byABLayerMode, UINT16 wValue
 			VIM_SIF_EnableSyncGen(DISABLE);
  			VIM_DISP_SetLayerEnable(VIM_DISP_ALAYER,DISABLE);
 			VIM_DISP_SetWorkMode(VIM_DISP_BFIRST);
-			printk("***************  VIM_HAPI_LCDMODE_BLONLY\n");
 			break;
 		case VIM_HAPI_LCDMODE_OVERLAY:
 			// Enable A Layer, enable overlay, disable blending
@@ -3249,10 +3248,12 @@ UINT32 VIM_HAPI_Timer2(void)
 	 if((gVc0528_Info.VideoStatus.Mode==VIM_VIDEO_STARTCAPTURE)&&(gVc0528_Info.VideoStatus.VideoFrameRate))
 	 {
 	 	result=VIM_HAPI_GetOneJpeg(gVc0528_Info.CaptureStatus.BufPoint,gVc0528_Info.CaptureStatus.BufLength,&dwOnelen);
-//		printk("> Jpeg-BufPoint:0x%08lx,size:0x%08x\n",gVc0528_Info.CaptureStatus.BufPoint,dwOnelen);
-//		printk("> BufLength:0x%08lx\n",gVc0528_Info.CaptureStatus.BufLength);
+#if 0
+		if(dwOnelen > gVc0528_Info.CaptureStatus.BufLength) breakpoint();
+#endif
 	 	if(result)
 	 	{
+			//printk(">>>>>>>>>> Jpeg-BufPoint:0x%08lx,size:0x%08x\n",gVc0528_Info.CaptureStatus.BufPoint,dwOnelen);
 	 		if(gVc0528_Info.VideoStatus.CapCallback)
 	 		{
 	 			if((result!=VIM_ERROR_CAPTURE_BUFFULL)&&(result!=VIM_ERROR_MAX_FRAMECOUNT))

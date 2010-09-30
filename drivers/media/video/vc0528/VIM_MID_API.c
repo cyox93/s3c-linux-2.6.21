@@ -719,8 +719,10 @@ UINT8 qf;
 	VIM_USER_PrintString("\n VIM_MAPI_ISR_Recapture");
 	VIM_USER_PrintDec("\n recapture time is=",gVc0528_Info.CaptureStatus.RecaptureTimes);
 #endif
-	if(gVc0528_Info.CaptureStatus.RecaptureTimes>=VIM_USER_RECAPTUREMAXTIMES)
+	if(gVc0528_Info.CaptureStatus.RecaptureTimes>=VIM_USER_RECAPTUREMAXTIMES){
+		//breakpoint();
 		VIM_MAPI_ISR_JbufError();
+	}
 	else
 	{
 		VIM_JPEG_SetBitRateControlEn(DISABLE);

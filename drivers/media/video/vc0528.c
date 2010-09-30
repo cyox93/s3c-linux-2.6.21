@@ -70,7 +70,7 @@
 #define canopus_bedev_suspend 	NULL
 #define canopus_bedev_resume  	NULL
 
-static int debug = 3;
+static int debug = 0;
 #define dprintk(level,fmt, arg...)					\
 	do {								\
 		if (debug >= (level))				\
@@ -135,7 +135,7 @@ canopus_vc0528_hapi_init(void)
 static void 
 canopus_vc0528_init(void)
 {
-	dprintk(1,"[vc0528]: init \n");
+	dprintk(1,"init \n");
 	canopus_vc0528_normal_mode();
 	_lcd_vc0528_trigger_lock = 0x0;
 	mdelay(10);
@@ -344,22 +344,21 @@ canopus_v0528_camera_jpeg_read(void *args, int size)
 	frame_rate  = jpeg->frame_rate; 
 	buf = (void __force *)jpeg->frame_buf; 
 	VIM_HAPI_BufferPosition(buf,jpeg->frbuf_size,jpeg->frame_rate,jpeg->frame_max);
-	mdelay(5); 
+//	mdelay(5); 
 
 	/* start capture video */
 	for(fcnt=0;fcnt<frame_rate;fcnt++){
-		mdelay(10);     // minimum 30f/s JPEG 1frame make time  
+		mdelay(40);     // minimum 30f/s JPEG 1frame make time  
 
 		Jframe_Length[fcnt] = VIM_HAPI_Timer2();
 		
-		if(Jframe_Length[fcnt] > jpeg->frbuf_size){
-			//printk("*** length:%08x, jpeg_size:%08x\n",Jframe_Length[fcnt],jpeg->frbuf_size);
+		if(Jframe_Length[fcnt] < jpeg->frbuf_size){
+			Jpeg_Length += Jframe_Length[fcnt];
+			jpeg->frame_idx[fcnt] = Jframe_Length[fcnt];
+		}else{
+			dprintk(1,"#### Jpg_size:0x%08x > frb_size:0x%08x, frb_addr:0x%08x\n",Jframe_Length[fcnt],jpeg->frbuf_size,buf);
 		}
 
-		Jpeg_Length += Jframe_Length[fcnt];
-		jpeg->frame_idx[fcnt] = Jframe_Length[fcnt];
-
-		//printk("********** Jpeg_Length:%08x, 0x%08x\n",Jpeg_Length,buf);
 		if(0xd9 != buf[Jpeg_Length-1])
 		{
 			dprintk(1,"____________ Jpeg_Length error ____________\n");
@@ -575,7 +574,7 @@ canopus_v0528_camera_captur_still(void)
 //	VIM_HAPI_SetCaptureQuality(VIM_HAPI_CPTURE_QUALITY_LOW);
 //	VIM_HAPI_SetCaptureQuality(VIM_HAPI_CPTURE_QUALITY_MID);
 //	VIM_HAPI_SetCaptureQuality(VIM_HAPI_CPTURE_QUALITY_HIGH);
-	VIM_HAPI_SetCaptureVideoInfo(VIM_HAPI_RAM_SAVE,10,0xffff);
+	VIM_HAPI_SetCaptureVideoInfo(VIM_HAPI_RAM_SAVE,10,0xffffffff);
 //	VIM_HAPI_StartCaptureVideo(&JpegBuf,0x160000,NULL);
 	VIM_HAPI_StartCaptureVideo(NULL,0x160000,NULL);
 	mdelay(100);
@@ -656,6 +655,28 @@ canopus_v0528_camera_captur_still(void)
 	Delay(1000);
 }
 #endif
+
+static void
+canopus_v0528_camera_preview(void)
+{
+	unsigned int cnt;
+	unsigned int offset;
+	unsigned int fcnt;
+
+	int  h,m,s,us,jiffies;
+	char timestr[13];
+	long start_jiffies;
+
+	VIM_HAPI_SetWorkMode(VIM_HAPI_MODE_CAMERAON); 	//through mode power on lcd
+	VIM_HAPI_SetCaptureParameter(640,480);
+	VIM_HAPI_SetPreviewParameter(0,0,240,320);
+	canopus_vc0528_write(0x803,0x2);
+	VIM_HAPI_SetPreviewMode(VIM_HAPI_PREVIEW_ON);
+	VIM_HAPI_SetCaptureQuality(VIM_HAPI_CPTURE_QUALITY_LIMITE);
+	VIM_HAPI_SetCaptureVideoInfo(VIM_HAPI_RAM_SAVE,10,0xffffffff);
+	VIM_HAPI_StartCaptureVideo(NULL,0x160000,NULL);
+	mdelay(100);
+}
 
 static void
 canopus_v0528_lcd_gui_mode_1(void)
@@ -801,6 +822,9 @@ canopus_bedev_ioctl(unsigned int cmd, void *args)
 			break;
 	case VC0528_CAMERA_CAPTURE_STILL:
 			canopus_v0528_camera_captur_still();
+			break;
+	case VC0528_CAMERA_PREVIEW:
+			canopus_v0528_camera_preview();
 			break;
 	case VC0528_CAMERA_JPEG_READ:
 			canopus_v0528_camera_jpeg_read(args,size);

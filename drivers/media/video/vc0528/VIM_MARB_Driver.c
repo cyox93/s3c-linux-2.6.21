@@ -1184,7 +1184,7 @@ void _ISR_Marb1IntHandle(UINT8 wIntFlag)
 			if(gVc0528_Isr.marbisr[bySecondLevelInt])
 			{
 #if(VIM_HIF_DEBUG)&&(VIM_528RDK_DEBUG)
-	VIM_USER_PrintString("\n INT_MARBADD _ISR_Marb1IntHandle");
+				printk("\n && INT_MARBADD _ISR_Marb1IntHandle i:%02d, sec_level:%02d\n",i,bySecondLevelInt);
 #endif
 				gVc0528_Isr.marbisr[bySecondLevelInt]();
 			}

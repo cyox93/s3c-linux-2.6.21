@@ -1322,7 +1322,9 @@ UINT8 VIM_HIF_GetIntFlagSec(VIM_HIF_INT_TYPE byOffset)        //????  ?жϱ?־
 {
 	UINT8 x;
 	x = VIM_HIF_GetReg8(V5_REG_CPM_INTFLAG0+(byOffset<<1));
-
+#if(VIM_HIF_DEBUG)&&(VIM_528RDK_DEBUG)
+//	printk("x:%02d, offset:%02d, reg:0x%08x\n",x,byOffset,V5_REG_CPM_INTFLAG0+(byOffset<<1));
+#endif	
   return  (x );
 }
 /********************************************************************************
@@ -1394,17 +1396,21 @@ void VIM_HIF_SetIntEnableSec(VIM_HIF_INT_TYPE byOffset, UINT8 uVal)
 }
 
 
-static void VIM_HIF_HandleISR(VIM_HIF_INT_TYPE byFirstLevelInt, UINT8 bSecondLevelIntFlag)
+//static void VIM_HIF_HandleISR(VIM_HIF_INT_TYPE byFirstLevelInt, UINT8 bSecondLevelIntFlag)
+void VIM_HIF_HandleISR(VIM_HIF_INT_TYPE byFirstLevelInt, UINT8 bSecondLevelIntFlag)
 {
 	switch (byFirstLevelInt)
 	{
 	case INT_MARB:
+		//breakpoint();
 		_ISR_MarbIntHandle(bSecondLevelIntFlag);
 		break;
 	case INT_JPEG:
+		//breakpoint();
 		_ISR_JpegJpegIntHandle(bSecondLevelIntFlag);
 		break;
 	case INT_LBUF:
+		//breakpoint();
 		_ISR_JpegLbufIntHandle(bSecondLevelIntFlag);
 		break;
 	case INT_SIF:
@@ -1416,9 +1422,11 @@ static void VIM_HIF_HandleISR(VIM_HIF_INT_TYPE byFirstLevelInt, UINT8 bSecondLev
 	case INT_LCDC:
 		break;
 	case INT_MARBADD:
-#if(VIM_HIF_DEBUG)&&(VIM_528RDK_DEBUG)
+
+//#if(VIM_HIF_DEBUG)&&(VIM_528RDK_DEBUG)
 	VIM_USER_PrintHex("\n INT_MARBADD flag= ",bSecondLevelIntFlag);
-#endif
+//#endif
+		//breakpoint();
 		_ISR_Marb1IntHandle(bSecondLevelIntFlag);
 		break;
 	default:
@@ -1462,9 +1470,21 @@ void _ISR_HIF_IntHandle(void)
 		x = (UINT8)(0x1<<gFirstLevelIntPriority[i]);
 		if((intEn&x) && (intFlg&x))
 		{
+#if(VIM_HIF_DEBUG)&&(VIM_528RDK_DEBUG)
+			printk("*** isr number:%02d\n",gFirstLevelIntPriority[i]);
+#endif			
+			if(0x05 != gFirstLevelIntPriority[i])
+			{
+			//	breakpoint();
+#if(VIM_HIF_DEBUG)&&(VIM_528RDK_DEBUG)
+				printk(">>> isr number:%02d\n",gFirstLevelIntPriority[i]);
+#endif				
+			}
+			
 			VIM_HIF_SetIntServ(x);
 			gVc0528_Isr.byFirstLevelInt[byIntNum]=gFirstLevelIntPriority[i];
 			gVc0528_Isr.bSecondLevelIntFlag[byIntNum] = VIM_HIF_GetIntFlagSec((VIM_HIF_INT_TYPE)gFirstLevelIntPriority[i]);	
+
 			byIntNum++;
 			VIM_HIF_SetIntServ(0); 
 		}
@@ -1473,9 +1493,9 @@ void _ISR_HIF_IntHandle(void)
 	for(i=0; i< byIntNum; i++)
 	{
 #if(VIM_HIF_DEBUG)&&(VIM_528RDK_DEBUG)
-	VIM_USER_PrintHex("\n interrupt gVc0528_Isr.byFirstLevelInt[byIntNum]",gVc0528_Isr.byFirstLevelInt[i]);
-	VIM_USER_PrintHex("\n interrupt gVc0528_Isr.bSecondLevelIntFlag[i]",gVc0528_Isr.bSecondLevelIntFlag[i]);
-	VIM_USER_PrintHex("VIM_HIF_GetIntEnableSec=",VIM_HIF_GetIntEnableSec(INT_MARBADD));
+	printk("interrupt gVc0528_Isr.byFirstLevelInt[%02d]=%02d\n",i,gVc0528_Isr.byFirstLevelInt[i]); 	 			// INT level
+	printk("interrupt gVc0528_Isr.bSecondLevelIntFlag[%02d]=%02d\n",i,gVc0528_Isr.bSecondLevelIntFlag[i]); 		// INT flag
+	printk("VIM_HIF_GetIntEnableSec=[0x%08x]\n",VIM_HIF_GetIntEnableSec(INT_MARBADD));
 #endif
 		VIM_HIF_HandleISR((VIM_HIF_INT_TYPE)gVc0528_Isr.byFirstLevelInt[i],gVc0528_Isr.bSecondLevelIntFlag[i]);
 	}
