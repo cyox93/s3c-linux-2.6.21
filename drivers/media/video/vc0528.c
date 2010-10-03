@@ -570,13 +570,12 @@ canopus_v0528_camera_captur_still(void)
 	canopus_vc0528_write(0x803,0x2);
 	VIM_HAPI_SetPreviewMode(VIM_HAPI_PREVIEW_ON);
 	VIM_DISP_SetLayerEnable(VIM_DISP_ALAYER,DISABLE);
-	VIM_HAPI_SetCaptureQuality(VIM_HAPI_CPTURE_QUALITY_LIMITE);
-//	VIM_HAPI_SetCaptureQuality(VIM_HAPI_CPTURE_QUALITY_LOW);
+//	VIM_HAPI_SetCaptureQuality(VIM_HAPI_CPTURE_QUALITY_LIMITE);
+	VIM_HAPI_SetCaptureQuality(VIM_HAPI_CPTURE_QUALITY_LOW);
 //	VIM_HAPI_SetCaptureQuality(VIM_HAPI_CPTURE_QUALITY_MID);
 //	VIM_HAPI_SetCaptureQuality(VIM_HAPI_CPTURE_QUALITY_HIGH);
 	VIM_HAPI_SetCaptureVideoInfo(VIM_HAPI_RAM_SAVE,10,0xffffffff);
-//	VIM_HAPI_StartCaptureVideo(&JpegBuf,0x160000,NULL);
-	VIM_HAPI_StartCaptureVideo(NULL,0x160000,NULL);
+	VIM_HAPI_StartCaptureVideo(&JpegBuf,0x160000,NULL);
 	mdelay(100);
 #endif 
 
