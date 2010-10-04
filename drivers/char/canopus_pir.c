@@ -103,6 +103,7 @@ canopus_pir_ioctl(struct inode *inode, struct file *file,
 			else disable_irq(IRQ_EINT2);
 
 			_is_enabled = enable;
+			s3c2410_gpio_setpin(S3C2410_GPF5, (_is_enabled) ? 1 : 0);
 		}
 
 		return 0;
@@ -169,6 +170,10 @@ canopus_pir_probe(struct platform_device *pdev)
 
 	s3c2410_gpio_pullup(S3C2410_GPF2, 0);
 	s3c2410_gpio_cfgpin(S3C2410_GPF2, S3C2410_GPF2_EINT2);
+
+	// off
+	s3c2410_gpio_cfgpin(S3C2410_GPF5, S3C2410_GPF5_OUTP);
+	s3c2410_gpio_setpin(S3C2410_GPF5, 0);
 
 	INIT_WORK(&_pir_work, _pir_irq_work);
 	request_irq(IRQ_EINT2, _pir_irq_handler,

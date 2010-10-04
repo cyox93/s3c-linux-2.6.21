@@ -525,10 +525,6 @@ void lcd_gpio_init(void)
 
 		// set clockout0 to 12MHz
 		s3c2410_gpio_cfgpin(S3C2443_GPH13, S3C2443_GPH13_CLKOUT0);
-
-		// set camera backend ic LDO on
-		s3c2410_gpio_setpin(S3C2410_GPF5, 1);
-		s3c2410_gpio_cfgpin(S3C2410_GPF5, S3C2410_GPF5_OUTP);
 	}
 }
 
@@ -536,7 +532,7 @@ void
 q_camera_backend_reset(int reset)
 {
 	if (q_hw_ver(KTQOOK))
-		s3c2410_gpio_setpin(S3C2410_GPF5, (reset ? 0 : 1));
+		s3c2410_gpio_setpin(S3C2410_GPG7, (reset ? 0 : 1));
 }
 
 void speaker_amp(bool flag)
