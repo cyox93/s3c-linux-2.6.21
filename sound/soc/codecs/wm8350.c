@@ -467,6 +467,8 @@ static const struct soc_enum wm8350_enum[] = {
 	SOC_ENUM_SINGLE(WM8350_ADC_CONTROL, 8, 4, wm8350_adchp),
 	SOC_ENUM_SINGLE(WM8350_ADC_CONTROL, 0, 4, wm8350_pol),
 	SOC_ENUM_SINGLE(WM8350_INPUT_MIXER_VOLUME, 15, 2, wm8350_lr),
+	SOC_ENUM_SINGLE(WM8350_AI_ADC_CONTROL, 6, 2, wm8350_lr),
+	SOC_ENUM_SINGLE(WM8350_AI_ADC_CONTROL, 5, 2, wm8350_lr),
 };
 
 static DECLARE_TLV_DB_LINEAR(pre_amp_tlv, -1200, 3525);
@@ -557,6 +559,11 @@ static const struct snd_kcontrol_new wm8350_snd_controls[] = {
 		     WM8350_LOUT2_VOLUME,
 		     WM8350_ROUT2_VOLUME,
 		     14, 1, 1),
+};
+
+static const struct snd_kcontrol_new wm8350_snd_controls2[] = {
+	SOC_ENUM("Left channel ADC output", wm8350_enum[9]),
+	SOC_ENUM("Right channel ADC output", wm8350_enum[10])
 };
 
 /*
@@ -1489,6 +1496,8 @@ static int wm8350_codec_init(struct snd_soc_codec *codec,
 	snd_soc_add_new_controls(soc_card, wm8350_snd_controls, codec,
 		ARRAY_SIZE(wm8350_snd_controls));
 	wm8350_add_widgets(codec, soc_card);
+	snd_soc_add_new_controls(soc_card, wm8350_snd_controls2, codec,
+		ARRAY_SIZE(wm8350_snd_controls2));
 
 	/* read OUT1 & OUT2 volumes */
 	out1->left_vol = (wm8350_reg_read(wm8350, WM8350_LOUT1_VOLUME) &
@@ -1505,7 +1514,11 @@ static int wm8350_codec_init(struct snd_soc_codec *codec,
 	wm8350_reg_write(wm8350, WM8350_ROUT1_VOLUME, 0);
 	wm8350_set_bits(wm8350, WM8350_LOUT1_VOLUME, WM8350_OUT1_VU);
 	wm8350_reg_write(wm8350, WM8350_LOUT2_VOLUME, 0);
+#ifdef CONFIG_MACH_CANOPUS
+	wm8350_reg_write(wm8350, WM8350_ROUT2_VOLUME, WM8350_OUT2R_INV_MUTE);
+#else
 	wm8350_reg_write(wm8350, WM8350_ROUT2_VOLUME, 0);
+#endif
 	wm8350_set_bits(wm8350, WM8350_LOUT2_VOLUME, WM8350_OUT2_VU);
 
 #ifdef CONFIG_MACH_CANOPUS
