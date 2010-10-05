@@ -157,8 +157,8 @@ struct vc0528_fmt {
 };
 
 static struct vc0528_fmt format = {
-	.name     = "4:2:2, packed, YUYV",
-	.fourcc   = V4L2_PIX_FMT_YUYV,
+	.name     = "4:2:2, packed, JPEG",
+	.fourcc   = V4L2_PIX_FMT_JPEG,
 	.depth    = 16,
 };
 
