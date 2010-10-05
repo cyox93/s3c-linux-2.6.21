@@ -1090,10 +1090,17 @@ config TELCLOCK
 
 config PIR
 	tristate "PIR Device config"
+	depends on MACH_CANOPUS
 	default y
 	help
 	  Motion detection sensor for canopus
 
-
+config CANOPUS_JACK
+	tristate "Headphone jack device driver"
+	depends on MACH_CANOPUS
+	default y
+	help
+	  Headphone jack detect simple device driver
+	  
 endmenu
 
