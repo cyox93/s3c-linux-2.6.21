@@ -142,7 +142,7 @@ static int wm8350_i2c_detach(struct i2c_client *client)
 		return err;
 	}
 
-	free_irq(IRQ_EINT12, wm8350);
+	free_irq(IRQ_EINT1, wm8350);
 	wm8350_device_exit(wm8350);
 	kfree(client);
 	kfree(wm8350);
