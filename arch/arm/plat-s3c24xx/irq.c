@@ -379,13 +379,6 @@ s3c_irqext_type(unsigned int irq, unsigned int type)
 	value = (value & ~(7 << extint_offset)) | (newvalue << extint_offset);
 	__raw_writel(value, extint_reg);
 
-#ifdef CONFIG_MACH_CANOPUS
-	if (type & (IRQT_LOW | IRQT_HIGH))
-		set_irq_handler(irq, handle_level_irq);
-	else
-		set_irq_handler(irq, handle_edge_irq);
-#endif
-
 	return 0;
 }
 
@@ -825,6 +818,10 @@ void __init s3c24xx_init_irq(void)
 		set_irq_flags(irqno, IRQF_VALID);
 	}
 
+#ifdef CONFIG_MACH_CANOPUS
+	set_irq_handler(IRQ_EINT4, handle_level_irq);
+#endif
+	
 	/* register the uart interrupts */
 
 	irqdbf("s3c2410: registering external interrupts\n");
