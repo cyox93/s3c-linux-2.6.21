@@ -843,7 +843,8 @@ static void s3c_out_epn(struct s3c_udc *dev, u32 ep_idx)
 	struct s3c_ep *ep = &dev->ep[ep_idx];
 	struct s3c_request *req;
 	u32 csr;
-	
+
+_retry:
 	csr=usb_read((u32) S3C_UDC_EP_STATUS_REG, ep_index(ep));
 	DEBUG("%s: S3C_UDC_EP%d_STATUS_REG=0x%x\n",
 		__FUNCTION__, ep_index(ep), csr);
@@ -913,6 +914,8 @@ static void s3c_out_epn(struct s3c_udc *dev, u32 ep_idx)
 		}
 	}
 
+	if (csr & S3C_UDC_EP_PSIF_TWO)
+		goto _retry;
 }
 
 static void stop_activity(struct s3c_udc *dev,
