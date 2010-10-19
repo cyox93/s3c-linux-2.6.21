@@ -130,13 +130,11 @@ _get_waker(struct class_device *dev, const char *name)
 }
 
 static int
-_get_alarm_time(struct class_device *dev)
+_get_alarm_time(struct class_device *dev, unsigned long now)
 {
 	struct waker *waker, *nwaker;
-	unsigned long now;
 	int diff = -10, min = 10000;
 
-	now = _get_now(dev);
 	list_for_each_entry_safe(waker, nwaker, &list_wakers, link) {
 		diff = _cmp_time(waker->expired, now);
 		if (diff <= -5) {
@@ -170,7 +168,7 @@ _parse_waker(const char *buf, char **name, long *second)
 	len = p - buf;
 	if (!len) return -1;
 
-	n = kzalloc(len + 1, GFP_KERNEL);
+	n = kzalloc(len + 1, GFP_ATOMIC);
 	memcpy(n, buf, len);
 
 	while (isspace(*p) || (*p == 'n')) p++;
@@ -194,24 +192,23 @@ _end_parse:
 }
 
 static void
-_waker_set(struct class_device *dev, const char *name, long second)
+_waker_set(struct class_device *dev, const char *name, long second, unsigned long now)
 {
 	struct waker *waker;
-	unsigned long now;
 
 	if (!name) return ;
 
 	waker = _get_waker(dev, name);
 	if (second > 0) {
 		if (!waker) {
-			waker = kzalloc(sizeof(*waker), GFP_KERNEL);
+			waker = kzalloc(sizeof(*waker), GFP_ATOMIC);
 			strncpy(waker->name, name, sizeof(waker->name) - 1);
 
 			list_add(&waker->link, &list_wakers);
 		}
 
 		waker->second = second;
-		waker->expired = _get_now(dev) + second;
+		waker->expired = now + second;
 	} else {
 		if (waker) {
 			list_del(&waker->link);
@@ -255,13 +252,15 @@ static ssize_t rtc_sysfs_store_wakers(struct class_device *dev, const char *buf,
 	char *name = NULL;
 	long second = 0;
 	int ret = -1;
+	unsigned long now;
 
+	now = _get_now(dev);
 	spin_lock_irqsave(&list_lock, irqflags);
 	ret = _parse_waker(buf, &name, &second);
 	if (ret < 0 || second < 0)
 		goto bad_name;
 
-	_waker_set(dev, name, second);
+	_waker_set(dev, name, second, now);
 
 	if (name) kfree(name);
 
@@ -276,9 +275,11 @@ int wakers_set_alarm(struct class_device *dev)
 	struct rtc_wkalrm alarm;
 	unsigned long irqflags = 0;
 	unsigned long ret = 0;
+	unsigned long now;
 
+	now = _get_now(dev);
 	spin_lock_irqsave(&list_lock, irqflags);
-	ret = _get_alarm_time(dev);
+	ret = _get_alarm_time(dev, now);
 	spin_unlock_irqrestore(&list_lock, irqflags);
 
 	if (ret) {
