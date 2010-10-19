@@ -814,6 +814,9 @@ int __init s3c_fb_probe(struct platform_device *pdev)
 			printk(KERN_ERR "Failed to register framebuffer device: %d\n", ret);
 			goto free_video_memory;
 		}
+
+		printk(KERN_INFO "fb%d: %s frame buffer device\n",
+		       info[index].fb.node, info[index].fb.fix.id);
 	}// 	for(index=0; index<CONFIG_FB_NUM; index++)
 
 //(WAITFORVSYNC)
@@ -860,8 +863,6 @@ int __init s3c_fb_probe(struct platform_device *pdev)
 		printk(KERN_WARNING "s3cfb: failed to add lcd panel entries\n");
 #endif	// CONFIG_FB_ILI9225QC
 
-	printk(KERN_INFO "fb%d: %s frame buffer device\n",
-		info[index].fb.node, info[index].fb.fix.id);
 	return 0;
 
 free_video_memory:
