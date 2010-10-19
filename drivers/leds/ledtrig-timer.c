@@ -31,6 +31,10 @@ struct timer_trig_data {
 	int brightness;			/* original brightness */
 #endif	// CONFIG_MACH_CANOPUS
 	struct timer_list timer;
+	
+	struct led_classdev *led_cdev;
+	struct work_struct active_work;
+	struct work_struct deactive_work;
 };
 
 static void led_timer_function(unsigned long data)
@@ -132,12 +136,47 @@ static CLASS_DEVICE_ATTR(delay_on, 0644, led_delay_on_show,
 static CLASS_DEVICE_ATTR(delay_off, 0644, led_delay_off_show,
 			led_delay_off_store);
 
+static void active_work_handle(struct work_struct *work)
+{
+	int rc;
+	struct timer_trig_data *timer_data = container_of(work, struct timer_trig_data, active_work);
+	struct led_classdev *led_cdev = timer_data->led_cdev;
+	
+	rc = class_device_create_file(led_cdev->class_dev,
+				      &class_device_attr_delay_on);
+	if (rc) goto err_out;
+	rc = class_device_create_file(led_cdev->class_dev,
+				      &class_device_attr_delay_off);
+	if (rc) goto err_out_delayon;
+
+	return;
+
+err_out_delayon:
+	class_device_remove_file(led_cdev->class_dev,
+				&class_device_attr_delay_on);
+err_out:
+	led_cdev->trigger_data = NULL;
+	kfree(timer_data);
+	BUG();
+}
+
+static void deactive_work_handle(struct work_struct *work)
+{
+	struct timer_trig_data *timer_data = container_of(work, struct timer_trig_data, deactive_work);
+	struct led_classdev *led_cdev = timer_data->led_cdev;
+
+	class_device_remove_file(led_cdev->class_dev,
+				 &class_device_attr_delay_on);
+	class_device_remove_file(led_cdev->class_dev,
+				 &class_device_attr_delay_off);
+	kfree(timer_data);
+}
+
 static void timer_trig_activate(struct led_classdev *led_cdev)
 {
 	struct timer_trig_data *timer_data;
-	int rc;
 
-	timer_data = kzalloc(sizeof(struct timer_trig_data), GFP_KERNEL);
+	timer_data = kzalloc(sizeof(struct timer_trig_data), GFP_ATOMIC);
 	if (!timer_data)
 		return;
 
@@ -149,22 +188,10 @@ static void timer_trig_activate(struct led_classdev *led_cdev)
 	init_timer(&timer_data->timer);
 	timer_data->timer.function = led_timer_function;
 	timer_data->timer.data = (unsigned long) led_cdev;
-
-	rc = class_device_create_file(led_cdev->class_dev,
-				&class_device_attr_delay_on);
-	if (rc) goto err_out;
-	rc = class_device_create_file(led_cdev->class_dev,
-				&class_device_attr_delay_off);
-	if (rc) goto err_out_delayon;
-
-	return;
-
-err_out_delayon:
-	class_device_remove_file(led_cdev->class_dev,
-				&class_device_attr_delay_on);
-err_out:
-	led_cdev->trigger_data = NULL;
-	kfree(timer_data);
+	timer_data->led_cdev = led_cdev;
+	INIT_WORK(&timer_data->active_work, active_work_handle);
+	INIT_WORK(&timer_data->deactive_work, deactive_work_handle);
+	schedule_work(&timer_data->active_work);
 }
 
 static void timer_trig_deactivate(struct led_classdev *led_cdev)
@@ -172,12 +199,8 @@ static void timer_trig_deactivate(struct led_classdev *led_cdev)
 	struct timer_trig_data *timer_data = led_cdev->trigger_data;
 
 	if (timer_data) {
-		class_device_remove_file(led_cdev->class_dev,
-					&class_device_attr_delay_on);
-		class_device_remove_file(led_cdev->class_dev,
-					&class_device_attr_delay_off);
 		del_timer_sync(&timer_data->timer);
-		kfree(timer_data);
+		schedule_work(&timer_data->deactive_work);
 	}
 }
 
