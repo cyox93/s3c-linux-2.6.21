@@ -55,6 +55,7 @@
 static LIST_HEAD(clocks);
 
 DEFINE_MUTEX(clocks_mutex);
+static DEFINE_SPINLOCK(clock_lock);
 
 /* enable and disable calls for use with the clk struct */
 
@@ -111,31 +112,35 @@ void clk_put(struct clk *clk)
 
 int clk_enable(struct clk *clk)
 {
+	unsigned long flags;
+
 	if (IS_ERR(clk) || clk == NULL)
 		return -EINVAL;
 
 	clk_enable(clk->parent);
 
-	mutex_lock(&clocks_mutex);
+	spin_lock_irqsave(&clock_lock, flags);
 
 	if ((clk->usage++) == 0)
 		(clk->enable)(clk, 1);
 
-	mutex_unlock(&clocks_mutex);
+	spin_unlock_irqrestore(&clock_lock, flags);
 	return 0;
 }
 
 void clk_disable(struct clk *clk)
 {
+	unsigned long flags;
+
 	if (IS_ERR(clk) || clk == NULL)
 		return;
 
-	mutex_lock(&clocks_mutex);
+	spin_lock_irqsave(&clock_lock, flags);
 
 	if ((--clk->usage) == 0)
 		(clk->enable)(clk, 0);
 
-	mutex_unlock(&clocks_mutex);
+	spin_unlock_irqrestore(&clock_lock, flags);
 	clk_disable(clk->parent);
 }
 
@@ -167,14 +172,15 @@ long clk_round_rate(struct clk *clk, unsigned long rate)
 
 int clk_set_rate(struct clk *clk, unsigned long rate)
 {
+	unsigned long flags;
 	int ret;
 
 	if (IS_ERR(clk))
 		return -EINVAL;
 
-	mutex_lock(&clocks_mutex);
+	spin_lock_irqsave(&clock_lock, flags);
 	ret = (clk->set_rate)(clk, rate);
-	mutex_unlock(&clocks_mutex);
+	spin_unlock_irqrestore(&clock_lock, flags);
 
 	return ret;
 }

@@ -47,6 +47,8 @@ static unsigned long timer_startval;
 static unsigned long timer_usec_ticks;
 static unsigned long max_buffer_cnt;
 
+struct clk *clk;
+
 #define TIMER_USEC_SHIFT 16
 #define OS_TIMER_Nr		4
 
@@ -200,7 +202,6 @@ static void s3c2410_timer_setup (void)
 		tcfg1 |= S3C2410_TCFG1_MUX4_TCLK1;
 	} else {
 		unsigned long pclk;
-		struct clk *clk;
 
 		/* for the h1940 (and others), we use the pclk from the core
 		 * to generate the timer values. since values around 50 to
@@ -213,7 +214,6 @@ static void s3c2410_timer_setup (void)
 
 		/* this is used as default if no other timer can be found */
 
-		clk = clk_get(NULL, "timers");
 		if (IS_ERR(clk))
 			panic("failed to get clock for system timer");
 
@@ -316,6 +316,7 @@ static struct dyn_tick_timer s3c2410_dyn_tick = {
 
 static void __init s3c2410_timer_init (void)
 {
+	clk = clk_get(NULL, "timers");
 	s3c2410_timer_setup();
 	setup_irq(IRQ_TIMER4, &s3c2410_timer_irq);
 }
