@@ -95,11 +95,11 @@ static void s3c2416_idle(void)
 	tmp |= (0x1<<13);
 	__raw_writel(tmp, S3C2443_CLKDIV0);
 #else
-	tmp = __raw_readl(S3C2443_PWRMODE);
+	tmp = __raw_readl(S3C2443_PWRCFG);
 	tmp &= ~(0x1<<17);
 	tmp |= (0x1<<17);
-	__raw_writel(tmp, S3C2443_PWRMODE);
-	#endif
+	__raw_writel(tmp, S3C2443_PWRCFG);
+#endif
 	/* in SMDK2416 you can probe the idle status through the TP11(GPB2) by Laputa*/
 #ifdef IDLE_PROBE
 	tmp = __raw_readl(S3C2410_GPBDAT);
