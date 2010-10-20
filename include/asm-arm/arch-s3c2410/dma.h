@@ -436,6 +436,9 @@ extern int s3c_dma_set_buffdone_fn(dmach_t,unsigned int, s3c2410_dma_cbfn_t rtn)
 
 #define S3C2410_DCON_INTREQ     (1<<29)
 
+#define S3C2416_DCON_TSZ	(1<<28)
+#define S3C2416_DCON_WHOLE_SERV	(1<<27)
+
 #define S3C2410_DCON_CH0_XDREQ0	(0<<24)
 #define S3C2410_DCON_CH0_UART0	(1<<24)
 #define S3C2410_DCON_CH0_SDI	(2<<24)

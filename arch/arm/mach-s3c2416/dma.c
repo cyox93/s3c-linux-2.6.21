@@ -174,6 +174,13 @@ static struct s3c24xx_dma_map __initdata s3c2416_dma_mappings[] = {
 static void s3c2416_dma_select(struct s3c2410_dma_chan *chan,
 			       struct s3c24xx_dma_map *map)
 {
+#ifdef CONFIG_MACH_CANOPUS
+	if ((map->channels[0] & 0x3e) == S3C2443_DMAREQSEL_XDREQ0) {
+		/* change soft dma */
+		writel(0, chan->regs + S3C2443_DMA_DMAREQSEL);
+		return;
+	}
+#endif
 	writel(map->channels[0] | S3C2443_DMAREQSEL_HW,
 	       chan->regs + S3C2443_DMA_DMAREQSEL);
 }

@@ -376,7 +376,14 @@ static int s3c2410_dma_start(struct s3c2410_dma_chan *chan)
 
 	tmp = dma_rdreg(chan, S3C2410_DMA_DMASKTRIG);
 	tmp &= ~S3C2410_DMASKTRIG_STOP;
+#ifdef CONFIG_MACH_CANOPUS
+	if (dma_rdreg(chan, S3C2443_DMA_DMAREQSEL) == 0)
+		tmp |= S3C2410_DMASKTRIG_ON | S3C2410_DMASKTRIG_SWTRIG;
+	else 
+		tmp |= S3C2410_DMASKTRIG_ON;
+#else
 	tmp |= S3C2410_DMASKTRIG_ON;
+#endif
 	dma_wrreg(chan, S3C2410_DMA_DMASKTRIG, tmp);
 
 	pr_debug("dma%d: %08lx to DMASKTRIG\n", chan->number, tmp);
@@ -1083,7 +1090,9 @@ int s3c2410_dma_config(dmach_t channel,
 		return -EINVAL;
 	}
 
+#if !defined(CONFIG_CPU_S3C2416)
 	dcon |= S3C2410_DCON_HWTRIG;
+#endif
 	dcon |= S3C2410_DCON_INTREQ;
 
 	pr_debug("%s: dcon now %08x\n", __FUNCTION__, dcon);
