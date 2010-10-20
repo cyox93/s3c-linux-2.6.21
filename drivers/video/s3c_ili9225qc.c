@@ -1753,18 +1753,53 @@ _lcd_vc0528_set_command_mode(int set)
 
 }
 
+#define VM0528_DMA_DCON	(S3C2410_DCON_SYNC_HCLK|S3C2416_DCON_WHOLE_SERV)
+
+static struct s3c2410_dma_client vm0528_dma_client = {
+	.name		= "vc0528-lcd-dma",
+};
+
+static void *dma_vm0528_done;
+
+static void vm0528_dma_finish(struct s3c2410_dma_chan *dma_ch, void *buf_id,
+	int size, enum s3c2410_dma_buffresult result){
+	complete(dma_vm0528_done);
+}
+
+int s3c_fb_suspend_lcd(struct s3c_fb_info *info)
+{
+	if (!q_hw_ver(KTQOOK))
+		return 0;
+
+	s3c2410_dma_free(DMACH_XD0, &vm0528_dma_client);
+}
+
+int s3c_fb_resume_lcd(struct s3c_fb_info *info)
+{
+	if (!q_hw_ver(KTQOOK))
+		return 0;
+
+	if (s3c2410_dma_request(DMACH_XD0, &vm0528_dma_client, NULL)) {
+		printk(KERN_WARNING "Unable to get DMA channel.\n");
+		return;
+	}
+	s3c2410_dma_set_buffdone_fn(DMACH_XD0, vm0528_dma_finish);
+	s3c2410_dma_devconfig(DMACH_XD0, S3C2410_DMASRC_MEM, 1, (u_long) _VC0528_PA_ADDRESS+4);
+	s3c2410_dma_config(DMACH_XD0, 2, VM0528_DMA_DCON);
+	s3c2410_dma_setflags(DMACH_XD0, S3C2410_DMAF_AUTOSTART);
+}
+
 int _lcd_vc0528_trigger_lock = 0x1;
 _lcd_vc0528_trigger(struct fb_info *info)
 {
 	int i, size;
 	struct s3c_fb_info *fbi = container_of(info, struct s3c_fb_info, fb);
 	unsigned short *fb_ptr = (unsigned short *)fbi->map_cpu_f1;
-
-	size = fbi->map_size_f1 / sizeof(unsigned short);
-
-	for (i = 0; i < size; i++) {
-		__raw_writew(*fb_ptr++, _lcd_data_addr);
-	}
+	DECLARE_COMPLETION_ONSTACK(complete);
+	dma_vm0528_done = &complete;
+	
+	s3c2410_dma_enqueue(DMACH_XD0, NULL, (dma_addr_t) fbi->map_dma_f1, fbi->map_size_f1);
+	wait_for_completion(&complete);
 }
 
 static void
@@ -1807,6 +1842,8 @@ _lcd_vc0528_init(int init)
 	_lcd_handle.write_pixel		= _lcd_vc0528_write_pixel;
 	_lcd_handle.command_mode	= _lcd_vc0528_set_command_mode;
 	_lcd_handle.trigger		= _lcd_vc0528_trigger;
+
+	s3c_fb_resume_lcd(NULL);
 }
 
 static void

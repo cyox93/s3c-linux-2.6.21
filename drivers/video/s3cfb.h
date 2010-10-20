@@ -370,6 +370,11 @@ extern int __init s3c_fb_map_video_memory(struct s3c_fb_info *fbi);
 extern void s3c_fb_unmap_video_memory(struct s3c_fb_info *fbi);
 extern void Init_LDI(void);
 extern int s3c_fb_init_registers(struct s3c_fb_info *fbi);
+#ifdef CONFIG_MACH_CANOPUS
+extern int s3c_fb_suspend_lcd(struct s3c_fb_info *info);
+extern int s3c_fb_resume_lcd(struct s3c_fb_info *info);
+#endif
+
 extern void s3c_fb_set_lcdaddr(struct s3c_fb_info *fbi);
 extern void s3c_fb_activate_var(struct s3c_fb_info *fbi, struct fb_var_screeninfo *var);
 extern void s3c_fb_set_fb_change(int req_fb);

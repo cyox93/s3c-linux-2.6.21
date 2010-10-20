@@ -1099,6 +1099,10 @@ static struct sleep_save lcd_save[] = {
 /* suspend and resume support for the lcd controller */
 static int s3c_fb_suspend(struct platform_device *dev, pm_message_t state)
 {
+#ifdef CONFIG_MACH_CANOPUS
+	s3c_fb_suspend_lcd(&info[0]);
+#endif
+	
 	s3c_fb_stop_lcd();
 
 	s3c2410_pm_do_save(lcd_save, ARRAY_SIZE(lcd_save));
@@ -1123,6 +1127,8 @@ static int s3c_fb_resume(struct platform_device *dev)
 	s3c_fb_start_lcd();
 
 #ifdef CONFIG_MACH_CANOPUS
+	s3c_fb_resume_lcd(&info[0]);
+	
 	if (lcd_power) {
 		if (mach_info.lcd_power)
 				(mach_info.lcd_power)(1);
