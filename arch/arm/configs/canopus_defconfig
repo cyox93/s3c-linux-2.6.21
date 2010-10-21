@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.21.5-cfs-v19
-# Tue Oct  5 01:45:01 2010
+# Thu Oct 21 14:39:26 2010
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -1324,8 +1324,7 @@ CONFIG_USB_ETH_RNDIS=y
 #
 CONFIG_RTC_LIB=y
 CONFIG_RTC_CLASS=y
-CONFIG_RTC_HCTOSYS=y
-CONFIG_RTC_HCTOSYS_DEVICE="rtc0"
+# CONFIG_RTC_HCTOSYS is not set
 # CONFIG_RTC_DEBUG is not set
 
 #
