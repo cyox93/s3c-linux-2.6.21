@@ -1840,7 +1840,7 @@ video_device vc0528 = {
 	.hardware	= 0,
 	.fops       = &vc0528_fops,
 	.minor		= -1,
-//	.release	= video_device_release,
+	.release	= video_device_release,
 
 	.vidioc_querycap      = vidioc_querycap,
 	.vidioc_enum_fmt_cap  = vidioc_enum_fmt_cap,
