@@ -589,8 +589,6 @@ static int s3c_rtc_probe(struct platform_device *pdev)
 		return -ENOENT;
 	}
 
-	printk("res->start : %x res->end : %x",res->start,res->end);
-
 	s3c_rtc_mem = request_mem_region(res->start,
 					 res->end-res->start+1,
 					 pdev->name);
