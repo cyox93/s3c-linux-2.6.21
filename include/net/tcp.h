@@ -121,7 +121,7 @@ extern void tcp_time_wait(struct sock *sk, int state, int timeo);
 #define TCP_DELACK_MIN	4U
 #define TCP_ATO_MIN	4U
 #endif
-#define TCP_RTO_MAX	((unsigned)(120*HZ))
+#define TCP_RTO_MAX	((unsigned)(20*HZ))
 #define TCP_RTO_MIN	((unsigned)(HZ/5))
 #define TCP_TIMEOUT_INIT ((unsigned)(3*HZ))	/* RFC 1122 initial RTO value	*/
 
@@ -129,9 +129,9 @@ extern void tcp_time_wait(struct sock *sk, int state, int timeo);
 					                 * for local resources.
 					                 */
 
-#define TCP_KEEPALIVE_TIME	(120*60*HZ)	/* two hours */
-#define TCP_KEEPALIVE_PROBES	9		/* Max of 9 keepalive probes	*/
-#define TCP_KEEPALIVE_INTVL	(75*HZ)
+#define TCP_KEEPALIVE_TIME	(30*HZ)	/* 30 seconds */
+#define TCP_KEEPALIVE_PROBES	3		/* Max of 3 keepalive probes	*/
+#define TCP_KEEPALIVE_INTVL	(10*HZ)
 
 #define MAX_TCP_KEEPIDLE	32767
 #define MAX_TCP_KEEPINTVL	32767
