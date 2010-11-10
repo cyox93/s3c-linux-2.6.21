@@ -1858,7 +1858,7 @@ lcd_ili9225b_power(int set)
 		lcd_power_state = set;
 		lcd_set_command_mode(1);
 
-		if (id == 7) {
+		if (id == _LCD_PANEL_HSD24) {
 			_lcd_ili9225b_reg_write(0x0007, 0x0131); // Set D1=0, D0=1
 			mdelay(10);
 			_lcd_ili9225b_reg_write(0x0007, 0x0130); // Set D1=0, D0=0
@@ -1883,7 +1883,7 @@ lcd_ili9225b_power(int set)
 	} else {
 		lcd_set_command_mode(1);
 
-		if (id == 7) {
+		if (id == _LCD_PANEL_HSD24) {
 			//*************Power On sequence ******************//
 			_lcd_ili9225b_reg_write(0x0010, 0x0000); // SAP, BT[3:0], AP, DSTB, SLP, STB
 			_lcd_ili9225b_reg_write(0x0011, 0x0007); // DC1[2:0], DC0[2:0], VC[2:0]
@@ -1928,7 +1928,7 @@ static void s3c_fb_change_fb(struct fb_info *info)
 #define _LCD_PANEL_BYD		0
 #define _LCD_PANEL_TRULY	1
 #define _LCD_PANEL_TCL		2
-#define _LCD_PANEL_HSD24	7
+#define _LCD_PANEL_HSD24	7 /* K5 320x240 LCD Panel */
 
 static const char *_lcd_panel_str[8] = {
 	"BYD", "TRULY", "TCL", NULL,
