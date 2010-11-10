@@ -98,6 +98,7 @@ static struct s3c2410_uartcfg smdk2416_uartcfgs[] __initdata = {
 		.ulcon	     = 0x03,
 		.ufcon	     = 0x51,
 	},
+#ifndef CONFIG_MACH_CANOPUS
 	[1] = {
 		.hwport	     = 1,
 		.flags	     = 0,
@@ -121,6 +122,7 @@ static struct s3c2410_uartcfg smdk2416_uartcfgs[] __initdata = {
 		.clocks	     = smdk2416_serial_clocks,
 		.clocks_size = ARRAY_SIZE(smdk2416_serial_clocks),
 	}
+#endif
 };
 
 #ifdef CONFIG_MACH_CANOPUS
