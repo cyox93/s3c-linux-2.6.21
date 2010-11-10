@@ -1560,6 +1560,12 @@ extern int q_lcd_panel_id(void);
 extern void q_camera_backend_reset(int reset);
 
 /*_____________________ Local Declarations __________________________________*/
+
+#define _LCD_PANEL_BYD		0
+#define _LCD_PANEL_TRULY	1
+#define _LCD_PANEL_TCL		2
+#define _LCD_PANEL_HSD24	7 /* K5 320x240 LCD Panel */
+
 static _QLcdHandle _lcd_handle;
 
 /* lcd handle for s3c2416 lcd module in i80 mode */
@@ -1924,11 +1930,6 @@ static void s3c_fb_change_fb(struct fb_info *info)
 		lcd_trigger(info);
 	}
 }
-
-#define _LCD_PANEL_BYD		0
-#define _LCD_PANEL_TRULY	1
-#define _LCD_PANEL_TCL		2
-#define _LCD_PANEL_HSD24	7 /* K5 320x240 LCD Panel */
 
 static const char *_lcd_panel_str[8] = {
 	"BYD", "TRULY", "TCL", NULL,
