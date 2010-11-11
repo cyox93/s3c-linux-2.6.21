@@ -1000,6 +1000,7 @@ buffer_queue(struct videobuf_queue *vq, struct videobuf_buffer *vb)
 			dprintk(2,"[%p/%d] buffer_queue - first queued\n",
 				buf, buf->vb.i);
 		}
+
 	}
 }
 
@@ -1434,6 +1435,7 @@ vc0528_open(struct inode *inode, struct file *file)
 	enum v4l2_buf_type type = 0;
 	int i;
 
+	printk("@@@@@@@@@@ vc0528_open\n");
 	printk(KERN_DEBUG "vc0528: open called (minor=%d)\n",minor);
 
 #if VC0528_DEBUG_INFO
@@ -1517,19 +1519,18 @@ vc0528_open(struct inode *inode, struct file *file)
 #endif
 
 	/* VC0528 init */
-	canopus_bedev_ioctl(VC0528_RESET_CORE,NULL);
-	canopus_bedev_ioctl(SSMC_INIT,NULL);
-	canopus_bedev_ioctl(VC0528_SET_MULTI16,NULL);
 	canopus_bedev_ioctl(VC0528_INIT,NULL);
 	canopus_bedev_ioctl(VC0528_CAMERA_CAPTURE_STILL,NULL);
 	return 0;
 }
 
 static ssize_t
+
 vc0528_read(struct file *file, char __user *data, size_t count, loff_t *ppos)
 {
 	struct vc0528_fh        *fh = file->private_data;
 
+	printk("@@@@@@@@@@ vc0528_read\n");
 	if (fh->type==V4L2_BUF_TYPE_VIDEO_CAPTURE) {
 		if (res_locked(fh->dev))
 			return -EBUSY;
@@ -1545,6 +1546,7 @@ vc0528_poll(struct file *file, struct poll_table_struct *wait)
 	struct vc0528_fh        *fh = file->private_data;
 	struct vc0528_buffer    *buf;
 
+	printk("@@@@@@@@@@ vc0528_poll\n");
 	dprintk(1,"%s\n",__FUNCTION__);
 
 	if (V4L2_BUF_TYPE_VIDEO_CAPTURE != fh->type)
@@ -1578,6 +1580,7 @@ vc0528_release(struct inode *inode, struct file *file)
 	struct vc0528_dmaqueue *vidq = &dev->vidq;
 
 	int minor = iminor(inode);
+	printk("@@@@@@@@@@ vc0528_release\n");
 
 	vc0528_stop_thread(vidq);
 	videobuf_mmap_free(&fh->vb_vidq);
@@ -1598,6 +1601,7 @@ vc0528_mmap(struct file *file, struct vm_area_struct * vma)
 	struct vc0528_fh        *fh = file->private_data;
 	int ret;
 
+	printk("@@@@@@@@@@ vc0528_mmap\n");
 	static void __iomem	*_user_addr;
 	unsigned int addr1,addr2;
 
@@ -1757,9 +1761,6 @@ void
 vc0528_turning_mode_init(void)
 {
 	/* VC0528 init */
-	canopus_bedev_ioctl(VC0528_RESET_CORE,NULL);
-	canopus_bedev_ioctl(SSMC_INIT,NULL);
-	canopus_bedev_ioctl(VC0528_SET_MULTI16,NULL);
 	canopus_bedev_ioctl(VC0528_INIT,NULL);
 	canopus_bedev_ioctl(VC0528_CAMERA_PREVIEW,NULL);
 }
@@ -1784,9 +1785,11 @@ int video_ioctl_device(struct inode *inode, struct file *file,
 	switch(_IOC_TYPE(cmd))
 	{
 	case 'V':
+		printk("@@@@@@@@@@ vc0528_ioctl_device (1)\n");
 		video_ioctl2(inode,file,cmd,arg);  // v4l2 command
 		break;
 	case 'Q':
+		printk("@@@@@@@@@@ vc0528_ioctl_device (2), 0x%x\n", cmd);
 		switch(cmd){
 		case VC0528_CAMERA_SENSOR_NEW_SET: 
 		case VC0528_CAMERA_SENSOR_ORG_SET:
@@ -1806,6 +1809,7 @@ int video_ioctl_device(struct inode *inode, struct file *file,
 			vc0528_camera_preview();
 
 	default:
+		printk("@@@@@@@@@@ vc0528_ioctl_device (3), 0x%x\n", cmd);
 		return -EINVAL;
 		break;
 	}
@@ -1821,6 +1825,7 @@ file_operations vc0528_fops = {
 	.read       = vc0528_read,
 	.poll		= vc0528_poll,
 #if VC0528_IOCTL_CMD_TEST
+#error
     .ioctl      = vc0528_v4l2_ioctl, 	 /* V4L2 ioctl handler only test !! */
 #else
 	.ioctl      = video_ioctl_device, 	 /* V4L2 ioctl handler */
