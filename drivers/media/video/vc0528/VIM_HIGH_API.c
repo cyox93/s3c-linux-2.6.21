@@ -1,29 +1,29 @@
 /*************************************************************************
-*                                                                       
-*                Copyright (C) 2005 Vimicro CO.,LTD     		 
-*
-* FILE NAME                                  VERSION                
-*                                                                       
-* VIM_HIGH_API.c			   		1.4      
-*                                                                       
-* DESCRIPTION                                                           
-*                                                                       
-*     VC0528 's USER aip file                        
-*
-*	Version		Author			Date		Description		
-*  ---------------------------------------------------------------						 
-*   0.1			angela		2005-11-15	The first version. 
-*   0.2			angela  		2006-06-06	update for528
-*   0.3			angela  		2006-12-08	change to 1.0 version 
-*   1.1			angela  		2006-12-19	update
-*   1.2			angela  		2007-2-25	update
-*   1.3			angela  		2007-3-22	update
-*   1.4			guoying		2007-08-03	update
-*   1.5			guoying 		2007-12-25	update
-*   1.6			guoying 		2008-07-03	update
-*  ---------------------------------------------------------------
-*                                                                       
-*************************************************************************/
+ *                                                                       
+ *                Copyright (C) 2005 Vimicro CO.,LTD     		 
+ *
+ * FILE NAME                                  VERSION                
+ *                                                                       
+ * VIM_HIGH_API.c			   		1.4      
+ *                                                                       
+ * DESCRIPTION                                                           
+ *                                                                       
+ *     VC0528 's USER aip file                        
+ *
+ *	Version		Author			Date		Description		
+ *  ---------------------------------------------------------------						 
+ *   0.1			angela		2005-11-15	The first version. 
+ *   0.2			angela  		2006-06-06	update for528
+ *   0.3			angela  		2006-12-08	change to 1.0 version 
+ *   1.1			angela  		2006-12-19	update
+ *   1.2			angela  		2007-2-25	update
+ *   1.3			angela  		2007-3-22	update
+ *   1.4			guoying		2007-08-03	update
+ *   1.5			guoying 		2007-12-25	update
+ *   1.6			guoying 		2008-07-03	update
+ *  ---------------------------------------------------------------
+ *                                                                       
+ *************************************************************************/
 /****************************************************************************
 This source code has been made available to you by VIMICRO on an
 AS-IS basis. Anyone receiving this source code is licensed under VIMICRO
@@ -51,7 +51,7 @@ Note:
 *******************************************************************************/
 UINT16 VIM_HAPI_InitVc05x(void)
 {
-VIM_RESULT result;
+	VIM_RESULT result;
 #if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
 	VIM_USER_PrintString((char *)g_Code_Version);
 #endif	
@@ -63,7 +63,7 @@ VIM_RESULT result;
 	}
 
 
-	#if 1 // hicys 
+#if 1 // hicys 
 
 	//Init sensor
 	result=VIM_MAPI_AutoFindSensor();
@@ -106,94 +106,94 @@ Parameters:
 
 UINT16 VIM_HAPI_SetWorkMode(VIM_HAPI_WORKMODE WorkMode)
 {
-VIM_RESULT result;
+	VIM_RESULT result;
 
 	if(WorkMode==gVc0528_Info.ChipWorkMode)
 		return VIM_SUCCEED;
 	if((gVc0528_Info.ChipWorkMode==VIM_HAPI_MODE_BYPASS)||(gVc0528_Info.ChipWorkMode==VIM_HAPI_MODE_DIRECTDISPLAY))
+	{
+		VIM_SET_XCLKON();
+		VIM_HIF_SetBypassOrNormal((PVIM_BYPASS_DEF)&gVc0528_Info.pUserInfo->BypassDef,
+					  VIM_HIF_NORMALTYPE);
+		if((gVc0528_Info.ChipWorkMode==VIM_HAPI_MODE_BYPASS))
 		{
-			VIM_SET_XCLKON();
-			VIM_HIF_SetBypassOrNormal((PVIM_BYPASS_DEF)&gVc0528_Info.pUserInfo->BypassDef,
-				VIM_HIF_NORMALTYPE);
-			if((gVc0528_Info.ChipWorkMode==VIM_HAPI_MODE_BYPASS))
+			if(VIM_BYPASS_RESETCHIP)
+				VIM_USER_Reset();
+			result=VIM_MAPI_InitHif();
+			if(result)
 			{
-				if(VIM_BYPASS_RESETCHIP)
-					VIM_USER_Reset();
-				result=VIM_MAPI_InitHif();
-				if(result)
-				{
 #if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
-		VIM_USER_PrintDec("\n******** VIM_HAPI_SetWorkMode error*********** ,result =",result);
+				VIM_USER_PrintDec("\n******** VIM_HAPI_SetWorkMode error*********** ,result =",result);
 #endif	
-					return (UINT16)result;
-				}
-				VIM_SIF_SifInitI2c(gVc0528_Info.pSensorInfo,
-					gVc0528_Info.pUserInfo->WorkMClk.Clkout); // Init i2c
-				result = VIM_SIF_SifSensorInit(gVc0528_Info.pSensorInfo);
-				if (result) 
-				{
-#if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
-					VIM_USER_PrintDec("\n sensor init error,result =",result);
-#endif	
-			 		 // return	result;
-				}
+				return (UINT16)result;
 			}
-			VIM_DISP_SetGbufFormat((VIM_DISP_BFORMAT)gVc0528_Info.LcdStatus.ColorDep); //angela 2006-8-3 for changed value
-			VIM_HIF_SetModClkOn(VIM_HIF_CLOCK_ALL);
-			VIM_HIF_SetExterPinCrlEn(VIM_HIF_PIN_ALL,DISABLE);// 09-21 enable from eternal
-			VIM_MAPI_SwitchPanel(gVc0528_Info.LcdStatus.NowPanel);
+			VIM_SIF_SifInitI2c(gVc0528_Info.pSensorInfo,
+					   gVc0528_Info.pUserInfo->WorkMClk.Clkout); // Init i2c
+			result = VIM_SIF_SifSensorInit(gVc0528_Info.pSensorInfo);
+			if (result) 
+			{
+#if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
+				VIM_USER_PrintDec("\n sensor init error,result =",result);
+#endif	
+				// return	result;
+			}
 		}
+		VIM_DISP_SetGbufFormat((VIM_DISP_BFORMAT)gVc0528_Info.LcdStatus.ColorDep); //angela 2006-8-3 for changed value
+		VIM_HIF_SetModClkOn(VIM_HIF_CLOCK_ALL);
+		VIM_HIF_SetExterPinCrlEn(VIM_HIF_PIN_ALL,DISABLE);// 09-21 enable from eternal
+		VIM_MAPI_SwitchPanel(gVc0528_Info.LcdStatus.NowPanel);
+	}
 	VIM_HIF_SetModClkOn(VIM_HIF_CLOCK_ALL);
 
 	switch(WorkMode)
 	{
-		case VIM_HAPI_MODE_CAMERAON:
-			VIM_MARB_Set1TSramMode(VIM_MARB_1TSRAM_ALL,VIM_MARB_1TSRAM_POWERON);
-			VIM_SIF_SetSensorState(gVc0528_Info.pSensorInfo,VIM_SIF_SENSOR_POWERON);
-			VIM_HIF_SetModClkClose(VIM_HIF_CLOCK_GE);
-			break;
-		case VIM_HAPI_MODE_BYPASS:
-			VIM_HAPI_SetPreviewMode(VIM_HAPI_PREVIEW_OFF);
-			VIM_SIF_SetSensorState(gVc0528_Info.pSensorInfo,VIM_SIF_SENSOR_STANDBY);
+	case VIM_HAPI_MODE_CAMERAON:
+		VIM_MARB_Set1TSramMode(VIM_MARB_1TSRAM_ALL,VIM_MARB_1TSRAM_POWERON);
+		VIM_SIF_SetSensorState(gVc0528_Info.pSensorInfo,VIM_SIF_SENSOR_POWERON);
+		VIM_HIF_SetModClkClose(VIM_HIF_CLOCK_GE);
+		break;
+	case VIM_HAPI_MODE_BYPASS:
+		VIM_HAPI_SetPreviewMode(VIM_HAPI_PREVIEW_OFF);
+		VIM_SIF_SetSensorState(gVc0528_Info.pSensorInfo,VIM_SIF_SENSOR_STANDBY);
 
 			
-			VIM_HIF_SetExterPinValue(VIM_HIF_PIN_ALL,1);
+		VIM_HIF_SetExterPinValue(VIM_HIF_PIN_ALL,1);
 
-			VIM_HIF_SetExterPinValue(VIM_HIF_PIN_INT,VIM_BYPASS_PIN_INT);
-			VIM_HIF_SetExterPinValue(VIM_HIF_PIN_LCDRES,VIM_BYPASS_PIN_LCDRES);	
-			VIM_HIF_SetExterPinValue(VIM_HIF_PIN_CSRSTN,VIM_BYPASS_PIN_CSRSTN);
-			VIM_HIF_SetExterPinValue(VIM_HIF_PIN_CSPWD,VIM_BYPASS_PIN_CSPWD);		
-			VIM_HIF_SetExterPinValue(VIM_HIF_PIN_CSENB,VIM_BYPASS_PIN_CSENB);
-			VIM_HIF_SetExterPinValue(VIM_HIF_PIN_GPIO4,VIM_BYPASS_PIN_GPIO4);		
-			VIM_HIF_SetExterPinValue(VIM_HIF_PIN_GPIO3,VIM_BYPASS_PIN_GPIO3);	
-			VIM_HIF_SetExterPinValue(VIM_HIF_PIN_GPIO2,VIM_BYPASS_PIN_GPIO2);	
-			VIM_HIF_SetExterPinValue(VIM_HIF_PIN_GPIO1,VIM_BYPASS_PIN_GPIO1);	
-			VIM_HIF_SetExterPinValue(VIM_HIF_PIN_GPIO0,VIM_BYPASS_PIN_GPIO0);	
-			VIM_HIF_SetExterPinCrlEn(VIM_HIF_PIN_ALL,ENABLE);// 09-21 enable from eternal
+		VIM_HIF_SetExterPinValue(VIM_HIF_PIN_INT,VIM_BYPASS_PIN_INT);
+		VIM_HIF_SetExterPinValue(VIM_HIF_PIN_LCDRES,VIM_BYPASS_PIN_LCDRES);	
+		VIM_HIF_SetExterPinValue(VIM_HIF_PIN_CSRSTN,VIM_BYPASS_PIN_CSRSTN);
+		VIM_HIF_SetExterPinValue(VIM_HIF_PIN_CSPWD,VIM_BYPASS_PIN_CSPWD);		
+		VIM_HIF_SetExterPinValue(VIM_HIF_PIN_CSENB,VIM_BYPASS_PIN_CSENB);
+		VIM_HIF_SetExterPinValue(VIM_HIF_PIN_GPIO4,VIM_BYPASS_PIN_GPIO4);		
+		VIM_HIF_SetExterPinValue(VIM_HIF_PIN_GPIO3,VIM_BYPASS_PIN_GPIO3);	
+		VIM_HIF_SetExterPinValue(VIM_HIF_PIN_GPIO2,VIM_BYPASS_PIN_GPIO2);	
+		VIM_HIF_SetExterPinValue(VIM_HIF_PIN_GPIO1,VIM_BYPASS_PIN_GPIO1);	
+		VIM_HIF_SetExterPinValue(VIM_HIF_PIN_GPIO0,VIM_BYPASS_PIN_GPIO0);	
+		VIM_HIF_SetExterPinCrlEn(VIM_HIF_PIN_ALL,ENABLE);// 09-21 enable from eternal
 			
-			VIM_MARB_Set1TSramMode(VIM_MARB_1TSRAM_ALL,VIM_MARB_1TSRAM_OFF);
-			VIM_HIF_SetModClkClose(VIM_HIF_CLOCK_ALL);
-			VIM_HIF_SetLdoStatus(VIM_LDO_OFF);
-			VIM_HIF_SetPllStatus(VIM_HIF_PLLPOWERDOWN);		
-			VIM_HIF_SetBypassOrNormal((PVIM_BYPASS_DEF)&gVc0528_Info.pUserInfo->BypassDef,
-				VIM_HIF_BYPASSTYE);
-			VIM_SET_XCLKOFF();
-			break;
-		case VIM_HAPI_MODE_PHOTOPROCESS:		
-			VIM_HAPI_SetPreviewMode(VIM_HAPI_PREVIEW_OFF);
-			VIM_SIF_SetSensorState(gVc0528_Info.pSensorInfo,VIM_SIF_SENSOR_STANDBY);
-			VIM_MARB_Set1TSramMode(VIM_MARB_1TSRAM_ALL,VIM_MARB_1TSRAM_POWERON);
-			VIM_HIF_SetModClkClose(VIM_HIF_CLOCK_GE|VIM_HIF_CLOCK_SIF|VIM_HIF_CLOCK_ISP);
-			break;
-		case VIM_HAPI_MODE_DIRECTDISPLAY:
-			VIM_HAPI_SetPreviewMode(VIM_HAPI_PREVIEW_OFF);
-			VIM_MARB_Set1TSramMode(VIM_MARB_1TSRAM_ALL,VIM_MARB_1TSRAM_STANDBY);
-			VIM_HIF_SetModClkClose(VIM_HIF_CLOCK_ALL);
-			VIM_HIF_SetBypassOrNormal((PVIM_BYPASS_DEF)&gVc0528_Info.pUserInfo->BypassDef,
-				VIM_HIF_BYPASSTYE);
-			break;
-		default:
-			return VIM_ERROR_PARAMETER;
+		VIM_MARB_Set1TSramMode(VIM_MARB_1TSRAM_ALL,VIM_MARB_1TSRAM_OFF);
+		VIM_HIF_SetModClkClose(VIM_HIF_CLOCK_ALL);
+		VIM_HIF_SetLdoStatus(VIM_LDO_OFF);
+		VIM_HIF_SetPllStatus(VIM_HIF_PLLPOWERDOWN);		
+		VIM_HIF_SetBypassOrNormal((PVIM_BYPASS_DEF)&gVc0528_Info.pUserInfo->BypassDef,
+					  VIM_HIF_BYPASSTYE);
+		VIM_SET_XCLKOFF();
+		break;
+	case VIM_HAPI_MODE_PHOTOPROCESS:		
+		VIM_HAPI_SetPreviewMode(VIM_HAPI_PREVIEW_OFF);
+		VIM_SIF_SetSensorState(gVc0528_Info.pSensorInfo,VIM_SIF_SENSOR_STANDBY);
+		VIM_MARB_Set1TSramMode(VIM_MARB_1TSRAM_ALL,VIM_MARB_1TSRAM_POWERON);
+		VIM_HIF_SetModClkClose(VIM_HIF_CLOCK_GE|VIM_HIF_CLOCK_SIF|VIM_HIF_CLOCK_ISP);
+		break;
+	case VIM_HAPI_MODE_DIRECTDISPLAY:
+		VIM_HAPI_SetPreviewMode(VIM_HAPI_PREVIEW_OFF);
+		VIM_MARB_Set1TSramMode(VIM_MARB_1TSRAM_ALL,VIM_MARB_1TSRAM_STANDBY);
+		VIM_HIF_SetModClkClose(VIM_HIF_CLOCK_ALL);
+		VIM_HIF_SetBypassOrNormal((PVIM_BYPASS_DEF)&gVc0528_Info.pUserInfo->BypassDef,
+					  VIM_HIF_BYPASSTYE);
+		break;
+	default:
+		return VIM_ERROR_PARAMETER;
 	}
 	gVc0528_Info.ChipWorkMode=WorkMode;
 	return VIM_SUCCEED;
@@ -201,7 +201,7 @@ VIM_RESULT result;
 
 UINT16 VIM_HAPI_GetWorkMode(void)
 {
-   return gVc0528_Info.ChipWorkMode;
+	return gVc0528_Info.ChipWorkMode;
 }
 
 /********************************************************************************
@@ -286,178 +286,178 @@ Parameters:
 *********************************************************************************/
 UINT16 VIM_HAPI_SetPreviewMode(VIM_HAPI_PREVIEW_MODE MODE)
 {
-VIM_RESULT result;
-TSize Amem,InputSize,CaptureSize,SourceWin;
-TPoint pt;
+	VIM_RESULT result;
+	TSize Amem,InputSize,CaptureSize,SourceWin;
+	TPoint pt;
 	
 	if(gVc0528_Info.ChipWorkMode!=VIM_HAPI_MODE_CAMERAON)
 		return VIM_ERROR_WORKMODE;
 
-       switch(MODE)
+	switch(MODE)
 	{
-		case VIM_HAPI_PREVIEW_ON:
-		case VIM_HAPI_PREVIEW_FRAMEON:		
-			VIM_SIF_EnableSyncGen(DISABLE);
-			VIM_DISP_SetLayerEnable(VIM_DISP_ALAYER,DISABLE);	
-			VIM_MAPI_Delay_Frame(1);
-			//set chip work mode
-                    if(MODE!=VIM_HAPI_PREVIEW_FRAMEON)
-		 		VIM_MAPI_SetChipMode(VIM_MARB_PREVIEW_MODE,VIM_IPP_HAVE_NOFRAME);	//actually capture mode
-			else
-			{
-				VIM_MAPI_SetChipMode(VIM_MARB_PREVIEW_MODE,VIM_IPP_HAVEFRAME);
-			}
-			gVc0528_Info.PreviewStatus.bOutputIndex=VIM_HAPI_MAXPIXEL;
-                  	result = VIM_SIF_SetSensorResolution(gVc0528_Info.pSensorInfo,
-                  		(VIM_SIF_RESOLUTION)gVc0528_Info.PreviewStatus.bOutputIndex);
-			if(result)
-		           return (UINT16)result;
-			//get input size
-			result = VIM_SIF_GetSensorResolution(gVc0528_Info.pSensorInfo, 
-				(VIM_SIF_RESOLUTION)gVc0528_Info.PreviewStatus.bOutputIndex, &InputSize);
-			if(result)
-		           return (UINT16)result;
-
-			VIM_IPP_SetImageSize(InputSize.cx, InputSize.cy);
-			CaptureSize=gVc0528_Info.CaptureStatus.Size;
-
-			//change capture size for fast preview mode	//7/25/2007 guoying add 
-			if((CaptureSize.cx>InputSize.cx)||(CaptureSize.cy>InputSize.cy))
-			{
-				if(VIM_USER_FAST_PREVIEW)
-				
-				{
-					CaptureSize.cx/=2;
-					CaptureSize.cy/=2;
-					
-				}
-			}
-
-			//get source window size
-			result = VIM_IPP_ToolCaculateLessSrcWindow(InputSize,CaptureSize,&SourceWin);
-			if(result)
-				return (UINT16)result;
-			//SourceWin.cx=InputSize.cx;		//guoying 3/3/2008
-			//SourceWin.cy=InputSize.cy;	
-			
-			//get source window start position	
-			pt.x=((InputSize.cx-SourceWin.cx)/2)&0xfffe;
-			pt.y=((InputSize.cy-SourceWin.cy)/2)&0xfffe;
-			result = VIM_IPP_SetCaptureSize(gVc0528_Info.pSensorInfo,pt, SourceWin, CaptureSize); 
-			if(result)
-				return (UINT16)result;
-			
-#if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
-			VIM_USER_PrintDec("\n sensor output width: ",InputSize.cx);
-			VIM_USER_PrintDec("\n sensor output height: ",InputSize.cy);
-			VIM_USER_PrintDec("\n Source window width: ",SourceWin.cx);
-			VIM_USER_PrintDec("\n Source window height: ",SourceWin.cy);
-			VIM_USER_PrintDec("\n Capture window width:  ",CaptureSize.cx);
-			VIM_USER_PrintDec("\n Capture window height:  ",CaptureSize.cy);
-#endif	
-
-			//get part size of source win will display in LCD
-			result = VIM_IPP_ToolCaculateBigDstWindow(SourceWin, gVc0528_Info.PreviewStatus.Size,&InputSize);
-			if(result)
-				return (UINT16)result;
-
-			//InputSize.cx=gVc0528_Info.PreviewStatus.Size.cx;		//guoying 3/3/2008
-			//InputSize.cy=gVc0528_Info.PreviewStatus.Size.cy;
-			
-#if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
-			VIM_USER_PrintDec("\n  display InputSize window width:",InputSize.cx);
-			VIM_USER_PrintDec("\n  display InputSize window height:  ",InputSize.cy);
-#endif	
-
-			if(InputSize.cx<gVc0528_Info.PreviewStatus.Size.cx)	//angela 2007-3-7
-				InputSize.cx=gVc0528_Info.PreviewStatus.Size.cx;
-			if(InputSize.cy<gVc0528_Info.PreviewStatus.Size.cy)
-				InputSize.cy=gVc0528_Info.PreviewStatus.Size.cy;			
-			
-			result = VIM_IPP_SetDispalySize( pt, SourceWin, InputSize);
-	 		if(result)
-				return (UINT16)result;
-#if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
-			VIM_USER_PrintDec("\n new display InputSize window width:",InputSize.cx);
-			VIM_USER_PrintDec("\n new display InputSize window height:  ",InputSize.cy);
-			VIM_USER_PrintDec("preivew  window width:",gVc0528_Info.PreviewStatus.Size.cx);
-			VIM_USER_PrintDec("preivew window height:  ",gVc0528_Info.PreviewStatus.Size.cy);			
-#endif	
-
-			result = VIM_IPP_SetThumbSize((UINT8)gVc0528_Info.CaptureStatus.ThumbSize.cx, (UINT8)gVc0528_Info.CaptureStatus.ThumbSize.cy,VIM_IPP_THUMB_FROM_CAPTURE);
-			if(result)
-				return (UINT16)result;
-			
-	 		gVc0528_Info.PreviewStatus.ZoomPara.InitSourceSize=SourceWin;
-	 		gVc0528_Info.PreviewStatus.ZoomPara.InitAMemSize = InputSize;
-	 		pt.x=(((InputSize.cx-gVc0528_Info.PreviewStatus.Size.cx)>>1)>>1)<<1;
-			pt.y=(InputSize.cy-gVc0528_Info.PreviewStatus.Size.cy)>>1;
-			VIM_DISP_SetA_Memory(pt,InputSize);
-			
-			VIM_DISP_SetA_DisplayPanel(gVc0528_Info.PreviewStatus.Point,gVc0528_Info.PreviewStatus.Size); //angela 2007-3-7
-
-			result = VIM_MAPI_AdjustPoint((VIM_DISP_ROTATEMODE)gVc0528_Info.LcdStatus.ARotationMode,
-					VIM_DISP_NOTCHANGE);
-			if(result)
-				return (UINT16)result;
-			VIM_DISP_SetRotateMode(VIM_DISP_ALAYER,(VIM_DISP_ROTATEMODE)gVc0528_Info.LcdStatus.ARotationMode);
-			
-			VIM_JPEG_SetSize(JPEG_422,CaptureSize);
-			// angela added it for set capture ratio before preview on
-			result=VIM_MAPI_SetCaptureRatio(gVc0528_Info.CaptureStatus.QualityMode);
-
-			if(result)
-				return (UINT16)result;
-			gVc0528_Info.MarbStatus.ALayerMode = VIM_USER_PREVIEW_ALAYER_MODE;//ALAYER_1FRAMEBUF;
-CHAGNEAMODE:
-			result =VIM_MARB_SetMap(gVc0528_Info.MarbStatus.WorkMode,gVc0528_Info.MarbStatus.ALayerMode,
-		                  (PVIM_MARB_Map)&gVc0528_Info.MarbStatus.MapList);
-			if(result)
-			{
-				if(gVc0528_Info.MarbStatus.ALayerMode == VIM_DISP_LINEBUF)
-					return (UINT16)result;
-				else if(gVc0528_Info.MarbStatus.ALayerMode == VIM_DISP_TWOFRAME)
-					{
-						gVc0528_Info.MarbStatus.ALayerMode =VIM_DISP_ONEFRAME;
-						goto CHAGNEAMODE;
-					}
-				else
-					{
-						gVc0528_Info.MarbStatus.ALayerMode =VIM_DISP_LINEBUF;
-						goto CHAGNEAMODE;
-					}
-			}
-#if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
-				VIM_USER_PrintDec(" user a layter mode :",gVc0528_Info.MarbStatus.ALayerMode);
-#endif	
-			////////////zoom ///////////////////
-			if ( gVc0528_Info.PreviewStatus.ZoomPara.InitSourceSize.cx >= 
-				(CaptureSize.cx/2 + VIM_USER_MIN_PIXEL_ONESTEP * VIM_USER_MAX_STEP))
-			{
-				result=VIM_MAPI_Preview_CaptureZoom(gVc0528_Info.PreviewStatus.ZoomPara.CurrentZoomStep);
-			}
-			else
-			{
-				result=VIM_MAPI_Preview_DisplayZoom(gVc0528_Info.PreviewStatus.ZoomPara.CurrentZoomStep);
-			}
-			VIM_JPEG_SetBitRateControlEn(ENABLE);//angela   
-			VIM_IPP_SetDisplayDropFrame(0xffff);
-			VIM_SIF_EnableSyncGen(ENABLE);	
-			
-			VIM_MAPI_Delay_Frame(2);   //Delay for the stable sensor data output
-			VIM_DISP_ResetState();
-			VIM_DISP_SetLayerEnable(VIM_DISP_ALAYER,ENABLE);				
-			break;
-		case VIM_HAPI_PREVIEW_OFF:
-		default:
-			VIM_USER_StopTimer();
-			VIM_DISP_SetLayerEnable(VIM_DISP_ALAYER,DISABLE);//angela 2007-1-25	
-			VIM_MAPI_Delay_Frame(1);
-		 	VIM_SIF_EnableSyncGen(DISABLE);//next frame
-			VIM_USER_DelayMs(50);/*added by shiyong for bug10586*/
-		 	pt.x=pt.y=Amem.cx=Amem.cy=0;
-		 	VIM_DISP_SetA_Memory(pt,Amem);
+	case VIM_HAPI_PREVIEW_ON:
+	case VIM_HAPI_PREVIEW_FRAMEON:		
+		VIM_SIF_EnableSyncGen(DISABLE);
+		VIM_DISP_SetLayerEnable(VIM_DISP_ALAYER,DISABLE);	
+		VIM_MAPI_Delay_Frame(1);
+		//set chip work mode
+		if(MODE!=VIM_HAPI_PREVIEW_FRAMEON)
+			VIM_MAPI_SetChipMode(VIM_MARB_PREVIEW_MODE,VIM_IPP_HAVE_NOFRAME);	//actually capture mode
+		else
+		{
+			VIM_MAPI_SetChipMode(VIM_MARB_PREVIEW_MODE,VIM_IPP_HAVEFRAME);
 		}
+		gVc0528_Info.PreviewStatus.bOutputIndex=VIM_HAPI_MAXPIXEL;
+		result = VIM_SIF_SetSensorResolution(gVc0528_Info.pSensorInfo,
+						     (VIM_SIF_RESOLUTION)gVc0528_Info.PreviewStatus.bOutputIndex);
+		if(result)
+			return (UINT16)result;
+		//get input size
+		result = VIM_SIF_GetSensorResolution(gVc0528_Info.pSensorInfo, 
+						     (VIM_SIF_RESOLUTION)gVc0528_Info.PreviewStatus.bOutputIndex, &InputSize);
+		if(result)
+			return (UINT16)result;
+
+		VIM_IPP_SetImageSize(InputSize.cx, InputSize.cy);
+		CaptureSize=gVc0528_Info.CaptureStatus.Size;
+
+		//change capture size for fast preview mode	//7/25/2007 guoying add 
+		if((CaptureSize.cx>InputSize.cx)||(CaptureSize.cy>InputSize.cy))
+		{
+			if(VIM_USER_FAST_PREVIEW)
+				
+			{
+				CaptureSize.cx/=2;
+				CaptureSize.cy/=2;
+					
+			}
+		}
+
+		//get source window size
+		result = VIM_IPP_ToolCaculateLessSrcWindow(InputSize,CaptureSize,&SourceWin);
+		if(result)
+			return (UINT16)result;
+		//SourceWin.cx=InputSize.cx;		//guoying 3/3/2008
+		//SourceWin.cy=InputSize.cy;	
+			
+		//get source window start position	
+		pt.x=((InputSize.cx-SourceWin.cx)/2)&0xfffe;
+		pt.y=((InputSize.cy-SourceWin.cy)/2)&0xfffe;
+		result = VIM_IPP_SetCaptureSize(gVc0528_Info.pSensorInfo,pt, SourceWin, CaptureSize); 
+		if(result)
+			return (UINT16)result;
+			
+#if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
+		VIM_USER_PrintDec("\n sensor output width: ",InputSize.cx);
+		VIM_USER_PrintDec("\n sensor output height: ",InputSize.cy);
+		VIM_USER_PrintDec("\n Source window width: ",SourceWin.cx);
+		VIM_USER_PrintDec("\n Source window height: ",SourceWin.cy);
+		VIM_USER_PrintDec("\n Capture window width:  ",CaptureSize.cx);
+		VIM_USER_PrintDec("\n Capture window height:  ",CaptureSize.cy);
+#endif	
+
+		//get part size of source win will display in LCD
+		result = VIM_IPP_ToolCaculateBigDstWindow(SourceWin, gVc0528_Info.PreviewStatus.Size,&InputSize);
+		if(result)
+			return (UINT16)result;
+
+		//InputSize.cx=gVc0528_Info.PreviewStatus.Size.cx;		//guoying 3/3/2008
+		//InputSize.cy=gVc0528_Info.PreviewStatus.Size.cy;
+			
+#if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
+		VIM_USER_PrintDec("\n  display InputSize window width:",InputSize.cx);
+		VIM_USER_PrintDec("\n  display InputSize window height:  ",InputSize.cy);
+#endif	
+
+		if(InputSize.cx<gVc0528_Info.PreviewStatus.Size.cx)	//angela 2007-3-7
+			InputSize.cx=gVc0528_Info.PreviewStatus.Size.cx;
+		if(InputSize.cy<gVc0528_Info.PreviewStatus.Size.cy)
+			InputSize.cy=gVc0528_Info.PreviewStatus.Size.cy;			
+			
+		result = VIM_IPP_SetDispalySize( pt, SourceWin, InputSize);
+		if(result)
+			return (UINT16)result;
+#if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
+		VIM_USER_PrintDec("\n new display InputSize window width:",InputSize.cx);
+		VIM_USER_PrintDec("\n new display InputSize window height:  ",InputSize.cy);
+		VIM_USER_PrintDec("preivew  window width:",gVc0528_Info.PreviewStatus.Size.cx);
+		VIM_USER_PrintDec("preivew window height:  ",gVc0528_Info.PreviewStatus.Size.cy);			
+#endif	
+
+		result = VIM_IPP_SetThumbSize((UINT8)gVc0528_Info.CaptureStatus.ThumbSize.cx, (UINT8)gVc0528_Info.CaptureStatus.ThumbSize.cy,VIM_IPP_THUMB_FROM_CAPTURE);
+		if(result)
+			return (UINT16)result;
+			
+		gVc0528_Info.PreviewStatus.ZoomPara.InitSourceSize=SourceWin;
+		gVc0528_Info.PreviewStatus.ZoomPara.InitAMemSize = InputSize;
+		pt.x=(((InputSize.cx-gVc0528_Info.PreviewStatus.Size.cx)>>1)>>1)<<1;
+		pt.y=(InputSize.cy-gVc0528_Info.PreviewStatus.Size.cy)>>1;
+		VIM_DISP_SetA_Memory(pt,InputSize);
+			
+		VIM_DISP_SetA_DisplayPanel(gVc0528_Info.PreviewStatus.Point,gVc0528_Info.PreviewStatus.Size); //angela 2007-3-7
+
+		result = VIM_MAPI_AdjustPoint((VIM_DISP_ROTATEMODE)gVc0528_Info.LcdStatus.ARotationMode,
+					      VIM_DISP_NOTCHANGE);
+		if(result)
+			return (UINT16)result;
+		VIM_DISP_SetRotateMode(VIM_DISP_ALAYER,(VIM_DISP_ROTATEMODE)gVc0528_Info.LcdStatus.ARotationMode);
+			
+		VIM_JPEG_SetSize(JPEG_422,CaptureSize);
+		// angela added it for set capture ratio before preview on
+		result=VIM_MAPI_SetCaptureRatio(gVc0528_Info.CaptureStatus.QualityMode);
+
+		if(result)
+			return (UINT16)result;
+		gVc0528_Info.MarbStatus.ALayerMode = VIM_USER_PREVIEW_ALAYER_MODE;//ALAYER_1FRAMEBUF;
+	CHAGNEAMODE:
+		result =VIM_MARB_SetMap(gVc0528_Info.MarbStatus.WorkMode,gVc0528_Info.MarbStatus.ALayerMode,
+					(PVIM_MARB_Map)&gVc0528_Info.MarbStatus.MapList);
+		if(result)
+		{
+			if(gVc0528_Info.MarbStatus.ALayerMode == VIM_DISP_LINEBUF)
+				return (UINT16)result;
+			else if(gVc0528_Info.MarbStatus.ALayerMode == VIM_DISP_TWOFRAME)
+			{
+				gVc0528_Info.MarbStatus.ALayerMode =VIM_DISP_ONEFRAME;
+				goto CHAGNEAMODE;
+			}
+			else
+			{
+				gVc0528_Info.MarbStatus.ALayerMode =VIM_DISP_LINEBUF;
+				goto CHAGNEAMODE;
+			}
+		}
+#if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
+		VIM_USER_PrintDec(" user a layter mode :",gVc0528_Info.MarbStatus.ALayerMode);
+#endif	
+		////////////zoom ///////////////////
+		if ( gVc0528_Info.PreviewStatus.ZoomPara.InitSourceSize.cx >= 
+		     (CaptureSize.cx/2 + VIM_USER_MIN_PIXEL_ONESTEP * VIM_USER_MAX_STEP))
+		{
+			result=VIM_MAPI_Preview_CaptureZoom(gVc0528_Info.PreviewStatus.ZoomPara.CurrentZoomStep);
+		}
+		else
+		{
+			result=VIM_MAPI_Preview_DisplayZoom(gVc0528_Info.PreviewStatus.ZoomPara.CurrentZoomStep);
+		}
+		VIM_JPEG_SetBitRateControlEn(ENABLE);//angela   
+		VIM_IPP_SetDisplayDropFrame(0xffff);
+		VIM_SIF_EnableSyncGen(ENABLE);	
+			
+		VIM_MAPI_Delay_Frame(2);   //Delay for the stable sensor data output
+		VIM_DISP_ResetState();
+		VIM_DISP_SetLayerEnable(VIM_DISP_ALAYER,ENABLE);				
+		break;
+	case VIM_HAPI_PREVIEW_OFF:
+	default:
+		VIM_USER_StopTimer();
+		VIM_DISP_SetLayerEnable(VIM_DISP_ALAYER,DISABLE);//angela 2007-1-25	
+		VIM_MAPI_Delay_Frame(1);
+		VIM_SIF_EnableSyncGen(DISABLE);//next frame
+		VIM_USER_DelayMs(50);/*added by shiyong for bug10586*/
+		pt.x=pt.y=Amem.cx=Amem.cy=0;
+		VIM_DISP_SetA_Memory(pt,Amem);
+	}
 	gVc0528_Info.PreviewStatus.Mode=MODE;
 	return VIM_SUCCEED;
 }
@@ -499,21 +499,21 @@ UINT16 VIM_HAPI_SetPreviewZoom(VIM_HAPI_CHANGE_MODE Mode,UINT8 step)
 	VIM_MAPI_Delay_Frame(1);   //Delay for the stable sensor data output
 	switch(Mode)
 	{
-		case VIM_HAPI_CHANGE_ADD:
-			if (++gVc0528_Info.PreviewStatus.ZoomPara.CurrentZoomStep >VIM_USER_MAX_STEP)
-				gVc0528_Info.PreviewStatus.ZoomPara.CurrentZoomStep = VIM_USER_MAX_STEP;
-			break;
-		case VIM_HAPI_CHANGE_DEC:
-			if(gVc0528_Info.PreviewStatus.ZoomPara.CurrentZoomStep)
-				gVc0528_Info.PreviewStatus.ZoomPara.CurrentZoomStep--;
-			break;
-		case VIM_HAPI_SET_STEP:
-			gVc0528_Info.PreviewStatus.ZoomPara.CurrentZoomStep = step;
-			break;
-		case VIM_HAPI_CHANGE_NORMAL:
-			gVc0528_Info.PreviewStatus.ZoomPara.CurrentZoomStep=0;
-		default:
-			break;
+	case VIM_HAPI_CHANGE_ADD:
+		if (++gVc0528_Info.PreviewStatus.ZoomPara.CurrentZoomStep >VIM_USER_MAX_STEP)
+			gVc0528_Info.PreviewStatus.ZoomPara.CurrentZoomStep = VIM_USER_MAX_STEP;
+		break;
+	case VIM_HAPI_CHANGE_DEC:
+		if(gVc0528_Info.PreviewStatus.ZoomPara.CurrentZoomStep)
+			gVc0528_Info.PreviewStatus.ZoomPara.CurrentZoomStep--;
+		break;
+	case VIM_HAPI_SET_STEP:
+		gVc0528_Info.PreviewStatus.ZoomPara.CurrentZoomStep = step;
+		break;
+	case VIM_HAPI_CHANGE_NORMAL:
+		gVc0528_Info.PreviewStatus.ZoomPara.CurrentZoomStep=0;
+	default:
+		break;
 	}
 
 	if (gVc0528_Info.PreviewStatus.Mode == VIM_HAPI_PREVIEW_OFF)
@@ -523,17 +523,17 @@ UINT16 VIM_HAPI_SetPreviewZoom(VIM_HAPI_CHANGE_MODE Mode,UINT8 step)
 
 
 	if ( gVc0528_Info.PreviewStatus.ZoomPara.InitSourceSize.cx >= 
-		(CaptureSize.cx/2 + VIM_USER_MIN_PIXEL_ONESTEP * VIM_USER_MAX_STEP))
+	     (CaptureSize.cx/2 + VIM_USER_MIN_PIXEL_ONESTEP * VIM_USER_MAX_STEP))
 	{
 #if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
-			VIM_USER_PrintString("\n capture zoom:");
+		VIM_USER_PrintString("\n capture zoom:");
 #endif	
 		Result=VIM_MAPI_Preview_CaptureZoom(gVc0528_Info.PreviewStatus.ZoomPara.CurrentZoomStep);
 	}
 	else
 	{
 #if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
-			VIM_USER_PrintString("\n display zoom:");
+		VIM_USER_PrintString("\n display zoom:");
 #endif	
 		Result=VIM_MAPI_Preview_DisplayZoom(gVc0528_Info.PreviewStatus.ZoomPara.CurrentZoomStep);
 	}
@@ -586,10 +586,10 @@ Parameters:
 *********************************************************************************/
 UINT16 VIM_HAPI_SetCaptureRatio(UINT8 ratio)
 {
-  VIM_RESULT Result;
-       if(gVc0528_Info.ChipWorkMode!=VIM_HAPI_MODE_CAMERAON)
+	VIM_RESULT Result;
+	if(gVc0528_Info.ChipWorkMode!=VIM_HAPI_MODE_CAMERAON)
 		return VIM_ERROR_WORKMODE;
-       gVc0528_Info.CaptureStatus.QualityMode=ratio;
+	gVc0528_Info.CaptureStatus.QualityMode=ratio;
 	Result=VIM_MAPI_SetCaptureRatio(ratio);
 	return (UINT16)Result;		 
 }
@@ -631,8 +631,8 @@ UINT16 VIM_HAPI_CaptureStill(VIM_HAPI_SAVE_MODE SaveMode,HUGE void *StillBuf,UIN
        		return VIM_ERROR_PREVIEWMODE;
 
 	//check if capture still or frame
-       if(gVc0528_Info.PreviewStatus.Mode!=VIM_HAPI_PREVIEW_FRAMEON)
-       {
+	if(gVc0528_Info.PreviewStatus.Mode!=VIM_HAPI_PREVIEW_FRAMEON)
+	{
 		VIM_DISP_SetLayerEnable(VIM_DISP_ALAYER,DISABLE);	
 		VIM_MAPI_Delay_Frame(1);
 		gVc0528_Info.PreviewStatus.Mode=VIM_HAPI_PREVIEW_OFF;
@@ -641,11 +641,11 @@ UINT16 VIM_HAPI_CaptureStill(VIM_HAPI_SAVE_MODE SaveMode,HUGE void *StillBuf,UIN
 			return (UINT16)result;
 
 		VIM_MARB_SetMap(gVc0528_Info.MarbStatus.WorkMode,VIM_DISP_NODISP,
-			(PVIM_MARB_Map)&gVc0528_Info.MarbStatus.MapList);
-       }
+				(PVIM_MARB_Map)&gVc0528_Info.MarbStatus.MapList);
+	}
        
-       dwTwc=VIM_JPEG_GetTargetWordCount();
-       // init parameter
+	dwTwc=VIM_JPEG_GetTargetWordCount();
+	// init parameter
 	gVc0528_Info.CaptureStatus.SaveMode=SaveMode;
 	if(SaveMode==VIM_HAPI_RAM_SAVE)
 	{
@@ -713,7 +713,7 @@ UINT16 VIM_HAPI_CaptureStill(VIM_HAPI_SAVE_MODE SaveMode,HUGE void *StillBuf,UIN
 
 	//reset state
 	VIM_JPEG_ResetState();
-       VIM_MARB_StartCapture();
+	VIM_MARB_StartCapture();
 
        
 	//-----------------------------------------------------------
@@ -766,7 +766,7 @@ UINT16 VIM_HAPI_CaptureThumbStill(VIM_HAPI_SAVE_MODE SaveMode,HUGE void *StillBu
 {
 
 	UINT32 dwCount=5000,dwTwc;
-      VIM_RESULT result;
+	VIM_RESULT result;
 	//check the chip working mode 
 	if(gVc0528_Info.ChipWorkMode!=VIM_HAPI_MODE_CAMERAON) 
 		return VIM_ERROR_WORKMODE;
@@ -775,21 +775,21 @@ UINT16 VIM_HAPI_CaptureThumbStill(VIM_HAPI_SAVE_MODE SaveMode,HUGE void *StillBu
        		return VIM_ERROR_PREVIEWMODE;
 
 	//check if capture still or frame
-       if(gVc0528_Info.PreviewStatus.Mode!=VIM_HAPI_PREVIEW_FRAMEON)
-       {
+	if(gVc0528_Info.PreviewStatus.Mode!=VIM_HAPI_PREVIEW_FRAMEON)
+	{
 		VIM_DISP_SetLayerEnable(VIM_DISP_ALAYER,DISABLE);
 		gVc0528_Info.PreviewStatus.Mode=VIM_HAPI_PREVIEW_OFF;
 
 		VIM_MAPI_SetChipMode(VIM_MARB_CAPTURESTILLTHUMB_MODE,VIM_IPP_HAVE_NOFRAME);
-       }
-       else //frame on
+	}
+	else //frame on
 	      	return VIM_ERROR_CANNOTCAPT_FRAMTHUMB;
 
-       //set memary
+	//set memary
 	VIM_MARB_SetMap(gVc0528_Info.MarbStatus.WorkMode,VIM_DISP_NODISP,
-	(PVIM_MARB_Map)&gVc0528_Info.MarbStatus.MapList);
-       dwTwc=VIM_JPEG_GetTargetWordCount();
-       // init parameter
+			(PVIM_MARB_Map)&gVc0528_Info.MarbStatus.MapList);
+	dwTwc=VIM_JPEG_GetTargetWordCount();
+	// init parameter
 
 	gVc0528_Info.CaptureStatus.SaveMode=SaveMode;
 	if(SaveMode==VIM_HAPI_RAM_SAVE)
@@ -850,7 +850,7 @@ UINT16 VIM_HAPI_CaptureThumbStill(VIM_HAPI_SAVE_MODE SaveMode,HUGE void *StillBu
 
 	//reset state
 	VIM_JPEG_ResetState();
-       VIM_MARB_StartCapture();
+	VIM_MARB_StartCapture();
 	//-----------------------------------------------------------
 	if(gVc0528_Info.CaptureStatus.CapCallback==NULL)
 	{
@@ -909,9 +909,9 @@ UINT16 VIM_HAPI_BufferPosition(HUGE void *StillBuf,UINT32 BUF_Length,UINT8 bFram
 	{
 		gVc0528_Info.VideoStatus.VideoFrameRate=1000/gVc0528_Info.VideoStatus.VideoFrameRate;
 		
-		#if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
+#if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
 		VIM_USER_PrintDec("\n start TIMER interval is ",gVc0528_Info.VideoStatus.VideoFrameRate);
-		#endif	
+#endif	
 	}
 
 	return VIM_SUCCEED;
@@ -942,8 +942,8 @@ state:
 UINT16 VIM_HAPI_StartCaptureVideo(HUGE void *StillBuf,UINT32 BUF_Length,VIM_HAPI_CallBack pUCallBack)
 {
 	UINT32 dwTwc=VIM_JPEG_GetTargetWordCount();
-      VIM_RESULT result;
-      TSize InputSize;
+	VIM_RESULT result;
+	TSize InputSize;
 	//check the chip working mode 
 	if(gVc0528_Info.ChipWorkMode!=VIM_HAPI_MODE_CAMERAON) 
 		return VIM_ERROR_WORKMODE;
@@ -956,11 +956,11 @@ UINT16 VIM_HAPI_StartCaptureVideo(HUGE void *StillBuf,UINT32 BUF_Length,VIM_HAPI
 		return VIM_ERROR_CANNOT_CAPVIDEO;
 
 	//check if capture still or frame
-       if(gVc0528_Info.PreviewStatus.Mode!=VIM_HAPI_PREVIEW_FRAMEON)
+	if(gVc0528_Info.PreviewStatus.Mode!=VIM_HAPI_PREVIEW_FRAMEON)
 		VIM_MAPI_SetChipMode(VIM_MARB_CAPTURESTILL_MODE,VIM_IPP_HAVE_NOFRAME);
-       else //frame on
-       	VIM_MAPI_SetChipMode(VIM_MARB_CAPTURESTILL_MODE,VIM_IPP_HAVEFRAME);
-       // init parameter
+	else //frame on
+		VIM_MAPI_SetChipMode(VIM_MARB_CAPTURESTILL_MODE,VIM_IPP_HAVEFRAME);
+	// init parameter
 	if(gVc0528_Info.CaptureStatus.SaveMode==VIM_HAPI_RAM_SAVE)
 		gVc0528_Info.CaptureStatus.BufPoint=StillBuf;
 	else
@@ -980,10 +980,10 @@ UINT16 VIM_HAPI_StartCaptureVideo(HUGE void *StillBuf,UINT32 BUF_Length,VIM_HAPI
 	// can enable recapture function
 	if((dwTwc+VIM_USER_RECAPTURE_OFFSET)<=gVc0528_Info.MarbStatus.MapList.jbufsize)
 	{
-		#if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
+#if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
 		VIM_USER_PrintDec("\n start restart capture ,dwTwc =",dwTwc);
 		VIM_USER_PrintDec("\n jbuf size =",gVc0528_Info.MarbStatus.MapList.jbufsize);
-		#endif	
+#endif	
 		gVc0528_Info.CaptureStatus.Mode=VIM_CAPTURECAPTURE;
 		VIM_MARB_SetRecaptureEn(ENABLE);
 		VIM_MARB_SetRecaptureInfo(VIM_USER_RECAPTUREMAXTIMES,(dwTwc+VIM_USER_RECAPTURE_OFFSET));
@@ -1011,9 +1011,9 @@ UINT16 VIM_HAPI_StartCaptureVideo(HUGE void *StillBuf,UINT32 BUF_Length,VIM_HAPI
 		result=VIM_USER_StartTimer(gVc0528_Info.VideoStatus.VideoFrameRate);
 		if(result)
 			return (UINT16)result;
-		#if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
+#if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
 		VIM_USER_PrintDec("\n start TIMER interval is ",gVc0528_Info.VideoStatus.VideoFrameRate);
-		#endif	
+#endif	
 	}
 	if(!gVc0528_Info.VideoStatus.MaxFrame)	//angela add it for quick get one frame 2006-12-08
 	{
@@ -1028,7 +1028,7 @@ UINT16 VIM_HAPI_StartCaptureVideo(HUGE void *StillBuf,UINT32 BUF_Length,VIM_HAPI
 Description:
 	Get one frame(jpeg) with preview on 
 Parameters:
-	*dwOneLen: the total length captured from VIM_HAPI_StartCaptureVideo()
+*dwOneLen: the total length captured from VIM_HAPI_StartCaptureVideo()
 	StillBuf:the head point of jpeg
 	BUF_Length:the main buf len
 Return:
@@ -1052,14 +1052,14 @@ UINT16 VIM_HAPI_GetOneJpeg(HUGE void *StillBuf,UINT32 BUF_Length,UINT32 *dwOneLe
 		return VIM_ERROR_WORKMODE;
 	//check the preview  mode 
       	if(gVc0528_Info.PreviewStatus.Mode==VIM_HAPI_PREVIEW_OFF)
-       	return VIM_ERROR_PREVIEWMODE;
+		return VIM_ERROR_PREVIEWMODE;
 	if(gVc0528_Info.VideoStatus.Mode!=VIM_VIDEO_STARTCAPTURE)
-       	return VIM_ERROR_VIDEO_MODE;		
+		return VIM_ERROR_VIDEO_MODE;		
 	
 #if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
-		VIM_USER_PrintDec("\nget one frame video length is ",gVc0528_Info.VideoStatus.VideoLength);
-		VIM_USER_PrintHex("JPUF size :",gVc0528_Info.MarbStatus.MapList.jbufsize);
-		VIM_USER_PrintDec("MaxFrame  :",gVc0528_Info.VideoStatus.MaxFrame);
+	VIM_USER_PrintDec("\nget one frame video length is ",gVc0528_Info.VideoStatus.VideoLength);
+	VIM_USER_PrintHex("JPUF size :",gVc0528_Info.MarbStatus.MapList.jbufsize);
+	VIM_USER_PrintDec("MaxFrame  :",gVc0528_Info.VideoStatus.MaxFrame);
 #endif	
 
       	if(gVc0528_Info.CaptureStatus.SaveMode==VIM_HAPI_RAM_SAVE)
@@ -1095,7 +1095,7 @@ UINT16 VIM_HAPI_GetOneJpeg(HUGE void *StillBuf,UINT32 BUF_Length,UINT32 *dwOneLe
 
 	//reset state
 	VIM_JPEG_ResetState();
-       VIM_MARB_StartCapture();
+	VIM_MARB_StartCapture();
 	//-----------------------------------------------------------
 	if(gVc0528_Info.CaptureStatus.CapCallback==NULL)
 	{
@@ -1113,8 +1113,8 @@ UINT16 VIM_HAPI_GetOneJpeg(HUGE void *StillBuf,UINT32 BUF_Length,UINT32 *dwOneLe
 #endif	
 			if(gVc0528_Info.CaptureStatus.SaveMode==VIM_HAPI_ROM_SAVE)
 			{
-					gVc0528_Info.CaptureStatus.CaptureError=VIM_USER_FreeMemory(gVc0528_Info.CaptureStatus.MallocPr);
-					gVc0528_Info.CaptureStatus.MallocPr=0;
+				gVc0528_Info.CaptureStatus.CaptureError=VIM_USER_FreeMemory(gVc0528_Info.CaptureStatus.MallocPr);
+				gVc0528_Info.CaptureStatus.MallocPr=0;
 			}
 #if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
 			VIM_USER_PrintDec("no int length=",VIM_MARB_GetJbufRWSize(gVc0528_Info.MarbStatus.Jpgpoint));
@@ -1154,9 +1154,9 @@ UINT16 VIM_HAPI_GetQuickOneJpeg(HUGE void *StillBuf,UINT32 BUF_Length,UINT32 *dw
 		return VIM_ERROR_WORKMODE;
 	//check the preview  mode 
       	if(gVc0528_Info.PreviewStatus.Mode==VIM_HAPI_PREVIEW_OFF)
-       	return VIM_ERROR_PREVIEWMODE;
+		return VIM_ERROR_PREVIEWMODE;
 	if(gVc0528_Info.VideoStatus.Mode!=VIM_VIDEO_STARTCAPTURE)
-       	return VIM_ERROR_VIDEO_MODE;		
+		return VIM_ERROR_VIDEO_MODE;		
 	
 //#if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
 	VIM_USER_PrintDec("\n NowFrame is ",gVc0528_Info.VideoStatus.NowFrame);
@@ -1231,19 +1231,19 @@ UINT16 VIM_HAPI_StopCapture(void)
 		return VIM_ERROR_WORKMODE;
 	//check the preview  mode 
       	if(gVc0528_Info.PreviewStatus.Mode==VIM_HAPI_PREVIEW_OFF)
-       	return VIM_ERROR_PREVIEWMODE;
+		return VIM_ERROR_PREVIEWMODE;
 	if(gVc0528_Info.VideoStatus.Mode!=VIM_VIDEO_STARTCAPTURE)
-       	return VIM_ERROR_VIDEO_MODE;
+		return VIM_ERROR_VIDEO_MODE;
 	VIM_USER_StopTimer();
 	VIM_DISP_SetLayerEnable(VIM_DISP_ALAYER,DISABLE);
-    VIM_MAPI_Delay_Frame(1);
-    VIM_SIF_EnableSyncGen(DISABLE);	//angela 2006-9-4
+	VIM_MAPI_Delay_Frame(1);
+	VIM_SIF_EnableSyncGen(DISABLE);	//angela 2006-9-4
 	gVc0528_Info.VideoStatus.Mode=VIM_VIDEO_STOP;
 	gVc0528_Info.CaptureStatus.CapFileLength=gVc0528_Info.VideoStatus.VideoLength;
 	if((gVc0528_Info.VideoStatus.CapCallback)&&(gVc0528_Info.CaptureStatus.CaptureError==0))
 	 	gVc0528_Info.VideoStatus.CapCallback(VIM_HAPI_CAPTURE_END,gVc0528_Info.VideoStatus.VideoLength);
 #if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
-		VIM_USER_PrintString("**************VIM_HAPI_StopCapture");
+	VIM_USER_PrintString("**************VIM_HAPI_StopCapture");
 #endif
 	return VIM_SUCCEED;
 }
@@ -1275,7 +1275,7 @@ Parameters:
       framebuf: the buffer to store the muti frame.
       buflength: the total length of multishot buffer
       framenumber: the frame number to get( first is 1)      
-     *pframelength: the frame(jpeg) length. if 0, no this frame in the buffer 
+      *pframelength: the frame(jpeg) length. if 0, no this frame in the buffer 
 Return:
 	the buffer point of this frame
 Note:
@@ -1344,33 +1344,33 @@ UINT16 VIM_HAPI_SetLCDWorkMode(VIM_HAPI_LCDWORKMODE byABLayerMode, UINT16 wValue
 	}
 	switch(byABLayerMode)
 	{
-		case VIM_HAPI_LCDMODE_AFIRST:
-			// Enable A Layer, diable overlay and blending
-			VIM_DISP_SetWorkMode(VIM_DISP_AFIRST);
-			break;
-		case VIM_HAPI_LCDMODE_BLONLY:
-			// Disable A Layer, diable overlay and blending
-			VIM_SIF_EnableSyncGen(DISABLE);
- 			VIM_DISP_SetLayerEnable(VIM_DISP_ALAYER,DISABLE);
-			VIM_DISP_SetWorkMode(VIM_DISP_BFIRST);
-			break;
-		case VIM_HAPI_LCDMODE_OVERLAY:
-			// Enable A Layer, enable overlay, disable blending
-			dwKeyColor = (((UINT32)wValue) & 0x1f) << 3; // B 
-			dwKeyColor |= (((UINT32)wValue) & 0x7e0) << 5; // G
-			dwKeyColor |= (((UINT32)wValue) & 0xf800) << 8; // R 
-			VIM_DISP_SetOverlayKeyColor(VIM_DISP_ALLLAYER,dwKeyColor);
-			VIM_DISP_SetWorkMode(VIM_DISP_ALL_OVERLAY);
-			VIM_DISP_SetLayerEnable(VIM_DISP_ALLLAYER,ENABLE);
-			break;
-		case VIM_HAPI_LCDMODE_BLEND:
-			// Enable A Layer, disable overlay, enable blending
-			VIM_DISP_SetBlendRatio(VIM_DISP_ALLBLAYER, (UINT8)wValue);
-			VIM_DISP_SetWorkMode(VIM_DISP_ALL_BLEND);
-			VIM_DISP_SetLayerEnable(VIM_DISP_ALLLAYER,ENABLE);
-			break;
-		default:
-			return VIM_ERROR_PARAMETER;
+	case VIM_HAPI_LCDMODE_AFIRST:
+		// Enable A Layer, diable overlay and blending
+		VIM_DISP_SetWorkMode(VIM_DISP_AFIRST);
+		break;
+	case VIM_HAPI_LCDMODE_BLONLY:
+		// Disable A Layer, diable overlay and blending
+		VIM_SIF_EnableSyncGen(DISABLE);
+		VIM_DISP_SetLayerEnable(VIM_DISP_ALAYER,DISABLE);
+		VIM_DISP_SetWorkMode(VIM_DISP_BFIRST);
+		break;
+	case VIM_HAPI_LCDMODE_OVERLAY:
+		// Enable A Layer, enable overlay, disable blending
+		dwKeyColor = (((UINT32)wValue) & 0x1f) << 3; // B 
+		dwKeyColor |= (((UINT32)wValue) & 0x7e0) << 5; // G
+		dwKeyColor |= (((UINT32)wValue) & 0xf800) << 8; // R 
+		VIM_DISP_SetOverlayKeyColor(VIM_DISP_ALLLAYER,dwKeyColor);
+		VIM_DISP_SetWorkMode(VIM_DISP_ALL_OVERLAY);
+		VIM_DISP_SetLayerEnable(VIM_DISP_ALLLAYER,ENABLE);
+		break;
+	case VIM_HAPI_LCDMODE_BLEND:
+		// Enable A Layer, disable overlay, enable blending
+		VIM_DISP_SetBlendRatio(VIM_DISP_ALLBLAYER, (UINT8)wValue);
+		VIM_DISP_SetWorkMode(VIM_DISP_ALL_BLEND);
+		VIM_DISP_SetLayerEnable(VIM_DISP_ALLLAYER,ENABLE);
+		break;
+	default:
+		return VIM_ERROR_PARAMETER;
 	}
 	gVc0528_Info.LcdStatus.WorkMode=byABLayerMode;
 	return VIM_SUCCEED;
@@ -1435,10 +1435,10 @@ UINT16 VIM_HAPI_DrawLCDRctngl(VIM_HAPI_LAYER BLayer,UINT16 startx, UINT16 starty
 		{
 			if (VIM_USER_LCD_DRAWDATA_LITTLEENDIAN)
 				VIM_HIF_WriteSramReverse(gVc0528_Info.MarbStatus.MapList.layerB0start + offset,
-					(UINT8 *)(pwImage),Width * 2 *Height);
+							 (UINT8 *)(pwImage),Width * 2 *Height);
 			else
 				VIM_HIF_WriteSram(gVc0528_Info.MarbStatus.MapList.layerB0start + offset,
-					(UINT8 *)(pwImage),Width * 2 *Height);
+						  (UINT8 *)(pwImage),Width * 2 *Height);
 		}
 		else
 		{
@@ -1446,10 +1446,10 @@ UINT16 VIM_HAPI_DrawLCDRctngl(VIM_HAPI_LAYER BLayer,UINT16 startx, UINT16 starty
 			{
 				if (VIM_USER_LCD_DRAWDATA_LITTLEENDIAN)
 					VIM_HIF_WriteSramReverse(gVc0528_Info.MarbStatus.MapList.layerB0start + offset,
-						(UINT8 *)(pwImage + (i * Width * 2)),Width * 2);
+								 (UINT8 *)(pwImage + (i * Width * 2)),Width * 2);
 				else
 					VIM_HIF_WriteSram(gVc0528_Info.MarbStatus.MapList.layerB0start + offset,
-						(UINT8 *)(pwImage + (i * Width * 2)),Width * 2);
+							  (UINT8 *)(pwImage + (i * Width * 2)),Width * 2);
 
 				offset+=BSize.cx*2;//angela changed it
 			}
@@ -1473,10 +1473,10 @@ UINT16 VIM_HAPI_DrawLCDRctngl(VIM_HAPI_LAYER BLayer,UINT16 startx, UINT16 starty
 		{
 			if (VIM_USER_LCD_DRAWDATA_LITTLEENDIAN)
 				VIM_HIF_WriteSramReverse(gVc0528_Info.MarbStatus.MapList.layerB1start + offset,
-					(UINT8 *)(pwImage),Width * 2 *Height);
+							 (UINT8 *)(pwImage),Width * 2 *Height);
 			else
 				VIM_HIF_WriteSram(gVc0528_Info.MarbStatus.MapList.layerB1start + offset,
-					(UINT8 *)(pwImage),Width * 2 *Height);
+						  (UINT8 *)(pwImage),Width * 2 *Height);
 		}
 		else
 		{
@@ -1484,10 +1484,10 @@ UINT16 VIM_HAPI_DrawLCDRctngl(VIM_HAPI_LAYER BLayer,UINT16 startx, UINT16 starty
 			{
 				if (VIM_USER_LCD_DRAWDATA_LITTLEENDIAN)
 					VIM_HIF_WriteSramReverse(gVc0528_Info.MarbStatus.MapList.layerB1start + offset,
-						(UINT8 *)(pwImage + (i * Width * 2)),Width * 2);
+								 (UINT8 *)(pwImage + (i * Width * 2)),Width * 2);
 				else
 					VIM_HIF_WriteSram(gVc0528_Info.MarbStatus.MapList.layerB1start + offset ,
-						(UINT8 *)(pwImage + (i * Width * 2)),(Width * 2));
+							  (UINT8 *)(pwImage + (i * Width * 2)),(Width * 2));
 
 				offset+=BSize.cx*2;//angela changed it
 			}
@@ -1544,11 +1544,11 @@ UINT16 VIM_HAPI_UpdateLCD(VIM_HAPI_LAYER BLayer,UINT16 startx, UINT16 starty,UIN
 	size.cy=Height;
 
 	if((VIM_MAPI_FindUpdateRange(size,point)==4)&&(gVc0528_Info.PreviewStatus.Mode!=VIM_HAPI_PREVIEW_OFF)
-		&&(gVc0528_Info.LcdStatus.WorkMode>=VIM_HAPI_LCDMODE_OVERLAY))
+	   &&(gVc0528_Info.LcdStatus.WorkMode>=VIM_HAPI_LCDMODE_OVERLAY))
 		return VIM_SUCCEED;
 	
 	VIM_MAPI_GetNewPoint((VIM_DISP_ROTATEMODE)gVc0528_Info.LcdStatus.BRotationMode,&point,
-		size,&Newpoint);
+			     size,&Newpoint);
 
 	if((Newpoint.x<startPoint.x)||(Newpoint.y<startPoint.y))
 		return VIM_ERROR_LCD_UPDATERANGE;
@@ -1577,18 +1577,18 @@ UINT16 VIM_HAPI_UpdateLCD(VIM_HAPI_LAYER BLayer,UINT16 startx, UINT16 starty,UIN
 }
 
 /********************************************************************************
-* Description:
-*	Select main panel or sub panel
-* Parameters:
-*	byPanel:	Panel Index.
-*				VIM_LCDPANEL_MAIN
-*				VIM_LCDPANEL_SUB
-* Return:
-*	VIM_SUCCEED:				Select the LCD panel success.
-*	VIM_ERROR_PARAMETER:		byPanel is unknown.
-* Note:
-*	1. After init 578, call it to power on panel
-*	2. When use high api functions, first call it to switch panel to init LCDC and LCDIF.
+ * Description:
+ *	Select main panel or sub panel
+ * Parameters:
+ *	byPanel:	Panel Index.
+ *				VIM_LCDPANEL_MAIN
+ *				VIM_LCDPANEL_SUB
+ * Return:
+ *	VIM_SUCCEED:				Select the LCD panel success.
+ *	VIM_ERROR_PARAMETER:		byPanel is unknown.
+ * Note:
+ *	1. After init 578, call it to power on panel
+ *	2. When use high api functions, first call it to switch panel to init LCDC and LCDIF.
 State: valid
 *********************************************************************************/
 UINT16 VIM_HAPI_SelectLCDPanel(VIM_HAPI_LCDPANEL byPanel)
@@ -1603,7 +1603,7 @@ UINT16 VIM_HAPI_SelectLCDPanel(VIM_HAPI_LCDPANEL byPanel)
 		if(VIM_BYPASS_SUB_CS1 == gVc0528_Info.pUserInfo->BypassDef.BypassSubCtl)
 		{	
 			VIM_HIF_SetBypassOrNormal((PVIM_BYPASS_DEF)&gVc0528_Info.pUserInfo->BypassDef,
-				VIM_HIF_NORMALTYPE);
+						  VIM_HIF_NORMALTYPE);
 			if(byPanel == VIM_HAPI_LCDPANEL_MAIN)
 			{
 				VIM_HIF_SwitchPanelCs(VIM_BYPASS_SUB_CS1);
@@ -1613,7 +1613,7 @@ UINT16 VIM_HAPI_SelectLCDPanel(VIM_HAPI_LCDPANEL byPanel)
 				VIM_HIF_SwitchPanelCs(VIM_BYPASS_SUB_CS2);			
 			}
 			VIM_HIF_SetBypassOrNormal((PVIM_BYPASS_DEF)&gVc0528_Info.pUserInfo->BypassDef,
-				VIM_HIF_BYPASSTYE);		
+						  VIM_HIF_BYPASSTYE);		
 		}
 	}
 	else
@@ -1628,23 +1628,23 @@ UINT16 VIM_HAPI_SelectLCDPanel(VIM_HAPI_LCDPANEL byPanel)
 }
 
 /********************************************************************************
-* Description:
-*	select a window in the lcd panel ,can draw rgb data in b layer 
-* Parameters:
-*	wStartx:		The left coordinate of the Rectangle(pixel)
-*	wStarty:		The up coordinate of the Rectangle(pixel)
-*	wWidth:			The width of the Rectangle(pixel)
-*	wHeight:		The height of the Rectangle(pixel)
-*	wRGB565Color:	The color in RGB565 format.
-* Return:
-*	VIM_SUCCEED:			Copy pure color data to B layer success.
-*	VIM_ERROR_PARAMETER:		Rectangle area is out of B win area
-*							or wWidth is 0 or wHeight is 0
-*	VIM_ERROR_WORKMODE:		Current mode is V5H_MODE_BYPASS or V5H_MODE_DIRECTDISPLAY
-* Note:
-*	1. Only write data to B layer, but does not update it.
-*	2. The data format in B layer is RGB565.
-*	3 if lcd mirror have been changed ,please recall this function to effect the change.
+ * Description:
+ *	select a window in the lcd panel ,can draw rgb data in b layer 
+ * Parameters:
+ *	wStartx:		The left coordinate of the Rectangle(pixel)
+ *	wStarty:		The up coordinate of the Rectangle(pixel)
+ *	wWidth:			The width of the Rectangle(pixel)
+ *	wHeight:		The height of the Rectangle(pixel)
+ *	wRGB565Color:	The color in RGB565 format.
+ * Return:
+ *	VIM_SUCCEED:			Copy pure color data to B layer success.
+ *	VIM_ERROR_PARAMETER:		Rectangle area is out of B win area
+ *							or wWidth is 0 or wHeight is 0
+ *	VIM_ERROR_WORKMODE:		Current mode is V5H_MODE_BYPASS or V5H_MODE_DIRECTDISPLAY
+ * Note:
+ *	1. Only write data to B layer, but does not update it.
+ *	2. The data format in B layer is RGB565.
+ *	3 if lcd mirror have been changed ,please recall this function to effect the change.
 State: valid
 *********************************************************************************/
 
@@ -1670,39 +1670,39 @@ UINT16 VIM_HAPI_SetLCDSize(VIM_HAPI_LAYER BLayer,UINT16 wStartx,UINT16 wStarty,U
 	
 	switch(BLayer)
 	{
-		case VIM_HAPI_B0_LAYER:
-		{
-			VIM_DISP_GetBSize(VIM_DISP_B0LAYER,&resize);
-			//printk("resize:cx-0x%x , cy-0x%x\n",resize.cx,resize.cy);
-			//printk("size:cx-0x%x , cy-0x%x\n",size.cx,size.cy);
-			result=VIM_DISP_SetB0_DisplayPanel(StartPoint,size);
-			gVc0528_Info.LcdStatus.B0Startpoint=StartPoint;
-			VIM_MAPI_GetNewPoint((VIM_DISP_ROTATEMODE)gVc0528_Info.LcdStatus.BRotationMode,&StartPoint,size,&Newpoint);
-			VIM_HIF_SetReg16(V5_REG_LCDC_BX0_L,Newpoint.x);
-			VIM_HIF_SetReg16(V5_REG_LCDC_BY0_L,Newpoint.y);
-			VIM_DISP_SetRotateMode(VIM_DISP_B0LAYER,(VIM_DISP_ROTATEMODE)gVc0528_Info.LcdStatus.BRotationMode);
+	case VIM_HAPI_B0_LAYER:
+	{
+		VIM_DISP_GetBSize(VIM_DISP_B0LAYER,&resize);
+		//printk("resize:cx-0x%x , cy-0x%x\n",resize.cx,resize.cy);
+		//printk("size:cx-0x%x , cy-0x%x\n",size.cx,size.cy);
+		result=VIM_DISP_SetB0_DisplayPanel(StartPoint,size);
+		gVc0528_Info.LcdStatus.B0Startpoint=StartPoint;
+		VIM_MAPI_GetNewPoint((VIM_DISP_ROTATEMODE)gVc0528_Info.LcdStatus.BRotationMode,&StartPoint,size,&Newpoint);
+		VIM_HIF_SetReg16(V5_REG_LCDC_BX0_L,Newpoint.x);
+		VIM_HIF_SetReg16(V5_REG_LCDC_BY0_L,Newpoint.y);
+		VIM_DISP_SetRotateMode(VIM_DISP_B0LAYER,(VIM_DISP_ROTATEMODE)gVc0528_Info.LcdStatus.BRotationMode);
 
-		}
-		break;
-		case VIM_HAPI_B1_LAYER:
-		{
-			VIM_DISP_GetBSize(VIM_DISP_B1LAYER,&resize);
-			result=VIM_DISP_SetB1_DisplayPanel(StartPoint,size);
-			gVc0528_Info.LcdStatus.B1Startpoint=StartPoint;
-			VIM_MAPI_GetNewPoint((VIM_DISP_ROTATEMODE)gVc0528_Info.LcdStatus.BRotationMode,&StartPoint,size,&Newpoint);
-			VIM_HIF_SetReg16(V5_REG_LCDC_BX1_L,Newpoint.x);
-			VIM_HIF_SetReg16(V5_REG_LCDC_BY1_L,Newpoint.y);
-			VIM_DISP_SetRotateMode(VIM_DISP_B1LAYER,(VIM_DISP_ROTATEMODE)gVc0528_Info.LcdStatus.BRotationMode);
-		}
-		break;
-		default:
-			return VIM_ERROR_PARAMETER;
+	}
+	break;
+	case VIM_HAPI_B1_LAYER:
+	{
+		VIM_DISP_GetBSize(VIM_DISP_B1LAYER,&resize);
+		result=VIM_DISP_SetB1_DisplayPanel(StartPoint,size);
+		gVc0528_Info.LcdStatus.B1Startpoint=StartPoint;
+		VIM_MAPI_GetNewPoint((VIM_DISP_ROTATEMODE)gVc0528_Info.LcdStatus.BRotationMode,&StartPoint,size,&Newpoint);
+		VIM_HIF_SetReg16(V5_REG_LCDC_BX1_L,Newpoint.x);
+		VIM_HIF_SetReg16(V5_REG_LCDC_BY1_L,Newpoint.y);
+		VIM_DISP_SetRotateMode(VIM_DISP_B1LAYER,(VIM_DISP_ROTATEMODE)gVc0528_Info.LcdStatus.BRotationMode);
+	}
+	break;
+	default:
+		return VIM_ERROR_PARAMETER;
 	}
 	if(result)
 		return result;
 	if(((resize.cx*resize.cy)!=(size.cx*size.cy)))	
-	result=VIM_MARB_SetMap(gVc0528_Info.MarbStatus.WorkMode,gVc0528_Info.MarbStatus.ALayerMode,
-		(PVIM_MARB_Map)&gVc0528_Info.MarbStatus.MapList);
+		result=VIM_MARB_SetMap(gVc0528_Info.MarbStatus.WorkMode,gVc0528_Info.MarbStatus.ALayerMode,
+				       (PVIM_MARB_Map)&gVc0528_Info.MarbStatus.MapList);
 
 	
 	if(gVc0528_Info.PreviewStatus.Mode!=VIM_HAPI_PREVIEW_OFF)
@@ -1713,22 +1713,22 @@ UINT16 VIM_HAPI_SetLCDSize(VIM_HAPI_LAYER BLayer,UINT16 wStartx,UINT16 wStarty,U
 }
 
 /********************************************************************************
-* Description:
-*	Copy pure color into a Rectangle area on LCD( B Layer)
-* Parameters:
-*	wStartx:		The left coordinate of the Rectangle(pixel)
-*	wStarty:		The up coordinate of the Rectangle(pixel)
-*	wWidth:			The width of the Rectangle(pixel)
-*	wHeight:		The height of the Rectangle(pixel)
-*	wRGB565Color:	The color in RGB565 format.
-* Return:
-*	VIM_SUCCEED:			Copy pure color data to B layer success.
-*	VIM_ERROR_PARAMETER:		Rectangle area is out of B win area
-*							or wWidth is 0 or wHeight is 0
-*	VIM_ERROR_WORKMODE:		Current mode is V5H_MODE_BYPASS or V5H_MODE_DIRECTDISPLAY
-* Note:
-*	1. Only write data to B layer, but does not update it.
-*	2. The data format in B layer is RGB565.
+ * Description:
+ *	Copy pure color into a Rectangle area on LCD( B Layer)
+ * Parameters:
+ *	wStartx:		The left coordinate of the Rectangle(pixel)
+ *	wStarty:		The up coordinate of the Rectangle(pixel)
+ *	wWidth:			The width of the Rectangle(pixel)
+ *	wHeight:		The height of the Rectangle(pixel)
+ *	wRGB565Color:	The color in RGB565 format.
+ * Return:
+ *	VIM_SUCCEED:			Copy pure color data to B layer success.
+ *	VIM_ERROR_PARAMETER:		Rectangle area is out of B win area
+ *							or wWidth is 0 or wHeight is 0
+ *	VIM_ERROR_WORKMODE:		Current mode is V5H_MODE_BYPASS or V5H_MODE_DIRECTDISPLAY
+ * Note:
+ *	1. Only write data to B layer, but does not update it.
+ *	2. The data format in B layer is RGB565.
 State: valid
 *********************************************************************************/
 UINT16 VIM_HAPI_DrawLCDPureColor(VIM_HAPI_LAYER BLayer,UINT16 startx, UINT16 starty,UINT16 Width,UINT16 Height,UINT16 wRGBColor)
@@ -1769,12 +1769,12 @@ UINT16 VIM_HAPI_DrawLCDPureColor(VIM_HAPI_LAYER BLayer,UINT16 startx, UINT16 sta
 		if(BSize.cx==Width)
 		{
 			VIM_HIF_WriteSramOnWord(gVc0528_Info.MarbStatus.MapList.layerB0start + offset,
-				dwColor,Width * 2 *Height);
+						dwColor,Width * 2 *Height);
 		}
 		for(i = 0; i < Height; i++)
 		{
 			VIM_HIF_WriteSramOnWord(gVc0528_Info.MarbStatus.MapList.layerB0start + offset,
-				dwColor,Width * 2);
+						dwColor,Width * 2);
 			offset+=BSize.cx*2;//angela changed it
 		}
 	}
@@ -1795,12 +1795,12 @@ UINT16 VIM_HAPI_DrawLCDPureColor(VIM_HAPI_LAYER BLayer,UINT16 startx, UINT16 sta
 		if(BSize.cx==Width)
 		{
 			VIM_HIF_WriteSramOnWord(gVc0528_Info.MarbStatus.MapList.layerB1start + offset,
-				dwColor,Width * 2 *Height);
+						dwColor,Width * 2 *Height);
 		}
 		for(i = 0; i < Height; i++)
 		{
 			VIM_HIF_WriteSramOnWord(gVc0528_Info.MarbStatus.MapList.layerB1start + offset ,
-				dwColor,(Width * 2));
+						dwColor,(Width * 2));
 			offset+=BSize.cx*2;//angela changed it
 		}
 	}
@@ -1808,19 +1808,19 @@ UINT16 VIM_HAPI_DrawLCDPureColor(VIM_HAPI_LAYER BLayer,UINT16 startx, UINT16 sta
 }
 
 /********************************************************************************
-* Description:
-*	Set B Layer color depth
-* Parameters:
-*	byColorDepth:	
+ * Description:
+ *	Set B Layer color depth
+ * Parameters:
+ *	byColorDepth:	
 		VIM_HAPI_COLORDEP_16BIT=6,
 		VIM_HAPI_COLORDEP_15BIT=5
 		VIM_HAPI_COLORDEP_12BIT
- * Return:
-*	VIM_SUCCEED:				Set color depth success.
-*	VIM_ERROR_PARAMETER:		byColorDepth is unknown.
-*	VIM_ERROR_WORKMODE:		Current mode is V5H_MODE_BYPASS or V5H_MODE_DIRECTDISPLAY
-* Note: 
-*	 
+		* Return:
+		*	VIM_SUCCEED:				Set color depth success.
+		*	VIM_ERROR_PARAMETER:		byColorDepth is unknown.
+		*	VIM_ERROR_WORKMODE:		Current mode is V5H_MODE_BYPASS or V5H_MODE_DIRECTDISPLAY
+		* Note: 
+		*	 
 State: valid
 *********************************************************************************/
 UINT16 VIM_HAPI_SetLCDColordep(VIM_HAPI_COLORDEP_MODE byColorDepth)
@@ -1838,10 +1838,10 @@ UINT16 VIM_HAPI_SetLCDColordep(VIM_HAPI_COLORDEP_MODE byColorDepth)
 }
 
 /********************************************************************************
-* Description:
-*	Mirror or flip the display image on LCD, includes A layer and B layer.
-* Parameters:
-*	byMirrorFlipMode:
+ * Description:
+ *	Mirror or flip the display image on LCD, includes A layer and B layer.
+ * Parameters:
+ *	byMirrorFlipMode:
 	Rotate_Degree_0,
 	Rotate_Degree_90,
 	Rotate_Degree_180,
@@ -1851,20 +1851,20 @@ UINT16 VIM_HAPI_SetLCDColordep(VIM_HAPI_COLORDEP_MODE byColorDepth)
 	Rotate_Mirror_180,
 	Rotate_Mirror_270,
 
-*	byABLayer:
+	*	byABLayer:
 	VIM_HAPI_B0_Layer = 1,
 	VIM_HAPI_B1_Layer,
 	VIM_HAPI_ALL_BLayer,
 	VIM_HAPI_A_Layer,
 	VIM_HAPI_All_Layer
-* Return:
-*	VIM_SUCCEED:			Mirror or flip success.
-*	VIM_ERROR_PARAMETER:		byMirrorFlipMode is unknown  
-*							or byABLayer is unknown  
-*	VIM_ERROR_WORKMODE:		Current mode is V5H_MODE_BYPASS or V5H_MODE_DIRECTDISPLAY
-* Note:
-*	1. Only write data to B layer, but does not update it.
-*	2. The data format in B layer is RGB565.
+	* Return:
+	*	VIM_SUCCEED:			Mirror or flip success.
+	*	VIM_ERROR_PARAMETER:		byMirrorFlipMode is unknown  
+	*							or byABLayer is unknown  
+	*	VIM_ERROR_WORKMODE:		Current mode is V5H_MODE_BYPASS or V5H_MODE_DIRECTDISPLAY
+	* Note:
+	*	1. Only write data to B layer, but does not update it.
+	*	2. The data format in B layer is RGB565.
 State: valid
 *********************************************************************************/
 UINT16 VIM_HAPI_SetLCDMirror(VIM_HAPI_ROTATEMODE MirrorFlipMode, VIM_HAPI_LAYER Layer)
@@ -1959,7 +1959,7 @@ Parameters:
 *********************************************************************************/
 UINT16 VIM_HAPI_GetDecodeSize(UINT16 *picWidth, UINT16 *picHeight)
 {
-TSize size;
+	TSize size;
 	VIM_DISP_GetAWinsize(&size);
 	*picWidth=size.cx;
 	*picHeight=size.cy;
@@ -1996,7 +1996,7 @@ Modify History:
 UINT16 VIM_HAPI_ReadyToDisplay(VIM_HAPI_SAVE_MODE SaveMode,HUGE void *jpegBuf, UINT32 length,UINT16 LcdOffsetX, UINT16 LcdOffsetY, UINT16 DisplayWidth, UINT16 DisplayHeight)
 {
 	VIM_RESULT result;
-       TSize DisplaySize,DestDisplaySize;
+	TSize DisplaySize,DestDisplaySize;
 	TPoint pt = {0, 0};
 	UINT32 readCnt=0;
 	
@@ -2046,9 +2046,9 @@ UINT16 VIM_HAPI_ReadyToDisplay(VIM_HAPI_SAVE_MODE SaveMode,HUGE void *jpegBuf, U
 		goto DISPLAYERROR;
 	//from version 0.2 need display whole pic in LCD, so source size =jpeg image size
 #if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
-		VIM_USER_PrintDec("\n jpeg Image width:  ",gVc0528_JpegInfo.ImageSize.cx);
-		VIM_USER_PrintDec("\n jpeg Image height:  ",gVc0528_JpegInfo.ImageSize.cy);
-		VIM_USER_PrintDec("\n yuv is:  ",gVc0528_JpegInfo.YUVType);
+	VIM_USER_PrintDec("\n jpeg Image width:  ",gVc0528_JpegInfo.ImageSize.cx);
+	VIM_USER_PrintDec("\n jpeg Image height:  ",gVc0528_JpegInfo.ImageSize.cy);
+	VIM_USER_PrintDec("\n yuv is:  ",gVc0528_JpegInfo.YUVType);
 #endif	
 	//get real display size(display image in user define display size, maybe not full display in LCD, only part of user define display size)
 	if(VIM_USER_DISPLAY_FULLSCREEN)
@@ -2061,8 +2061,8 @@ UINT16 VIM_HAPI_ReadyToDisplay(VIM_HAPI_SAVE_MODE SaveMode,HUGE void *jpegBuf, U
 	//set ipp module image size
 	VIM_IPP_SetImageSize(gVc0528_JpegInfo.JpgSize.cx, gVc0528_JpegInfo.JpgSize.cy);
 #if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
-		VIM_USER_PrintDec("\n Dest DisplaySize width:  ",DestDisplaySize.cx);
-		VIM_USER_PrintDec("\n Dest DisplaySize height:  ",DestDisplaySize.cy);
+	VIM_USER_PrintDec("\n Dest DisplaySize width:  ",DestDisplaySize.cx);
+	VIM_USER_PrintDec("\n Dest DisplaySize height:  ",DestDisplaySize.cy);
 #endif	
 	//set ipp module source window size, display size
 	result = VIM_IPP_SetDispalySize(pt, gVc0528_JpegInfo.ImageSize, DestDisplaySize);//angela 2007-3-5
@@ -2078,8 +2078,8 @@ UINT16 VIM_HAPI_ReadyToDisplay(VIM_HAPI_SAVE_MODE SaveMode,HUGE void *jpegBuf, U
 
 
 #if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
-		VIM_USER_PrintDec("\n a mem offset x:  ",pt.x);
-		VIM_USER_PrintDec("\n a mem offset y:  ",pt.y);
+	VIM_USER_PrintDec("\n a mem offset x:  ",pt.x);
+	VIM_USER_PrintDec("\n a mem offset y:  ",pt.y);
 #endif		
 	result =VIM_DISP_SetA_Memory(pt,DestDisplaySize);
 	if(result)
@@ -2096,23 +2096,23 @@ UINT16 VIM_HAPI_ReadyToDisplay(VIM_HAPI_SAVE_MODE SaveMode,HUGE void *jpegBuf, U
 	else
 		DestDisplaySize.cy=DisplaySize.cy;
 #if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
-		VIM_USER_PrintDec("\n a display offset x:  ",pt.x);
-		VIM_USER_PrintDec("\n a display offset y:  ",pt.y);
-		VIM_USER_PrintDec("\n new DisplaySize width:  ",DestDisplaySize.cx);
-		VIM_USER_PrintDec("\n new DisplaySize height:  ",DestDisplaySize.cy);
+	VIM_USER_PrintDec("\n a display offset x:  ",pt.x);
+	VIM_USER_PrintDec("\n a display offset y:  ",pt.y);
+	VIM_USER_PrintDec("\n new DisplaySize width:  ",DestDisplaySize.cx);
+	VIM_USER_PrintDec("\n new DisplaySize height:  ",DestDisplaySize.cy);
 #endif	
 
 	VIM_DISP_SetA_DisplayPanel(pt,DestDisplaySize);
 	result = VIM_MAPI_AdjustPoint((VIM_DISP_ROTATEMODE)gVc0528_Info.LcdStatus.ARotationMode,
-					VIM_DISP_NOTCHANGE);
+				      VIM_DISP_NOTCHANGE);
 	if(result)
-			goto DISPLAYERROR;
+		goto DISPLAYERROR;
 	VIM_DISP_SetRotateMode(VIM_DISP_ALAYER,(VIM_DISP_ROTATEMODE)gVc0528_Info.LcdStatus.ARotationMode);
 
 #if VIM_USER_SUPPORT_REALTIME_ROTATION
-		VIM_DISP_GetAWinsize(&DestDisplaySize);
-		VIM_HIF_SetReg16(V5_REG_LCDC_BGW_L, DestDisplaySize.cx);
-		VIM_HIF_SetReg16(V5_REG_LCDC_BGH_L, DestDisplaySize.cy);
+	VIM_DISP_GetAWinsize(&DestDisplaySize);
+	VIM_HIF_SetReg16(V5_REG_LCDC_BGW_L, DestDisplaySize.cx);
+	VIM_HIF_SetReg16(V5_REG_LCDC_BGH_L, DestDisplaySize.cy);
 #endif
 
 	//enable a layer
@@ -2164,7 +2164,7 @@ Modify History:
 	   0.2			Amanda Deng			2006.01.06				only write one frame for display function, user can call it by itself need
 	   0.3			Amanda Deng 		2006.01.16				add teo parameter for this function
           1.0			angela				2006.12.8				change it to can seek file
- ****************************************************************************************************************************************/
+****************************************************************************************************************************************/
 UINT16 VIM_HAPI_DisplayOneFrame(HUGE UINT8 *jpegBuf, UINT32 length)
 {
 	UINT32  readCnt=0;
@@ -2214,7 +2214,7 @@ UINT16 VIM_HAPI_DisplayOneFrame(HUGE UINT8 *jpegBuf, UINT32 length)
 				if(!readCnt)
 				{
 #if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
-				VIM_USER_PrintString("\n file end!");
+					VIM_USER_PrintString("\n file end!");
 #endif					
 					goto SHOULDSTOPVIDEO;
 				}
@@ -2291,7 +2291,7 @@ UINT16 VIM_HAPI_QuickDisplayOneFrame(HUGE UINT8 *jpegBuf, UINT32 length)
 	VIM_DISP_ResetState();
 	if(templen>=Truelen)
 	{
-			gVc0528_Info.MarbStatus.Jpgpoint=VIM_MARB_WriteJpegData(jpegBuf+gVc0528_JpegInfo.offset,Truelen,gVc0528_Info.MarbStatus.Jpgpoint,1);
+		gVc0528_Info.MarbStatus.Jpgpoint=VIM_MARB_WriteJpegData(jpegBuf+gVc0528_JpegInfo.offset,Truelen,gVc0528_Info.MarbStatus.Jpgpoint,1);
 	}
 	else
 	{
@@ -2320,15 +2320,15 @@ Modify History:
 UINT16 VIM_HAPI_StopDisplayVideo(void)
 {
 	if(gVc0528_Info.VideoStatus.Mode!=VIM_VIDEO_STARTDISPLAYE)
-       	return VIM_ERROR_VIDEO_MODE;
+		return VIM_ERROR_VIDEO_MODE;
 	VIM_USER_StopTimer();
 	gVc0528_Info.VideoStatus.Mode=VIM_VIDEO_STOP;
 	if(gVc0528_Info.DisplayStatus.SaveMode==VIM_HAPI_ROM_SAVE)
 	{
 		VIM_USER_FreeMemory(gVc0528_Info.DisplayStatus.MallocPr);
-	#if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
+#if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
 		VIM_USER_PrintString("\n free memory because video stop!");
-	#endif	
+#endif	
 		gVc0528_Info.CaptureStatus.MallocPr=0;
 	}
 	if(gVc0528_Info.VideoStatus.CapCallback)
@@ -2441,7 +2441,7 @@ UINT16 VIM_HAPI_Display_Jpeg(VIM_HAPI_SAVE_MODE SaveMode,HUGE void *jpegBuf, UIN
 			gVc0528_Info.DisplayStatus.FileLength+=gVc0528_JpegInfo.eop;
 
 			VIM_MAPI_WriteOneFrameData(((VIM_USER_BUFLENGTH - gVc0528_JpegInfo.offset)>>2)<<2, //angela 2007-2-25
-					gVc0528_Info.DisplayStatus.BufPoint+gVc0528_JpegInfo.offset);
+						   gVc0528_Info.DisplayStatus.BufPoint+gVc0528_JpegInfo.offset);
 
 			if(gVc0528_JpegInfo.offset%4)		//angela 2007-2-25
 				VIM_USER_SeekFile(gVc0528_Info.DisplayStatus.pFileHandle,VIM_USER_BUFLENGTH-(4-(gVc0528_JpegInfo.offset%4)));
@@ -2504,7 +2504,7 @@ Modify History:
 UINT16 VIM_HAPI_DisplayPan(UINT16 LcdOffsetX, UINT16 LcdOffsetY, UINT16 JpegOffsetX, UINT16 JpegOffsetY,UINT16 DisplayWidth, UINT16 DisplayHeight)
 {
 	VIM_RESULT result;
-       TSize DisplaySize,DestDisplaySize;
+	TSize DisplaySize,DestDisplaySize;
 	TPoint pt = {0, 0};
 	UINT32 readCnt=0;
 	
@@ -2550,9 +2550,9 @@ UINT16 VIM_HAPI_DisplayPan(UINT16 LcdOffsetX, UINT16 LcdOffsetY, UINT16 JpegOffs
 	
 	//from version 0.2 need display whole pic in LCD, so source size =jpeg image size
 #if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
-		VIM_USER_PrintDec("\n jpeg Image width:  ",gVc0528_JpegInfo.ImageSize.cx);
-		VIM_USER_PrintDec("\n jpeg Image height:  ",gVc0528_JpegInfo.ImageSize.cy);
-		VIM_USER_PrintDec("\n yuv is:  %d",gVc0528_JpegInfo.YUVType);
+	VIM_USER_PrintDec("\n jpeg Image width:  ",gVc0528_JpegInfo.ImageSize.cx);
+	VIM_USER_PrintDec("\n jpeg Image height:  ",gVc0528_JpegInfo.ImageSize.cy);
+	VIM_USER_PrintDec("\n yuv is:  %d",gVc0528_JpegInfo.YUVType);
 #endif	
 
 
@@ -2561,10 +2561,10 @@ UINT16 VIM_HAPI_DisplayPan(UINT16 LcdOffsetX, UINT16 LcdOffsetY, UINT16 JpegOffs
 
 
 #if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
-		VIM_USER_PrintDec("\n jpeg offset x:  ",pt.x);
-		VIM_USER_PrintDec("\n jpeg offset y:  ",pt.y);
-		VIM_USER_PrintDec("\n Dest DisplaySize width:  ",DestDisplaySize.cx);
-		VIM_USER_PrintDec("\n Dest DisplaySize height:  ",DestDisplaySize.cy);
+	VIM_USER_PrintDec("\n jpeg offset x:  ",pt.x);
+	VIM_USER_PrintDec("\n jpeg offset y:  ",pt.y);
+	VIM_USER_PrintDec("\n Dest DisplaySize width:  ",DestDisplaySize.cx);
+	VIM_USER_PrintDec("\n Dest DisplaySize height:  ",DestDisplaySize.cy);
 #endif	
 	//set ipp module source window size, display size
 	result = VIM_IPP_SetDispalySize(pt, DestDisplaySize, DestDisplaySize);
@@ -2594,17 +2594,17 @@ UINT16 VIM_HAPI_DisplayPan(UINT16 LcdOffsetX, UINT16 LcdOffsetY, UINT16 JpegOffs
 	else
 		DestDisplaySize.cy=DisplaySize.cy;
 #if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
-		VIM_USER_PrintDec("\n a display offset x:  ",pt.x);
-		VIM_USER_PrintDec("\n a display offset y:  ",pt.y);
-		VIM_USER_PrintDec("\n new DisplaySize width:  ",DestDisplaySize.cx);
-		VIM_USER_PrintDec("\n new DisplaySize height:  ",DestDisplaySize.cy);
+	VIM_USER_PrintDec("\n a display offset x:  ",pt.x);
+	VIM_USER_PrintDec("\n a display offset y:  ",pt.y);
+	VIM_USER_PrintDec("\n new DisplaySize width:  ",DestDisplaySize.cx);
+	VIM_USER_PrintDec("\n new DisplaySize height:  ",DestDisplaySize.cy);
 #endif	
 
 	VIM_DISP_SetA_DisplayPanel(pt,DestDisplaySize);
 	result = VIM_MAPI_AdjustPoint((VIM_DISP_ROTATEMODE)gVc0528_Info.LcdStatus.ARotationMode,
-					VIM_DISP_NOTCHANGE);
+				      VIM_DISP_NOTCHANGE);
 	if(result)
-			goto DISPLAYPANERROR;
+		goto DISPLAYPANERROR;
 	VIM_DISP_SetRotateMode(VIM_DISP_ALAYER,(VIM_DISP_ROTATEMODE)gVc0528_Info.LcdStatus.ARotationMode);
 
 
@@ -2623,50 +2623,50 @@ UINT16 VIM_HAPI_DisplayPan(UINT16 LcdOffsetX, UINT16 LcdOffsetY, UINT16 JpegOffs
 
 	
 	if(gVc0528_Info.DisplayStatus.BufPoint)
-		{
-			gVc0528_Info.MarbStatus.Jpgpoint=gVc0528_Info.MarbStatus.MapList.jbufstart;
+	{
+		gVc0528_Info.MarbStatus.Jpgpoint=gVc0528_Info.MarbStatus.MapList.jbufstart;
 			
-			if (gVc0528_JpegInfo.frmEnd ==TRUE)
-				VIM_MAPI_WriteOneFrameData(gVc0528_Info.DisplayStatus.FileLength-gVc0528_JpegInfo.offset, gVc0528_Info.DisplayStatus.BufPoint+gVc0528_JpegInfo.offset);
-			else
+		if (gVc0528_JpegInfo.frmEnd ==TRUE)
+			VIM_MAPI_WriteOneFrameData(gVc0528_Info.DisplayStatus.FileLength-gVc0528_JpegInfo.offset, gVc0528_Info.DisplayStatus.BufPoint+gVc0528_JpegInfo.offset);
+		else
+		{
+#if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
+			VIM_USER_PrintDec(" first write ",gVc0528_JpegInfo.eop - gVc0528_JpegInfo.offset);
+#endif
+			gVc0528_Info.DisplayStatus.FileLength+=gVc0528_JpegInfo.eop;
+			VIM_MAPI_WriteOneFrameData(VIM_USER_BUFLENGTH - gVc0528_JpegInfo.offset, 
+						   gVc0528_Info.DisplayStatus.BufPoint+gVc0528_JpegInfo.offset);
+			//need read data from ROM to RAM then display
+			//while((gVc0528_JpegInfo.frmEnd==FALSE)&&(gVc0528_Info.DisplayStatus.BufLength))
+			while((gVc0528_JpegInfo.frmEnd==FALSE))
 			{
-	#if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
-				VIM_USER_PrintDec(" first write ",gVc0528_JpegInfo.eop - gVc0528_JpegInfo.offset);
-	#endif
-				gVc0528_Info.DisplayStatus.FileLength+=gVc0528_JpegInfo.eop;
-				VIM_MAPI_WriteOneFrameData(VIM_USER_BUFLENGTH - gVc0528_JpegInfo.offset, 
-					gVc0528_Info.DisplayStatus.BufPoint+gVc0528_JpegInfo.offset);
-				//need read data from ROM to RAM then display
-				//while((gVc0528_JpegInfo.frmEnd==FALSE)&&(gVc0528_Info.DisplayStatus.BufLength))
-				while((gVc0528_JpegInfo.frmEnd==FALSE))
+				readCnt = VIM_USER_ReadFile(gVc0528_Info.DisplayStatus.pFileHandle, gVc0528_Info.DisplayStatus.BufPoint, VIM_USER_BUFLENGTH);
+				if(readCnt<VIM_USER_BUFLENGTH)
 				{
-					readCnt = VIM_USER_ReadFile(gVc0528_Info.DisplayStatus.pFileHandle, gVc0528_Info.DisplayStatus.BufPoint, VIM_USER_BUFLENGTH);
-					if(readCnt<VIM_USER_BUFLENGTH)
-					{
-						gVc0528_JpegInfo.frmEnd=TRUE;
-	#if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
-						VIM_USER_PrintDec(" read finish ",gVc0528_Info.DisplayStatus.FileLength);
-	#endif
-					}
-					gVc0528_Info.DisplayStatus.FileLength+=readCnt;
-					//gVc0528_Info.DisplayStatus.BufLength-=readCnt;
-					VIM_MAPI_WriteOneFrameData(readCnt, gVc0528_Info.DisplayStatus.BufPoint);
-	#if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
-
-					VIM_USER_PrintDec("\n have finish file data:  ",readCnt);
-	#endif	
-
+					gVc0528_JpegInfo.frmEnd=TRUE;
+#if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
+					VIM_USER_PrintDec(" read finish ",gVc0528_Info.DisplayStatus.FileLength);
+#endif
 				}
-			}
-			if(gVc0528_Info.DisplayStatus.SaveMode==VIM_HAPI_ROM_SAVE)
-			{
-				VIM_USER_FreeMemory(gVc0528_Info.DisplayStatus.MallocPr);
-	#if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
-				VIM_USER_PrintString("\n free memory because file display finish!  ");
-	#endif	
-				gVc0528_Info.CaptureStatus.MallocPr=0;
+				gVc0528_Info.DisplayStatus.FileLength+=readCnt;
+				//gVc0528_Info.DisplayStatus.BufLength-=readCnt;
+				VIM_MAPI_WriteOneFrameData(readCnt, gVc0528_Info.DisplayStatus.BufPoint);
+#if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
+
+				VIM_USER_PrintDec("\n have finish file data:  ",readCnt);
+#endif	
+
 			}
 		}
+		if(gVc0528_Info.DisplayStatus.SaveMode==VIM_HAPI_ROM_SAVE)
+		{
+			VIM_USER_FreeMemory(gVc0528_Info.DisplayStatus.MallocPr);
+#if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
+			VIM_USER_PrintString("\n free memory because file display finish!  ");
+#endif	
+			gVc0528_Info.CaptureStatus.MallocPr=0;
+		}
+	}
 	
 DISPLAYPANERROR:
 	if(result)
@@ -2733,7 +2733,7 @@ UINT16 VIM_HAPI_DisplayZoom(UINT16 JpegOffsetX, UINT16 JpegOffsetY,VIM_HAPI_DISP
 			gVc0528_Info.DisplayStatus.FileLength+=gVc0528_JpegInfo.eop;
 
 			VIM_MAPI_WriteOneFrameData(((VIM_USER_BUFLENGTH - gVc0528_JpegInfo.offset)>>2)<<2, //angela 2007-2-25
-					gVc0528_Info.DisplayStatus.BufPoint+gVc0528_JpegInfo.offset);
+						   gVc0528_Info.DisplayStatus.BufPoint+gVc0528_JpegInfo.offset);
 
 			if(gVc0528_JpegInfo.offset%4)		//angela 2007-2-25
 				VIM_USER_SeekFile(gVc0528_Info.DisplayStatus.pFileHandle,VIM_USER_BUFLENGTH-(4-(gVc0528_JpegInfo.offset%4)));
@@ -2834,7 +2834,7 @@ UINT16 VIM_HAPI_Decode_Jpeg(VIM_HAPI_SAVE_MODE SaveMode,VIM_HAPI_DECODE_MODE Dec
 			gVc0528_Info.DisplayStatus.FileLength+=gVc0528_JpegInfo.eop;	//real jpeg data length
 
 			VIM_MAPI_DecodeOneFrame(((VIM_USER_BUFLENGTH - gVc0528_JpegInfo.offset)>>2)<<2, //decode the first block jpeg data in the VIM_USER_BUFLENGTH area
-					gVc0528_Info.DisplayStatus.BufPoint+gVc0528_JpegInfo.offset);
+						gVc0528_Info.DisplayStatus.BufPoint+gVc0528_JpegInfo.offset);
 
 			if(gVc0528_JpegInfo.offset%4)		//angela 2007-2-25
 				VIM_USER_SeekFile(gVc0528_Info.DisplayStatus.pFileHandle,VIM_USER_BUFLENGTH-(4-(gVc0528_JpegInfo.offset%4)));
@@ -2873,11 +2873,11 @@ UINT16 VIM_HAPI_Decode_Jpeg(VIM_HAPI_SAVE_MODE SaveMode,VIM_HAPI_DECODE_MODE Dec
 
 	if(SaveMode==VIM_HAPI_ROM_SAVE)
 	{
-			VIM_USER_FreeMemory(gVc0528_Info.DisplayStatus.MallocPr);
+		VIM_USER_FreeMemory(gVc0528_Info.DisplayStatus.MallocPr);
 #if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
-			VIM_USER_PrintString("\n free memory because file display finish!  ");
+		VIM_USER_PrintString("\n free memory because file display finish!  ");
 #endif	
-			gVc0528_Info.CaptureStatus.MallocPr=0;
+		gVc0528_Info.CaptureStatus.MallocPr=0;
 	}	
 	return result;
 
@@ -2888,8 +2888,8 @@ UINT16 VIM_HAPI_Decode_Jpeg(VIM_HAPI_SAVE_MODE SaveMode,VIM_HAPI_DECODE_MODE Dec
 Description:
 	Convert yuv format to rgb format
 Parameters:
-     *pYUV: the head point of yuv
-      *pRgb: the head point of rgb
+*pYUV: the head point of yuv
+*pRgb: the head point of rgb
       Source_Width: the width of yuv pic
       Source_height: the height of rgb pic
 	Method:
@@ -2907,13 +2907,13 @@ state:
 UINT16 VIM_HAPI_YuvToRgb(HUGE UINT8 *pYUV, HUGE UINT8 *pRgb,UINT16 Source_Width,UINT16 Source_height,UINT8 Method)
 {
 	switch(Method)
-		{
-		case VIM_CON_UYVY_565:
-			VIM_JPEG_Toolyuv422_Rgb565((UINT8*)pYUV,(UINT8*)pRgb,Source_Width, Source_height);
-			break;
-		default:
-			break;
-		}
+	{
+	case VIM_CON_UYVY_565:
+		VIM_JPEG_Toolyuv422_Rgb565((UINT8*)pYUV,(UINT8*)pRgb,Source_Width, Source_height);
+		break;
+	default:
+		break;
+	}
 	return VIM_SUCCEED;
 }
 
@@ -2963,32 +2963,32 @@ UINT16 VIM_HAPI_SetPreviewBrightness(VIM_HAPI_CHANGE_MODE Mode,UINT8 Step)
 	if(gVc0528_Info.ChipWorkMode!=VIM_HAPI_MODE_CAMERAON)
 		return VIM_ERROR_WORKMODE;
 	switch(Mode)
-		{
-		case VIM_HAPI_CHANGE_ADD:
-			gVc0528_Info.PreviewStatus.brightness+=Step;
-			if(gVc0528_Info.PreviewStatus.brightness>VIM_USER_BRITNESSMAX_STEP)
-			{				
-				gVc0528_Info.PreviewStatus.brightness=VIM_USER_BRITNESSMAX_STEP;
-			}
-			break;
-
-		case VIM_HAPI_CHANGE_DEC:
-			if(gVc0528_Info.PreviewStatus.brightness&&(Step<=gVc0528_Info.PreviewStatus.brightness))
-				gVc0528_Info.PreviewStatus.brightness-=Step;
-			else
-				gVc0528_Info.PreviewStatus.brightness=0;
-			break;
-		case VIM_HAPI_SET_STEP:// 1-26
-			if(Step<=VIM_USER_BRITNESSMAX_STEP)
-				gVc0528_Info.PreviewStatus.brightness=Step;
-			else
-				return VIM_ERROR_BRIGHT_CONTRAST;
-			break;
-		default:
-		case VIM_HAPI_CHANGE_NORMAL:
-			gVc0528_Info.PreviewStatus.brightness=gVc0528_Info.pSensorInfo->brightness;
-				break;
+	{
+	case VIM_HAPI_CHANGE_ADD:
+		gVc0528_Info.PreviewStatus.brightness+=Step;
+		if(gVc0528_Info.PreviewStatus.brightness>VIM_USER_BRITNESSMAX_STEP)
+		{				
+			gVc0528_Info.PreviewStatus.brightness=VIM_USER_BRITNESSMAX_STEP;
 		}
+		break;
+
+	case VIM_HAPI_CHANGE_DEC:
+		if(gVc0528_Info.PreviewStatus.brightness&&(Step<=gVc0528_Info.PreviewStatus.brightness))
+			gVc0528_Info.PreviewStatus.brightness-=Step;
+		else
+			gVc0528_Info.PreviewStatus.brightness=0;
+		break;
+	case VIM_HAPI_SET_STEP:// 1-26
+		if(Step<=VIM_USER_BRITNESSMAX_STEP)
+			gVc0528_Info.PreviewStatus.brightness=Step;
+		else
+			return VIM_ERROR_BRIGHT_CONTRAST;
+		break;
+	default:
+	case VIM_HAPI_CHANGE_NORMAL:
+		gVc0528_Info.PreviewStatus.brightness=gVc0528_Info.pSensorInfo->brightness;
+		break;
+	}
 	if(gVc0528_Info.pSensorInfo->snrBrightnessCall!=NULL)
 	{
 		gVc0528_Info.pSensorInfo->snrBrightnessCall(gVc0528_Info.PreviewStatus.brightness);
@@ -3022,31 +3022,31 @@ UINT16 VIM_HAPI_SetPreviewContrast(VIM_HAPI_CHANGE_MODE Mode,UINT8 Step)
 	if(gVc0528_Info.ChipWorkMode!=VIM_HAPI_MODE_CAMERAON)
 		return VIM_ERROR_WORKMODE;
 	switch(Mode)
-		{
-		case VIM_HAPI_CHANGE_ADD:
-			gVc0528_Info.PreviewStatus.contrast+=Step;
-			if(gVc0528_Info.PreviewStatus.contrast>VIM_USER_CONTRASTMAX_STEP)
-			{				
-				gVc0528_Info.PreviewStatus.contrast=VIM_USER_CONTRASTMAX_STEP;
-			}
-			break;
-		case VIM_HAPI_CHANGE_DEC:
-			if(gVc0528_Info.PreviewStatus.contrast&&(Step<=gVc0528_Info.PreviewStatus.contrast))
-				gVc0528_Info.PreviewStatus.contrast-=Step;
-			else
-				gVc0528_Info.PreviewStatus.contrast=0;
-			break;
-		case VIM_HAPI_SET_STEP:// 1-26
-			if(Step<=VIM_USER_CONTRASTMAX_STEP)
-				gVc0528_Info.PreviewStatus.contrast=Step;
-			else
-				return VIM_ERROR_BRIGHT_CONTRAST;
-			break;
-		default:
-		case VIM_HAPI_CHANGE_NORMAL:
-			gVc0528_Info.PreviewStatus.contrast=gVc0528_Info.pSensorInfo->contrast;
-				break;
+	{
+	case VIM_HAPI_CHANGE_ADD:
+		gVc0528_Info.PreviewStatus.contrast+=Step;
+		if(gVc0528_Info.PreviewStatus.contrast>VIM_USER_CONTRASTMAX_STEP)
+		{				
+			gVc0528_Info.PreviewStatus.contrast=VIM_USER_CONTRASTMAX_STEP;
 		}
+		break;
+	case VIM_HAPI_CHANGE_DEC:
+		if(gVc0528_Info.PreviewStatus.contrast&&(Step<=gVc0528_Info.PreviewStatus.contrast))
+			gVc0528_Info.PreviewStatus.contrast-=Step;
+		else
+			gVc0528_Info.PreviewStatus.contrast=0;
+		break;
+	case VIM_HAPI_SET_STEP:// 1-26
+		if(Step<=VIM_USER_CONTRASTMAX_STEP)
+			gVc0528_Info.PreviewStatus.contrast=Step;
+		else
+			return VIM_ERROR_BRIGHT_CONTRAST;
+		break;
+	default:
+	case VIM_HAPI_CHANGE_NORMAL:
+		gVc0528_Info.PreviewStatus.contrast=gVc0528_Info.pSensorInfo->contrast;
+		break;
+	}
 	if(gVc0528_Info.pSensorInfo->snrContrastCall!=NULL)
 	{
 		gVc0528_Info.pSensorInfo->snrContrastCall(gVc0528_Info.PreviewStatus.contrast);
@@ -3079,10 +3079,10 @@ UINT16 VIM_HAPI_SetPreviewMirror(VIM_HAPI_SENSORMIRROR mode)
 		return VIM_ERROR_WORKMODE;
 	
 	if(gVc0528_Info.PreviewStatus.Mode==VIM_HAPI_PREVIEW_OFF)
-		{
-			gVc0528_Info.PreviewStatus.SensorMirror=(VIM_MAPI_SENSOR_MIMODE)mode;
-			return VIM_SUCCEED;  //angela changed for set preview mirror in preview on
-		}
+	{
+		gVc0528_Info.PreviewStatus.SensorMirror=(VIM_MAPI_SENSOR_MIMODE)mode;
+		return VIM_SUCCEED;  //angela changed for set preview mirror in preview on
+	}
 	VIM_DISP_SetLayerEnable(VIM_DISP_ALAYER,DISABLE);	
 	VIM_USER_DelayMs(100);
 	if(gVc0528_Info.pSensorInfo->snrMirrorFlipCall!=NULL)
@@ -3094,7 +3094,7 @@ UINT16 VIM_HAPI_SetPreviewMirror(VIM_HAPI_SENSORMIRROR mode)
 	VIM_DISP_SetLayerEnable(VIM_DISP_ALAYER,ENABLE);	
 	gVc0528_Info.PreviewStatus.SensorMirror=(VIM_MAPI_SENSOR_MIMODE)mode;
 
-return VIM_SUCCEED;
+	return VIM_SUCCEED;
 }
 /********************************************************************************
 Description:
@@ -3120,10 +3120,10 @@ UINT16 VIM_HAPI_SetPreviewExMode(VIM_HAPI_SENSORMODE mode)
 		return VIM_ERROR_WORKMODE;
 	
 	if(gVc0528_Info.PreviewStatus.Mode==VIM_HAPI_PREVIEW_OFF)
-		{
-			gVc0528_Info.PreviewStatus.SensorMode=(VIM_HAPI_SENSORMODE)mode;
-			return VIM_SUCCEED;  //angela changed for set preview mirror in preview on
-		}
+	{
+		gVc0528_Info.PreviewStatus.SensorMode=(VIM_HAPI_SENSORMODE)mode;
+		return VIM_SUCCEED;  //angela changed for set preview mirror in preview on
+	}
 	VIM_DISP_SetLayerEnable(VIM_DISP_ALAYER,DISABLE);	
 	//V5M_PreviewMirror(mode);
 	VIM_USER_DelayMs(100);
@@ -3136,7 +3136,7 @@ UINT16 VIM_HAPI_SetPreviewExMode(VIM_HAPI_SENSORMODE mode)
 	VIM_DISP_SetLayerEnable(VIM_DISP_ALAYER,ENABLE);	
 	gVc0528_Info.PreviewStatus.SensorMode=(VIM_HAPI_SENSORMODE)mode;
 
-return VIM_SUCCEED;
+	return VIM_SUCCEED;
 }
 
 /********************************************************************************
@@ -3162,44 +3162,44 @@ Remarks:
 *********************************************************************************/
 UINT16 VIM_HAPI_SetEffect(VIM_HAPI_SPECIAL_EFFECT Mode)
 {
-UINT8 SpeCtrl;
+	UINT8 SpeCtrl;
 #if 1
 	if(gVc0528_Info.ChipWorkMode==VIM_HAPI_MODE_BYPASS)
 		return VIM_ERROR_WORKMODE;
 	SpeCtrl=(VIM_HIF_GetReg8(V5_REG_IPP_SPECTRL)&0xE0);
 	switch(Mode)
-		{
-		case  VIM_HAPI_SPECIAL_MONOCHROME: 
-			SpeCtrl|=0x01;
-			SpeCtrl|=0x01<<1;
-			VIM_IPP_SetEffectUVThreshold(0,0,0,0);
-			break;
-		case  VIM_HAPI_SPECIAL_REDONLY: 
-			SpeCtrl|=0x01;
-			SpeCtrl|=0x01<<1;
-			VIM_IPP_SetEffectUVThreshold(128,85,255,128);
-			break;
-		case  VIM_HAPI_SPECIAL_SEPIA:
-			SpeCtrl|=0x01;
-			SpeCtrl|=0x00<<1;
-			VIM_IPP_SetEffectUVoffset(85,128);
-			break;
-		case  VIM_HAPI_SPECIAL_NEGATIVE:
-			SpeCtrl|=0x01;
-			SpeCtrl|=0x02<<1;
-			break;
+	{
+	case  VIM_HAPI_SPECIAL_MONOCHROME: 
+		SpeCtrl|=0x01;
+		SpeCtrl|=0x01<<1;
+		VIM_IPP_SetEffectUVThreshold(0,0,0,0);
+		break;
+	case  VIM_HAPI_SPECIAL_REDONLY: 
+		SpeCtrl|=0x01;
+		SpeCtrl|=0x01<<1;
+		VIM_IPP_SetEffectUVThreshold(128,85,255,128);
+		break;
+	case  VIM_HAPI_SPECIAL_SEPIA:
+		SpeCtrl|=0x01;
+		SpeCtrl|=0x00<<1;
+		VIM_IPP_SetEffectUVoffset(85,128);
+		break;
+	case  VIM_HAPI_SPECIAL_NEGATIVE:
+		SpeCtrl|=0x01;
+		SpeCtrl|=0x02<<1;
+		break;
 		/*case  VIM_HAPI_SPECIAL_RELIEF:
-			SpeCtrl|=0x01;
-			SpeCtrl|=0x04<<1;
-			break;*/
+		  SpeCtrl|=0x01;
+		  SpeCtrl|=0x04<<1;
+		  break;*/
 
-		case  VIM_HAPI_SPECIAL_NORMAL:
-		default:
-			break;
-		}
+	case  VIM_HAPI_SPECIAL_NORMAL:
+	default:
+		break;
+	}
 	VIM_HIF_SetReg8(V5_REG_IPP_SPECTRL,SpeCtrl);
 	gVc0528_Info.PreviewStatus.SpecialEffect=(VIM_HAPI_SPECIAL_EFFECT)Mode;
-	#endif
+#endif
 	return VIM_SUCCEED;
 }
 
@@ -3245,8 +3245,8 @@ UINT32 VIM_HAPI_Timer2(void)
 	UINT16 result;
 	if(gVc0528_Info.ChipWorkMode==VIM_HAPI_MODE_BYPASS ||gVc0528_Info.ChipWorkMode==VIM_HAPI_MODE_DIRECTDISPLAY)
        		return ;
-	 if((gVc0528_Info.VideoStatus.Mode==VIM_VIDEO_STARTCAPTURE)&&(gVc0528_Info.VideoStatus.VideoFrameRate))
-	 {
+	if((gVc0528_Info.VideoStatus.Mode==VIM_VIDEO_STARTCAPTURE)&&(gVc0528_Info.VideoStatus.VideoFrameRate))
+	{
 	 	result=VIM_HAPI_GetOneJpeg(gVc0528_Info.CaptureStatus.BufPoint,gVc0528_Info.CaptureStatus.BufLength,&dwOnelen);
 #if 0
 		if(dwOnelen > gVc0528_Info.CaptureStatus.BufLength) breakpoint();
@@ -3266,16 +3266,16 @@ UINT32 VIM_HAPI_Timer2(void)
 	 		if(gVc0528_Info.VideoStatus.CapCallback)
 	 			gVc0528_Info.VideoStatus.CapCallback(VIM_HAPI_ONEFRAME_END,dwOnelen);
 	 	}
-	 }
+	}
 #if VIM_USER_SURPORT_AVI
 	else  if((gVc0528_Info.VideoStatus.Mode==VIM_VIDEO_STARTCAPTURE)&&(!gVc0528_Info.VideoStatus.VideoFrameRate))
-	//->	&&(AVI_Status.NowStuatus==AVI_OPEN))
-	 {
+		//->	&&(AVI_Status.NowStuatus==AVI_OPEN))
+	{
 	 	//->Avi_Timer();
-	 }
+	}
 #endif
-	 else if((gVc0528_Info.VideoStatus.Mode==VIM_VIDEO_STARTDISPLAYE)&&(gVc0528_Info.VideoStatus.VideoFrameRate))
-	 {
+	else if((gVc0528_Info.VideoStatus.Mode==VIM_VIDEO_STARTDISPLAYE)&&(gVc0528_Info.VideoStatus.VideoFrameRate))
+	{
 	      	result=VIM_HAPI_DisplayOneFrame(NULL,0);
 		if (result)
    			VIM_HAPI_StopDisplayVideo();
@@ -3284,11 +3284,11 @@ UINT32 VIM_HAPI_Timer2(void)
 	 		if(gVc0528_Info.VideoStatus.CapCallback)
 	 			gVc0528_Info.VideoStatus.CapCallback(VIM_HAPI_ONEFRAME_END,0);
 	 	}	
-	 }
-	 else
+	}
+	else
 	 	_ISR_HIF_IntHandle();
 
-	 return dwOnelen;
+	return dwOnelen;
 }
 
 #if 1
@@ -3298,8 +3298,8 @@ void VIM_HAPI_Timer(void)
 	UINT16 result;
 	if(gVc0528_Info.ChipWorkMode==VIM_HAPI_MODE_BYPASS ||gVc0528_Info.ChipWorkMode==VIM_HAPI_MODE_DIRECTDISPLAY)
        		return ;
-	 if((gVc0528_Info.VideoStatus.Mode==VIM_VIDEO_STARTCAPTURE)&&(gVc0528_Info.VideoStatus.VideoFrameRate))
-	 {
+	if((gVc0528_Info.VideoStatus.Mode==VIM_VIDEO_STARTCAPTURE)&&(gVc0528_Info.VideoStatus.VideoFrameRate))
+	{
 	 	result=VIM_HAPI_GetOneJpeg(gVc0528_Info.CaptureStatus.BufPoint,gVc0528_Info.CaptureStatus.BufLength,&dwOnelen);
 		printk("Jpeg-BufPoint:0x%08lx,size:0x%08x\n",gVc0528_Info.CaptureStatus.BufPoint,dwOnelen);
 	 	if(result)
@@ -3316,16 +3316,16 @@ void VIM_HAPI_Timer(void)
 	 		if(gVc0528_Info.VideoStatus.CapCallback)
 	 			gVc0528_Info.VideoStatus.CapCallback(VIM_HAPI_ONEFRAME_END,dwOnelen);
 	 	}
-	 }
+	}
 #if VIM_USER_SURPORT_AVI
 	else  if((gVc0528_Info.VideoStatus.Mode==VIM_VIDEO_STARTCAPTURE)&&(!gVc0528_Info.VideoStatus.VideoFrameRate))
-	//->	&&(AVI_Status.NowStuatus==AVI_OPEN))
-	 {
+		//->	&&(AVI_Status.NowStuatus==AVI_OPEN))
+	{
 	 	//->Avi_Timer();
-	 }
+	}
 #endif
-	 else if((gVc0528_Info.VideoStatus.Mode==VIM_VIDEO_STARTDISPLAYE)&&(gVc0528_Info.VideoStatus.VideoFrameRate))
-	 {
+	else if((gVc0528_Info.VideoStatus.Mode==VIM_VIDEO_STARTDISPLAYE)&&(gVc0528_Info.VideoStatus.VideoFrameRate))
+	{
 	      	result=VIM_HAPI_DisplayOneFrame(NULL,0);
 		if (result)
    			VIM_HAPI_StopDisplayVideo();
@@ -3334,10 +3334,10 @@ void VIM_HAPI_Timer(void)
 	 		if(gVc0528_Info.VideoStatus.CapCallback)
 	 			gVc0528_Info.VideoStatus.CapCallback(VIM_HAPI_ONEFRAME_END,0);
 	 	}	
-	 }
-	 else
+	}
+	else
 	 	_ISR_HIF_IntHandle();
-	 return ;
+	return ;
 }
 #endif 
 
@@ -3363,7 +3363,7 @@ Modify History:
 UINT16 VIM_HAPI_ChangeVideoSize(UINT16 pt_x,UINT16 pt_y,UINT16 width,UINT16 height)
 {
 	VIM_RESULT result;
-       TSize DisplaySize,DestDisplaySize,SoucseSize;
+	TSize DisplaySize,DestDisplaySize,SoucseSize;
 	TPoint pt = {0, 0};
 
 	UINT8 bZoomOut=1;
@@ -3409,8 +3409,8 @@ UINT16 VIM_HAPI_ChangeVideoSize(UINT16 pt_x,UINT16 pt_y,UINT16 width,UINT16 heig
 	//DestDisplaySize.cy=DestDisplaySize.cy&0xfff8;
 	//set ipp module image size
 #if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
-		VIM_USER_PrintDec("[VC0508][HAPI]Dest DisplaySize width:  ",DestDisplaySize.cx);
-		VIM_USER_PrintDec("[VC0508][HAPI] Dest DisplaySize height:  ",DestDisplaySize.cy);
+	VIM_USER_PrintDec("[VC0508][HAPI]Dest DisplaySize width:  ",DestDisplaySize.cx);
+	VIM_USER_PrintDec("[VC0508][HAPI] Dest DisplaySize height:  ",DestDisplaySize.cy);
 #endif	
 	//set ipp module source window size, display size
 
@@ -3430,8 +3430,8 @@ UINT16 VIM_HAPI_ChangeVideoSize(UINT16 pt_x,UINT16 pt_y,UINT16 width,UINT16 heig
 
 
 #if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
-		VIM_USER_PrintDec("[VC0508][HAPI]a mem offset x:  ",pt.x);
-		VIM_USER_PrintDec("[VC0508][HAPI]a mem offset y:  ",pt.y);
+	VIM_USER_PrintDec("[VC0508][HAPI]a mem offset x:  ",pt.x);
+	VIM_USER_PrintDec("[VC0508][HAPI]a mem offset y:  ",pt.y);
 #endif		
 	result =VIM_DISP_SetA_Memory(pt,DestDisplaySize);
 	if(result)
@@ -3448,15 +3448,15 @@ UINT16 VIM_HAPI_ChangeVideoSize(UINT16 pt_x,UINT16 pt_y,UINT16 width,UINT16 heig
 	else
 		DestDisplaySize.cy=DisplaySize.cy;
 #if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
-		VIM_USER_PrintDec("[VC0578][HAPI]a display offset x:  ",pt.x);
-		VIM_USER_PrintDec("[VC0578][HAPI] a display offset y:  ",pt.y);
-		VIM_USER_PrintDec("[VC0578][HAPI] new DisplaySize width:  ",DestDisplaySize.cx);
-		VIM_USER_PrintDec("[VC0578][HAPI] new DisplaySize height:  ",DestDisplaySize.cy);
+	VIM_USER_PrintDec("[VC0578][HAPI]a display offset x:  ",pt.x);
+	VIM_USER_PrintDec("[VC0578][HAPI] a display offset y:  ",pt.y);
+	VIM_USER_PrintDec("[VC0578][HAPI] new DisplaySize width:  ",DestDisplaySize.cx);
+	VIM_USER_PrintDec("[VC0578][HAPI] new DisplaySize height:  ",DestDisplaySize.cy);
 #endif	
 
 	VIM_DISP_SetA_DisplayPanel(pt,DestDisplaySize);
 	result = VIM_MAPI_AdjustPoint((VIM_DISP_ROTATEMODE)gVc0528_Info.LcdStatus.ARotationMode,
-					VIM_DISP_NOTCHANGE);
+				      VIM_DISP_NOTCHANGE);
 	if(result)
 		return result;
 	VIM_DISP_SetRotateMode(VIM_DISP_ALAYER,(VIM_DISP_ROTATEMODE)gVc0528_Info.LcdStatus.ARotationMode);
@@ -3464,8 +3464,8 @@ UINT16 VIM_HAPI_ChangeVideoSize(UINT16 pt_x,UINT16 pt_y,UINT16 width,UINT16 heig
 	VIM_DISP_ResetState();
 	VIM_DISP_SetLayerEnable(VIM_DISP_ALAYER,ENABLE);
 
-	    //pisel rate
-       VIM_JPEG_AdjustClkBlank();
+	//pisel rate
+	VIM_JPEG_AdjustClkBlank();
 
 	return VIM_SUCCEED;
 CHANGEDISPLAYMPEG4ERROR:
@@ -3534,9 +3534,9 @@ state:
 
 UINT16 VIM_HAPI_RGB565toYUV422(UINT8 *pRGB, UINT8 *pYUV,UINT16 Width,UINT16 Height)
 {
-UINT16 i,j;
-UINT8 v0;
-UINT8 r,g,b;
+	UINT16 i,j;
+	UINT8 v0;
+	UINT8 r,g,b;
 	for(i=0;i<Height;i++)
 	{
 		for(j=0;j<Width;j++)
@@ -3561,7 +3561,7 @@ UINT8 r,g,b;
 			pYUV++;
 		}
 	}
-return 0;
+	return 0;
 }
 
 /********************************************************************************
@@ -3586,8 +3586,8 @@ state:
 
 UINT16 VIM_HAPI_Encode422(UINT8 *pYUV, UINT8 *pJpeg,UINT16 Width,UINT16 Height,UINT32 JpbufLen)
 {
-UINT32 dwCount=500000;
-TSize Size;
+	UINT32 dwCount=500000;
+	TSize Size;
 	//check the chip working mode 
 	if(gVc0528_Info.ChipWorkMode!=VIM_HAPI_MODE_CAMERAON) 
 		return VIM_ERROR_WORKMODE;
@@ -3601,10 +3601,10 @@ TSize Size;
       	VIM_MAPI_SetChipMode(VIM_MARB_ENCODE_MODE,VIM_IPP_HAVE_NOFRAME);
 	VIM_JPEG_SetSize(JPEG_422,Size);
 	VIM_MARB_SetMap(gVc0528_Info.MarbStatus.WorkMode,VIM_DISP_NODISP,
-		(PVIM_MARB_Map)&gVc0528_Info.MarbStatus.MapList);
+			(PVIM_MARB_Map)&gVc0528_Info.MarbStatus.MapList);
 
 
-       // init parameter
+	// init parameter
 	gVc0528_Info.CaptureStatus.SaveMode=VIM_HAPI_RAM_SAVE;
 	gVc0528_Info.CaptureStatus.BufPoint=pJpeg;
 
@@ -3639,12 +3639,12 @@ TSize Size;
 
 	//reset state
 	VIM_JPEG_ResetState();
-       VIM_MARB_StartCapture();
+	VIM_MARB_StartCapture();
 
-       // start encode
-       VIM_JPEG_StartEncode();
-       while(dwCount--)
-       {
+	// start encode
+	VIM_JPEG_StartEncode();
+	while(dwCount--)
+	{
 		if(VIM_JPEG_GetStatus()&0x8)
 		{
 #if(VIM_HIGH_API_DEBUG)&&(VIM_528RDK_DEBUG)
@@ -3653,10 +3653,10 @@ TSize Size;
 
 			break;	
 		}
-       }
+	}
 	//send data
 
-       VIM_MAPI_SendYuvData(pYUV,Size,VIM_YUV_UYVY422);
+	VIM_MAPI_SendYuvData(pYUV,Size,VIM_YUV_UYVY422);
 	//-----------------------------------------------------------
 	if(gVc0528_Info.CaptureStatus.CapCallback==NULL)
 	{
@@ -3720,30 +3720,30 @@ state:
 *********************************************************************************/
 void VIM_HAPI_SetGpioValue(VIM_HAPI_GPIOPIN GPIOpin,BOOL IObit)
 {
- UINT8 temp;
+	UINT8 temp;
  
- if ((VIM_HAPI_MODE_BYPASS == gVc0528_Info.ChipWorkMode) || (VIM_HAPI_MODE_DIRECTDISPLAY ==gVc0528_Info.ChipWorkMode))
- {
+	if ((VIM_HAPI_MODE_BYPASS == gVc0528_Info.ChipWorkMode) || (VIM_HAPI_MODE_DIRECTDISPLAY ==gVc0528_Info.ChipWorkMode))
+	{
  
-  VIM_HIF_SetBypassOrNormal((PVIM_BYPASS_DEF)&gVc0528_Info.pUserInfo->BypassDef,
-    VIM_HIF_NORMALTYPE);
+		VIM_HIF_SetBypassOrNormal((PVIM_BYPASS_DEF)&gVc0528_Info.pUserInfo->BypassDef,
+					  VIM_HIF_NORMALTYPE);
  
-  VIM_HIF_SetExterPinCrlEn((VIM_HIF_EXTPIN_CTRL)GPIOpin,ENABLE);   //only enable GPIO pins
-  VIM_HIF_SetExterPinValue((VIM_HIF_EXTPIN_CTRL)GPIOpin,IObit); 
+		VIM_HIF_SetExterPinCrlEn((VIM_HIF_EXTPIN_CTRL)GPIOpin,ENABLE);   //only enable GPIO pins
+		VIM_HIF_SetExterPinValue((VIM_HIF_EXTPIN_CTRL)GPIOpin,IObit); 
   
-  VIM_HIF_SetBypassOrNormal((PVIM_BYPASS_DEF)&gVc0528_Info.pUserInfo->BypassDef,
-    VIM_HIF_BYPASSTYE);  
- } 
- else
- {
-  temp=VIM_HIF_GetReg8(V5_REG_CPM_GPIO_P0);
+		VIM_HIF_SetBypassOrNormal((PVIM_BYPASS_DEF)&gVc0528_Info.pUserInfo->BypassDef,
+					  VIM_HIF_BYPASSTYE);  
+	} 
+	else
+	{
+		temp=VIM_HIF_GetReg8(V5_REG_CPM_GPIO_P0);
   
-  if(IObit)
-   temp|=GPIOpin;
-  else
-   temp&=(~GPIOpin);
-  VIM_HIF_SetReg8(V5_REG_CPM_GPIO_P0,temp);
- }
+		if(IObit)
+			temp|=GPIOpin;
+		else
+			temp&=(~GPIOpin);
+		VIM_HIF_SetReg8(V5_REG_CPM_GPIO_P0,temp);
+	}
 }
 
 
