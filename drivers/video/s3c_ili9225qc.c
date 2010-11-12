@@ -1849,6 +1849,8 @@ _lcd_vc0528_init(int init)
 	_lcd_handle.command_mode	= _lcd_vc0528_set_command_mode;
 	_lcd_handle.trigger		= _lcd_vc0528_trigger;
 
+	_lcd_handle.is_init = true;
+
 	s3c_fb_resume_lcd(NULL);
 }
 
@@ -1875,7 +1877,7 @@ lcd_ili9225b_power(int set)
 			_lcd_ili9225b_reg_write(0x0011, 0x0000); // DC1[2:0], DC0[2:0], VC[2:0]
 			_lcd_ili9225b_reg_write(0x0012, 0x0000); // VREG1OUT voltage
 			_lcd_ili9225b_reg_write(0x0013, 0x0000); // VDV[4:0] for VCOM amplitude
-			mdelay(20); // Dis-charge capacitor power voltage
+			mdelay(100); // Dis-charge capacitor power voltage
 			_lcd_ili9225b_reg_write(0x0010, 0x0082); // SAP, BT[3:0], APE, AP, DSTB, SLP
 		} else {
 			_lcd_ili9225b_reg_write(0x0007,0x0000);
@@ -1896,16 +1898,18 @@ lcd_ili9225b_power(int set)
 			_lcd_ili9225b_reg_write(0x0012, 0x0000); // VREG1OUT voltage
 			_lcd_ili9225b_reg_write(0x0013, 0x0000); // VDV[4:0] for VCOM amplitude
 			_lcd_ili9225b_reg_write(0x0007, 0x0001);
-			mdelay(20); // Dis-charge capacitor power voltage
+			mdelay(100); // Dis-charge capacitor power voltage
 			_lcd_ili9225b_reg_write(0x0010, 0x1690); // SAP, BT[3:0], AP, DSTB, SLP, STB
 			_lcd_ili9225b_reg_write(0x0011, 0x0227); // Set DC1[2:0], DC0[2:0], VC[2:0]
-			mdelay(10); // Delay 50ms
+			mdelay(50); // Delay 50ms
 			_lcd_ili9225b_reg_write(0x0012, 0x000D); // External reference voltage= Vci;
-			mdelay(10); // Delay 50ms
+			mdelay(50); // Delay 50ms
 			_lcd_ili9225b_reg_write(0x0013, 0x1200); // VDV[4:0] for VCOM amplitude
 			_lcd_ili9225b_reg_write(0x0029, 0x0007); // VCM[5:0] for VCOMH
-			mdelay(10); // Delay 50ms
+			mdelay(50); // Delay 50ms
 			_lcd_ili9225b_reg_write(0x0007, 0x0133); // 262K color and display ON
+			lcd_set_command_mode(1);
+			lcd_prepare_write(0, 0);
 		} else {
 			_lcd_ili9225b_reg_write(0x0010,0x0A00);
 			lcd_set_command_mode(0);
