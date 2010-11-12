@@ -1226,7 +1226,6 @@ state:
 *********************************************************************************/
 UINT16 VIM_HAPI_StopCapture(void)
 {
-	printk("######################################## Stop Capture\n");
 	//check the chip working mode 
 	if(gVc0528_Info.ChipWorkMode!=VIM_HAPI_MODE_CAMERAON) 
 		return VIM_ERROR_WORKMODE;
