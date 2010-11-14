@@ -1795,7 +1795,7 @@ int s3c_fb_resume_lcd(struct s3c_fb_info *info)
 	s3c2410_dma_setflags(DMACH_XD0, S3C2410_DMAF_AUTOSTART);
 }
 
-int _lcd_vc0528_trigger_lock = 0x1;
+volatile int _lcd_vc0528_trigger_lock = 0x1;
 _lcd_vc0528_trigger(struct fb_info *info)
 {
 	int i, size;

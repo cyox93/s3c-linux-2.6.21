@@ -89,7 +89,7 @@ static void __iomem *_be_data_addr  = (unsigned short *)(0xF3600008);
 static void __iomem *_lcd_data_addr = (unsigned short *)(0xF3600004);
 int test_value;
 
-extern int _lcd_vc0528_trigger_lock;
+extern volatile int _lcd_vc0528_trigger_lock;
 extern void _lcd_prepare_write(void);
 extern void q_camera_backend_reset(int reset);
 
@@ -107,11 +107,11 @@ canopus_vc0528_reset(void)
 static void
 canopus_vc0528_bypass_mode(void)
 {
-	_lcd_vc0528_trigger_lock = 0x1;
 	__raw_writew((unsigned short ) 0x1890, _index_addr);
 	__raw_writew((unsigned short ) 0x1, _be_data_addr);
 	udelay(10);
 	_lcd_prepare_write();
+	_lcd_vc0528_trigger_lock = 0x1;
 }
 
 static void
