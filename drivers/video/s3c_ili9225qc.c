@@ -1796,16 +1796,26 @@ int s3c_fb_resume_lcd(struct s3c_fb_info *info)
 }
 
 volatile int _lcd_vc0528_trigger_lock = 0x1;
+volatile int _lcd_vc0528_dma_lock = 0x0;
+
+static void
 _lcd_vc0528_trigger(struct fb_info *info)
 {
 	int i, size;
 	struct s3c_fb_info *fbi = container_of(info, struct s3c_fb_info, fb);
 	unsigned short *fb_ptr = (unsigned short *)fbi->map_cpu_f1;
+
+	if (_lcd_vc0528_dma_lock) return ;
+
+	_lcd_vc0528_dma_lock = 0x1;
+
 	DECLARE_COMPLETION_ONSTACK(complete);
 	dma_vm0528_done = &complete;
-	
+
 	s3c2410_dma_enqueue(DMACH_XD0, NULL, (dma_addr_t) fbi->map_dma_f1, fbi->map_size_f1);
 	wait_for_completion(&complete);
+
+	_lcd_vc0528_dma_lock = 0x0;
 }
 
 static void
