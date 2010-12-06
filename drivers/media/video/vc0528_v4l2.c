@@ -1792,6 +1792,8 @@ int video_ioctl_device(struct inode *inode, struct file *file,
 		case VC0528_CAMERA_SENSOR_ORG_SET:
 		case VC0528_CAMERA_SENSOR_CHECK_NEW:
 		case VC0528_CAMERA_SENSOR_CHECK_ORG:
+		case VC0528_BYPASS_MODE:
+		case VC0528_NORMAL_MODE:
 			canopus_bedev_ioctl(cmd,arg);  // vc0528 direct control command
 			break;
 		case VC0528_CAMERA_TEST_INIT:
