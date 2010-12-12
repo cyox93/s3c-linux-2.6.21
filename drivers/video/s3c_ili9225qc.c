@@ -1714,6 +1714,8 @@ static void __iomem *_index_addr;
 static void __iomem *_lcd_data_addr;
 static void __iomem *_be_data_addr;
 
+atomic_t g_lcd_dma_lock;
+
 static void
 _lcd_vc0528_reg(int reg)
 {
@@ -1770,6 +1772,8 @@ static void *dma_vm0528_done;
 static void vm0528_dma_finish(struct s3c2410_dma_chan *dma_ch, void *buf_id,
 	int size, enum s3c2410_dma_buffresult result){
 	complete(dma_vm0528_done);
+
+	atomic_set(&g_lcd_dma_lock, 0);
 }
 
 int s3c_fb_suspend_lcd(struct s3c_fb_info *info)
@@ -1806,6 +1810,8 @@ _lcd_vc0528_trigger(struct fb_info *info)
 	unsigned short *fb_ptr = (unsigned short *)fbi->map_cpu_f1;
 
 	if (_lcd_vc0528_dma_lock) return ;
+
+	atomic_set(&g_lcd_dma_lock, 1);
 
 	_lcd_vc0528_dma_lock = 0x1;
 
@@ -2250,6 +2256,8 @@ void lcd_module_init (void)
 	/* set window size */
 	int i = _h_resolution * _v_resolution;
 	u16 *logo = NULL;
+
+	atomic_set(&g_lcd_dma_lock, 0);
 
 	if (q_boot_flag_get() != Q_BOOT_FLAG_LCD_INIT) {
 		if (q_hw_ver(KTQOOK))
