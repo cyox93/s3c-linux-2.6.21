@@ -53,9 +53,6 @@ static struct clk *usb_clk;
 #if (USB_HOST_PORT2_EN == 1) && (CONFIG_PLAT_S3C64XX == 1)
 static struct clk *otg_clk;
 #endif
-#ifdef CONFIG_MACH_CANOPUS
-static struct clk *clkout0 = NULL;
-#endif	// CONFIG_MACH_CANOPUS
 
 /* forward definitions */
 
@@ -73,10 +70,6 @@ static void s3c2410_start_hc(struct platform_device *dev, struct usb_hcd *hcd)
 	struct s3c2410_hcd_info *info = dev->dev.platform_data;
 
 	dev_dbg(&dev->dev, "s3c2410_start_hc:\n");
-
-#ifdef CONFIG_MACH_CANOPUS
-	if (clkout0) clk_enable(clkout0);
-#endif	// CONFIG_MACH_CANOPUS
 
 	clk_enable(usb_clk);
 	mdelay(2);			/* let the bus clock stabilise */
@@ -114,11 +107,6 @@ static void s3c2410_stop_hc(struct platform_device *dev)
 
 	clk_disable(clk);
 	clk_disable(usb_clk);
-
-#ifdef CONFIG_MACH_CANOPUS
-	if (clkout0) clk_disable(clkout0);
-#endif	// CONFIG_MACH_CANOPUS
-
 }
 
 /* ohci_s3c2410_hub_status_data
@@ -444,15 +432,6 @@ static int usb_hcd_s3c2410_probe (const struct hc_driver *driver,
 		retval = -EBUSY;
 		goto err_put;
 	}
-
-#ifdef CONFIG_MACH_CANOPUS
-	if (q_hw_ver(SWP2000)
-			|| q_hw_ver(7800_MP2)) {
-		clkout0 = clk_get(NULL, "clkout0");
-	} else if (q_hw_ver(KTQOOK_TP2)) {
-		clkout0 = clk_get(NULL, "clkout1");
-	}
-#endif	// CONFIG_MACH_CANOPUS
 
 	clk = clk_get(&dev->dev, "usb-host");
 	if (IS_ERR(clk)) {
