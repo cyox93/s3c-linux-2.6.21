@@ -712,7 +712,7 @@ vc0528_sleep(struct vc0528_dmaqueue  *dma_q)
 	add_wait_queue(&dma_q->wq, &wait);
 	if (!kthread_should_stop()) {
 		dma_q->frame++;
-
+#if 0
 		/* Calculate time to wake up */
 		timeout=dma_q->ini_jiffies+msecs_to_jiffies((dma_q->frame*VC0528_WAKE_NUMERATOR*1000)/VC0528_WAKE_DENOMINATOR)-jiffies;
 
@@ -728,7 +728,8 @@ vc0528_sleep(struct vc0528_dmaqueue  *dma_q)
 		}else{
 //			dprintk(1,"will sleep for %i jiffies\n",timeout);
 		}
-
+#endif
+		msecs_to_jiffies(30);
 		vc0528_thread_tick(dma_q);
 
 		if (timeout >= 0)
