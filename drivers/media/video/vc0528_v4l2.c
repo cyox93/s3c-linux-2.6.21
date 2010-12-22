@@ -186,8 +186,8 @@ struct vc0528_dmaqueue {
 	struct task_struct     *kthread;
 	wait_queue_head_t       wq;
 	/* Counters to control fps rate */
-	int                     frame;
-	int                     ini_jiffies;
+	unsigned int           frame;
+	unsigned int           ini_jiffies;
 };
 
 static LIST_HEAD(vc0528_devlist);
@@ -729,7 +729,7 @@ vc0528_sleep(struct vc0528_dmaqueue  *dma_q)
 //			dprintk(1,"will sleep for %i jiffies\n",timeout);
 		}
 #endif
-		msecs_to_jiffies(30);
+		timeout = msecs_to_jiffies(30);
 		vc0528_thread_tick(dma_q);
 
 		if (timeout >= 0)
@@ -908,6 +908,8 @@ free_buffer(struct videobuf_queue *vq, struct vc0528_buffer *buf)
 	videobuf_dma_unmap(vq, &buf->vb.dma);
 	videobuf_dma_free(&buf->vb.dma);
 	buf->vb.state = STATE_NEEDS_INIT;
+	vfree(buf->vb.remap);
+	buf->vb.remap = NULL;
 }
 
 #define norm_maxw() 1024

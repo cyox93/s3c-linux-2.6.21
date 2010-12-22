@@ -1213,6 +1213,7 @@ videobuf_vm_close(struct vm_area_struct *vma)
 				continue;
 			q->bufs[i]->map   = NULL;
 			q->bufs[i]->baddr = 0;
+			if(q->bufs[i]!=NULL)
 			q->ops->buf_release(q,q->bufs[i]);
 		}
 		mutex_unlock(&q->lock);
@@ -1280,7 +1281,7 @@ int videobuf_mmap_setup(struct videobuf_queue *q,
 			break;
 		}
 	}
-	dprintk(1,"mmap setup: %d buffers, %d bytes each\n",
+	dprintk(1,"mmap setup: %d buffers, %x bytes each\n",
 		bcount,bsize);
 	return 0;
 }
