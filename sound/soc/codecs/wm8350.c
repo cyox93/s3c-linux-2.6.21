@@ -305,6 +305,7 @@ _restart:
 static int pga_event(struct snd_soc_dapm_widget *w,
 		     struct snd_kcontrol *kcontrol, int event)
 {
+#ifdef _USE_PGA_RAMP_UP_DOWN
 	struct snd_soc_codec *codec = w->codec;
 	struct wm8350_data *wm8350_data = codec->private_data;
 	struct wm8350_output *out1 = &wm8350_data->out1,
@@ -344,6 +345,7 @@ static int pga_event(struct snd_soc_dapm_widget *w,
 					      msecs_to_jiffies(1));
 		break;
 	}
+#endif
 	return 0;
 }
 
