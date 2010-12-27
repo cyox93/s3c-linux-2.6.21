@@ -2067,6 +2067,23 @@ static int s3c_udc_remove(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_MACH_CANOPUS
+#ifdef CONFIG_USB_GADGET_MODULE
+static int _usb_enabled = true;
+#else
+static int _usb_enabled = false;
+#endif
+
+static int __init
+_usb_slave_setup(char *line)
+{
+	if (line && (line[0] == 'o' || line[0] == '1'))
+		_usb_enabled = true;
+
+	return 0;
+}
+
+__setup("usbslave=", _usb_slave_setup);
+
 #ifdef CONFIG_PM
 static int
 s3c_udc_suspend(struct platform_device *pdev, pm_message_t state)
@@ -2120,6 +2137,10 @@ static struct platform_driver s3c_udc_driver = {
 static int __init udc_init(void)
 {
 	int ret;
+
+#ifdef CONFIG_MACH_CANOPUS
+	if (!_usb_enabled) return 0;
+#endif	// CONFIG_MACH_CANOPUS
 
 	ret = platform_driver_register(&s3c_udc_driver);
 	if(!ret)
