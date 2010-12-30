@@ -229,11 +229,7 @@ static void default_enable(unsigned int irq)
  * default disable function
  */
 static void default_disable(unsigned int irq)
-{	
-	struct irq_desc *desc = irq_desc + irq;
-
-	desc->chip->mask(irq);
-	desc->status |= IRQ_MASKED;
+{
 }
 
 /*
