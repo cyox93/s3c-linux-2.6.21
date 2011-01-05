@@ -43,6 +43,7 @@
 #include <linux/kthread.h>
 #include <linux/highmem.h>
 #include <linux/freezer.h>
+#include <linux/mutex.h>
 #include "font.h"
 
 #include <asm/pgtable.h>
@@ -84,7 +85,7 @@ static int debug = 0;
 static unsigned int vid_limit = 16;	/* Video memory limit, in Mb */
 static struct video_device vc0528;	/* Video device */
 static int video_nr = -1;		 	/* /dev/videoN, -1 for autodetect */
-
+extern struct mutex smc_lock;
 static int __iomem *_test_addr;
 
 char testv4l2_buf[5] = {
@@ -657,8 +658,7 @@ vc0528_fillbuff(struct vc0528_dev *dev,struct vc0528_buffer *buf)
 static int 
 restart_video_queue(struct vc0528_dmaqueue *dma_q);
 
-//static void 
-void 
+static void 
 vc0528_thread_tick(struct vc0528_dmaqueue  *dma_q)
 {
 	struct vc0528_buffer    *buf;
@@ -1437,6 +1437,8 @@ vc0528_open(struct inode *inode, struct file *file)
 	enum v4l2_buf_type type = 0;
 	int i;
 
+	mutex_lock(&smc_lock);
+
 	printk(KERN_DEBUG "vc0528: open called (minor=%d)\n",minor);
 
 #if VC0528_DEBUG_INFO
@@ -1591,6 +1593,7 @@ vc0528_release(struct inode *inode, struct file *file)
 
 	canopus_bedev_ioctl(VC0528_BYPASS_MODE,NULL);
 	dprintk(1,"close called (minor=%d, users=%d)\n",minor,dev->users);
+	mutex_unlock(&smc_lock);
 
 	return 0;
 }

@@ -164,6 +164,23 @@ s3c_irq_maskack(unsigned int irqno)
 	__raw_writel(bitval, S3C2410_INTPND);
 }
 
+static inline void
+s3c_irqext2_mask(unsigned int irqno)
+{
+	struct irq_desc *desc = irq_desc + irqno;
+
+	desc->chip->mask(irqno);
+	desc->status |= IRQ_MASKED;
+}
+
+static inline void
+s3c_irqext2_unmask(unsigned int irqno)
+{
+	struct irq_desc *desc = irq_desc + irqno;
+
+	desc->chip->unmask(irqno);
+	desc->status &= ~IRQ_MASKED;
+}
 
 static void
 s3c_irq_unmask(unsigned int irqno)
@@ -389,6 +406,17 @@ static struct irq_chip s3c_irqext_chip = {
 	.ack		= s3c_irqext_ack,
 	.set_type	= s3c_irqext_type,
 	.set_wake	= s3c_irqext_wake
+};
+
+static struct irq_chip s3c_irq_eint2 = {
+	.name		= "s3c-ext2",
+	.ack		= s3c_irq_ack,
+	.mask		= s3c_irq_mask,
+	.unmask		= s3c_irq_unmask,
+	.set_wake	= s3c_irq_wake,
+	.set_type	= s3c_irqext_type,
+	.enable 	= s3c_irqext2_unmask,
+	.disable 	= s3c_irqext2_mask 
 };
 
 static struct irq_chip s3c_irq_eint0t4 = {
@@ -806,7 +834,12 @@ void __init s3c24xx_init_irq(void)
 
 	for (irqno = IRQ_EINT0; irqno <= IRQ_EINT3; irqno++) {
 		irqdbf("registering irq %d (ext int)\n", irqno);
-		set_irq_chip(irqno, &s3c_irq_eint0t4);
+
+		if(irqno == IRQ_EINT2)
+			set_irq_chip(irqno, &s3c_irq_eint2);
+		else
+			set_irq_chip(irqno, &s3c_irq_eint0t4);
+
 		set_irq_handler(irqno, handle_edge_irq);
 		set_irq_flags(irqno, IRQF_VALID);
 	}

@@ -59,7 +59,7 @@
 
 /*_____________________ Imported Variables __________________________________*/
 extern void q_wm8350_notify_pir_event(void);
-
+static void pir_irq_work(struct work_struct *work);
 /*_____________________ Variables Definitions _______________________________*/
 
 /*_____________________ Local Declarations __________________________________*/
@@ -68,13 +68,23 @@ static struct platform_device *_pdev;
 static int _pir_major;
 static struct class *_pir_dev_class;
 static struct work_struct _pir_work;
-static int _is_enabled = false;
+static int _pir_is_enabled = false;
+atomic_t _irq_is_enabled; 
+static DECLARE_DELAYED_WORK(work, pir_irq_work);
 
 /*_____________________ Program Body ________________________________________*/
+static void pir_irq_work(struct work_struct *work)
+{
+	atomic_set(&_irq_is_enabled, true);
+	__raw_writel(1UL << 2, S3C2410_SRCPND);
+	__raw_writel(1UL << 2, S3C2410_INTPND);
+	enable_irq(IRQ_EINT2);
+}
+
 static void
 _pir_irq_work(struct work_struct *work)
 {
-	if (_is_enabled)
+	if (_pir_is_enabled)
 		q_wm8350_notify_pir_event();
 }
 
@@ -98,12 +108,18 @@ canopus_pir_ioctl(struct inode *inode, struct file *file,
 
 		enable = (enable) ? true : false;
 
-		if (enable != _is_enabled) {
-			if (enable) enable_irq(IRQ_EINT2);
-			else disable_irq(IRQ_EINT2);
+		if (enable != _pir_is_enabled) {
 
-			_is_enabled = enable;
-			s3c2410_gpio_setpin(S3C2410_GPF5, (_is_enabled) ? 1 : 0);
+			_pir_is_enabled = enable;
+			cancel_delayed_work(&work);
+
+			if (atomic_read(&_irq_is_enabled)){
+				disable_irq(IRQ_EINT2);
+				atomic_set(&_irq_is_enabled, false);
+			}else if(_pir_is_enabled)	
+				schedule_delayed_work(&work, msecs_to_jiffies(30000));
+			
+			s3c2410_gpio_setpin(S3C2410_GPF5, (_pir_is_enabled) ? 1 : 0);
 		}
 
 		return 0;

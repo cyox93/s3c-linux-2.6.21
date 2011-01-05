@@ -14,6 +14,7 @@
 #include <linux/clk.h>
 #include <linux/platform_device.h>
 #include <linux/interrupt.h>
+#include <linux/mutex.h>
 
 #include <asm/io.h>
 #include <asm/uaccess.h>
@@ -132,7 +133,7 @@ int _v_resolution_virtual = V_RESOLUTION_VIRTUAL;
 int display_brightness = DEF_DISPLAY_BRIGHTNESS;
 int backup_brightness = DEF_DISPLAY_BRIGHTNESS;
 int backlight_power_state = 1;
-int lcd_power_state = 1;
+atomic_t lcd_power_state;
 
 void set_brightness(int);
 void backlight_power(int);
@@ -389,6 +390,7 @@ void set_brightness(int val)
 void backlight_power(int val)
 {
 	if (val) {
+		if (atomic_read(&lcd_power_state) == 0) return;
 		backlight_power_state = 1;
 		set_brightness(backup_brightness);
 	} else {
@@ -1714,7 +1716,6 @@ static void __iomem *_index_addr;
 static void __iomem *_lcd_data_addr;
 static void __iomem *_be_data_addr;
 
-atomic_t g_lcd_dma_lock;
 
 static void
 _lcd_vc0528_reg(int reg)
@@ -1773,7 +1774,6 @@ static void vm0528_dma_finish(struct s3c2410_dma_chan *dma_ch, void *buf_id,
 	int size, enum s3c2410_dma_buffresult result){
 	complete(dma_vm0528_done);
 
-	atomic_set(&g_lcd_dma_lock, 0);
 }
 
 int s3c_fb_suspend_lcd(struct s3c_fb_info *info)
@@ -1799,9 +1799,8 @@ int s3c_fb_resume_lcd(struct s3c_fb_info *info)
 	s3c2410_dma_setflags(DMACH_XD0, S3C2410_DMAF_AUTOSTART);
 }
 
-volatile int _lcd_vc0528_trigger_lock = 0x1;
-volatile int _lcd_vc0528_dma_lock = 0x0;
 
+DEFINE_MUTEX(smc_lock);
 static void
 _lcd_vc0528_trigger(struct fb_info *info)
 {
@@ -1809,19 +1808,15 @@ _lcd_vc0528_trigger(struct fb_info *info)
 	struct s3c_fb_info *fbi = container_of(info, struct s3c_fb_info, fb);
 	unsigned short *fb_ptr = (unsigned short *)fbi->map_cpu_f1;
 
-	if (_lcd_vc0528_dma_lock) return ;
+	if(mutex_trylock(&smc_lock)){
 
-	atomic_set(&g_lcd_dma_lock, 1);
+		DECLARE_COMPLETION_ONSTACK(complete);
+		dma_vm0528_done = &complete;
 
-	_lcd_vc0528_dma_lock = 0x1;
-
-	DECLARE_COMPLETION_ONSTACK(complete);
-	dma_vm0528_done = &complete;
-
-	s3c2410_dma_enqueue(DMACH_XD0, NULL, (dma_addr_t) fbi->map_dma_f1, fbi->map_size_f1);
-	wait_for_completion(&complete);
-
-	_lcd_vc0528_dma_lock = 0x0;
+		s3c2410_dma_enqueue(DMACH_XD0, NULL, (dma_addr_t) fbi->map_dma_f1, fbi->map_size_f1);
+		wait_for_completion(&complete);
+		mutex_unlock(&smc_lock);
+	}
 }
 
 static void
@@ -1829,6 +1824,7 @@ _lcd_vc0528_init(int init)
 {
 	int ret = -1;
 	uint val;
+	atomic_set(&lcd_power_state,1);
 
 	if (_lcd_handle.is_init) return ;
 
@@ -1876,10 +1872,12 @@ lcd_ili9225b_power(int set)
 	int id = q_lcd_panel_id();
 
 	if (!_lcd_handle.is_init) return ;
-	if (lcd_power_state == set) return ;
+	if (atomic_read(&lcd_power_state)== set) return;
+
+	if(mutex_trylock(&smc_lock)){
 
 	if (!set) {
-		lcd_power_state = set;
+		atomic_set(&lcd_power_state,set);
 		lcd_set_command_mode(1);
 
 		if (id == _LCD_PANEL_HSD24) {
@@ -1938,15 +1936,19 @@ lcd_ili9225b_power(int set)
 
 		lcd_set_command_mode(0);
 		mdelay(2);
-		lcd_power_state = set;
-
+		atomic_set(&lcd_power_state,set);
 		lcd_trigger(info);
+	}
+
+	mutex_unlock(&smc_lock);
+	}else{
+		return; 
 	}
 }
 
 static void s3c_fb_change_fb(struct fb_info *info)
 {
-	if ((lcd_power_state)&&(_lcd_vc0528_trigger_lock)){
+	if (atomic_read(&lcd_power_state)) {
 		lcd_trigger(info);
 	}
 }
@@ -2257,7 +2259,7 @@ void lcd_module_init (void)
 	int i = _h_resolution * _v_resolution;
 	u16 *logo = NULL;
 
-	atomic_set(&g_lcd_dma_lock, 0);
+
 
 	if (q_boot_flag_get() != Q_BOOT_FLAG_LCD_INIT) {
 		if (q_hw_ver(KTQOOK))
