@@ -54,6 +54,7 @@
 #define DEV_NAME			"pir"
 
 #define PIR_IOCTL_S_ENABLE		_IOW ('Q', 0x80, int)
+#define PIR_IOCTL_REISR_ENABLE	_IOW ('Q', 0x81, int)
 
 /*_____________________ Type definitions ____________________________________*/
 
@@ -70,12 +71,14 @@ static struct class *_pir_dev_class;
 static struct work_struct _pir_work;
 static int _pir_is_enabled = false;
 atomic_t _irq_is_enabled; 
+atomic_t _reirq_is_enabled; 
 static DECLARE_DELAYED_WORK(work, pir_irq_work);
 
 /*_____________________ Program Body ________________________________________*/
 static void pir_irq_work(struct work_struct *work)
 {
 	atomic_set(&_irq_is_enabled, true);
+	atomic_set(&_reirq_is_enabled, true);
 	__raw_writel(1UL << 2, S3C2410_SRCPND);
 	__raw_writel(1UL << 2, S3C2410_INTPND);
 	enable_irq(IRQ_EINT2);
@@ -84,7 +87,7 @@ static void pir_irq_work(struct work_struct *work)
 static void
 _pir_irq_work(struct work_struct *work)
 {
-	if (_pir_is_enabled)
+	if((_pir_is_enabled)&& atomic_read(&_reirq_is_enabled))
 		q_wm8350_notify_pir_event();
 }
 
@@ -116,12 +119,24 @@ canopus_pir_ioctl(struct inode *inode, struct file *file,
 			if (atomic_read(&_irq_is_enabled)){
 				disable_irq(IRQ_EINT2);
 				atomic_set(&_irq_is_enabled, false);
+				atomic_set(&_reirq_is_enabled, false);
 			}else if(_pir_is_enabled)	
 				schedule_delayed_work(&work, msecs_to_jiffies(30000));
 			
 			s3c2410_gpio_setpin(S3C2410_GPF5, (_pir_is_enabled) ? 1 : 0);
 		}
+		break;
 
+	case PIR_IOCTL_REISR_ENABLE:
+		if (get_user(enable, (int __user *)arg))
+			return -EFAULT;
+
+		enable = (enable) ? true : false;
+
+		if(enable)
+			atomic_set(&_reirq_is_enabled, true);
+		else
+			atomic_set(&_reirq_is_enabled, false);
 		return 0;
 	default:
 		printk(KERN_ERR "PIR DEVICE DRIVER: No pir Device driver Command defined\n");
