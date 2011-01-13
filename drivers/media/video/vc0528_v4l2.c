@@ -1327,7 +1327,6 @@ vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type i)
 		return -EINVAL;
 
 	vc0528_vid_close(dev);
-	canopus_bedev_ioctl(VC0528_BYPASS_MODE,NULL);   // lcd bypass mode change 
 	videobuf_streamoff(&fh->vb_vidq);
 	res_free(dev,fh);
 
