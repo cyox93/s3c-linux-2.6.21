@@ -78,7 +78,6 @@ static DECLARE_DELAYED_WORK(work, pir_irq_work);
 static void pir_irq_work(struct work_struct *work)
 {
 	atomic_set(&_irq_is_enabled, true);
-	atomic_set(&_reirq_is_enabled, true);
 	__raw_writel(1UL << 2, S3C2410_SRCPND);
 	__raw_writel(1UL << 2, S3C2410_INTPND);
 	enable_irq(IRQ_EINT2);
@@ -120,9 +119,12 @@ canopus_pir_ioctl(struct inode *inode, struct file *file,
 				disable_irq(IRQ_EINT2);
 				atomic_set(&_irq_is_enabled, false);
 				atomic_set(&_reirq_is_enabled, false);
-			}else if(_pir_is_enabled)	
-				schedule_delayed_work(&work, msecs_to_jiffies(30000));
-			
+			}else{ 
+				if(_pir_is_enabled)	
+					schedule_delayed_work(&work, msecs_to_jiffies(30000));
+				else
+					atomic_set(&_reirq_is_enabled, false);					
+			}
 			s3c2410_gpio_setpin(S3C2410_GPF5, (_pir_is_enabled) ? 1 : 0);
 		}
 		break;
