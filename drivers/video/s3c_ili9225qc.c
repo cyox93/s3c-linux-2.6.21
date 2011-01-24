@@ -1802,22 +1802,19 @@ int s3c_fb_resume_lcd(struct s3c_fb_info *info)
 
 DEFINE_MUTEX(smc_lock);
 static void
-_lcd_vc0528_trigger_low(struct fb_info *info)
-{
-	struct s3c_fb_info *fbi = container_of(info, struct s3c_fb_info, fb);
-
-	DECLARE_COMPLETION_ONSTACK(complete);
-	dma_vm0528_done = &complete;
-	
-	s3c2410_dma_enqueue(DMACH_XD0, NULL, (dma_addr_t) fbi->map_dma_f1, fbi->map_size_f1);
-	wait_for_completion(&complete);
-}
-
-static void
 _lcd_vc0528_trigger(struct fb_info *info)
 {
+	int i, size;
+	struct s3c_fb_info *fbi = container_of(info, struct s3c_fb_info, fb);
+	unsigned short *fb_ptr = (unsigned short *)fbi->map_cpu_f1;
+
 	if(mutex_trylock(&smc_lock)){
-		_lcd_vc0528_trigger_low(info);
+
+		DECLARE_COMPLETION_ONSTACK(complete);
+		dma_vm0528_done = &complete;
+
+		s3c2410_dma_enqueue(DMACH_XD0, NULL, (dma_addr_t) fbi->map_dma_f1, fbi->map_size_f1);
+		wait_for_completion(&complete);
 		mutex_unlock(&smc_lock);
 	}
 }
@@ -1877,73 +1874,74 @@ lcd_ili9225b_power(int set)
 	if (!_lcd_handle.is_init) return ;
 	if (atomic_read(&lcd_power_state)== set) return;
 
-	if(mutex_trylock(&smc_lock)) {
-		if (!set) {
-			atomic_set(&lcd_power_state,set);
-			lcd_set_command_mode(1);
-			
-			if (id == _LCD_PANEL_HSD24) {
-				_lcd_ili9225b_reg_write(0x0007, 0x0131); // Set D1=0, D0=1
-				mdelay(10);
-				_lcd_ili9225b_reg_write(0x0007, 0x0130); // Set D1=0, D0=0
-				mdelay(10);
-				_lcd_ili9225b_reg_write(0x0007, 0x0000); // display OFF
-				//************* Power OFF sequence **************//
-				_lcd_ili9225b_reg_write(0x0010, 0x0080); // SAP, BT[3:0], APE, AP, DSTB, SLP
-				_lcd_ili9225b_reg_write(0x0011, 0x0000); // DC1[2:0], DC0[2:0], VC[2:0]
-				_lcd_ili9225b_reg_write(0x0012, 0x0000); // VREG1OUT voltage
-				_lcd_ili9225b_reg_write(0x0013, 0x0000); // VDV[4:0] for VCOM amplitude
-				mdelay(100); // Dis-charge capacitor power voltage
-				_lcd_ili9225b_reg_write(0x0010, 0x0082); // SAP, BT[3:0], APE, AP, DSTB, SLP
-			} else {
-				_lcd_ili9225b_reg_write(0x0007,0x0000);
-				mdelay(50);
-				_lcd_ili9225b_reg_write(0x0011,0x0007);
-				mdelay(50);
-				_lcd_ili9225b_reg_write(0x0010,0x0A02);
-			}
-			
-			lcd_set_command_mode(0);
+	if(mutex_trylock(&smc_lock)){
+
+	if (!set) {
+		atomic_set(&lcd_power_state,set);
+		lcd_set_command_mode(1);
+
+		if (id == _LCD_PANEL_HSD24) {
+			_lcd_ili9225b_reg_write(0x0007, 0x0131); // Set D1=0, D0=1
+			mdelay(10);
+			_lcd_ili9225b_reg_write(0x0007, 0x0130); // Set D1=0, D0=0
+			mdelay(10);
+			_lcd_ili9225b_reg_write(0x0007, 0x0000); // display OFF
+			//************* Power OFF sequence **************//
+			_lcd_ili9225b_reg_write(0x0010, 0x0080); // SAP, BT[3:0], APE, AP, DSTB, SLP
+			_lcd_ili9225b_reg_write(0x0011, 0x0000); // DC1[2:0], DC0[2:0], VC[2:0]
+			_lcd_ili9225b_reg_write(0x0012, 0x0000); // VREG1OUT voltage
+			_lcd_ili9225b_reg_write(0x0013, 0x0000); // VDV[4:0] for VCOM amplitude
+			mdelay(100); // Dis-charge capacitor power voltage
+			_lcd_ili9225b_reg_write(0x0010, 0x0082); // SAP, BT[3:0], APE, AP, DSTB, SLP
 		} else {
-			lcd_set_command_mode(1);
-			
-			if (id == _LCD_PANEL_HSD24) {
-				//*************Power On sequence ******************//
-				_lcd_ili9225b_reg_write(0x0010, 0x0000); // SAP, BT[3:0], AP, DSTB, SLP, STB
-				_lcd_ili9225b_reg_write(0x0011, 0x0007); // DC1[2:0], DC0[2:0], VC[2:0]
-				_lcd_ili9225b_reg_write(0x0012, 0x0000); // VREG1OUT voltage
-				_lcd_ili9225b_reg_write(0x0013, 0x0000); // VDV[4:0] for VCOM amplitude
-				_lcd_ili9225b_reg_write(0x0007, 0x0001);
-				mdelay(100); // Dis-charge capacitor power voltage
-				_lcd_ili9225b_reg_write(0x0010, 0x1690); // SAP, BT[3:0], AP, DSTB, SLP, STB
-				_lcd_ili9225b_reg_write(0x0011, 0x0227); // Set DC1[2:0], DC0[2:0], VC[2:0]
-				mdelay(50); // Delay 50ms
-				_lcd_ili9225b_reg_write(0x0012, 0x000D); // External reference voltage= Vci;
-				mdelay(50); // Delay 50ms
-				_lcd_ili9225b_reg_write(0x0013, 0x1200); // VDV[4:0] for VCOM amplitude
-				_lcd_ili9225b_reg_write(0x0029, 0x0007); // VCM[5:0] for VCOMH
-				mdelay(50); // Delay 50ms
-				_lcd_ili9225b_reg_write(0x0007, 0x0133); // 262K color and display ON
-				lcd_set_command_mode(1);
-				lcd_prepare_write(0, 0);
-			} else {
-				_lcd_ili9225b_reg_write(0x0010,0x0A00);
-				lcd_set_command_mode(0);
-				
-				lcd_reset();
-				lcd_set_command_mode(1);
-				_lcd_panel_init();
-				lcd_prepare_write(0, 0);
-			}
-			
-			lcd_set_command_mode(0);
-			mdelay(2);
-			atomic_set(&lcd_power_state,set);
-			_lcd_vc0528_trigger_low(info);
+			_lcd_ili9225b_reg_write(0x0007,0x0000);
+			mdelay(50);
+			_lcd_ili9225b_reg_write(0x0011,0x0007);
+			mdelay(50);
+			_lcd_ili9225b_reg_write(0x0010,0x0A02);
 		}
-		
-		mutex_unlock(&smc_lock);
+
+		lcd_set_command_mode(0);
 	} else {
+		lcd_set_command_mode(1);
+
+		if (id == _LCD_PANEL_HSD24) {
+			//*************Power On sequence ******************//
+			_lcd_ili9225b_reg_write(0x0010, 0x0000); // SAP, BT[3:0], AP, DSTB, SLP, STB
+			_lcd_ili9225b_reg_write(0x0011, 0x0007); // DC1[2:0], DC0[2:0], VC[2:0]
+			_lcd_ili9225b_reg_write(0x0012, 0x0000); // VREG1OUT voltage
+			_lcd_ili9225b_reg_write(0x0013, 0x0000); // VDV[4:0] for VCOM amplitude
+			_lcd_ili9225b_reg_write(0x0007, 0x0001);
+			mdelay(100); // Dis-charge capacitor power voltage
+			_lcd_ili9225b_reg_write(0x0010, 0x1690); // SAP, BT[3:0], AP, DSTB, SLP, STB
+			_lcd_ili9225b_reg_write(0x0011, 0x0227); // Set DC1[2:0], DC0[2:0], VC[2:0]
+			mdelay(50); // Delay 50ms
+			_lcd_ili9225b_reg_write(0x0012, 0x000D); // External reference voltage= Vci;
+			mdelay(50); // Delay 50ms
+			_lcd_ili9225b_reg_write(0x0013, 0x1200); // VDV[4:0] for VCOM amplitude
+			_lcd_ili9225b_reg_write(0x0029, 0x0007); // VCM[5:0] for VCOMH
+			mdelay(50); // Delay 50ms
+			_lcd_ili9225b_reg_write(0x0007, 0x0133); // 262K color and display ON
+			lcd_set_command_mode(1);
+			lcd_prepare_write(0, 0);
+		} else {
+			_lcd_ili9225b_reg_write(0x0010,0x0A00);
+			lcd_set_command_mode(0);
+
+			lcd_reset();
+			lcd_set_command_mode(1);
+			_lcd_panel_init();
+			lcd_prepare_write(0, 0);
+		}
+
+		lcd_set_command_mode(0);
+		mdelay(2);
+		atomic_set(&lcd_power_state,set);
+		lcd_trigger(info);
+	}
+
+	mutex_unlock(&smc_lock);
+	}else{
 		return; 
 	}
 }
