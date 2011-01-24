@@ -1590,6 +1590,7 @@ vc0528_release(struct inode *inode, struct file *file)
 
 	dev->users--;
 
+	canopus_bedev_ioctl(VC0528_SUB_MODULE_RESET,NULL);
 	canopus_bedev_ioctl(VC0528_BYPASS_MODE,NULL);
 	dprintk(1,"close called (minor=%d, users=%d)\n",minor,dev->users);
 	mutex_unlock(&smc_lock);
@@ -1801,17 +1802,14 @@ int video_ioctl_device(struct inode *inode, struct file *file,
 		case VC0528_NORMAL_MODE:
 			canopus_bedev_ioctl(cmd,arg);  // vc0528 direct control command
 			break;
-		case VC0528_CAMERA_TEST_INIT:
-			vc0528_turning_mode_init();
+		case VC0528_RESET_CORE: 
+			canopus_bedev_ioctl(VC0528_RESET_CORE,NULL);
+			break;
+		case VC0528_CAMERA_PREVIEW:
+			vc0528_camera_preview();
 			break;
 		}
 		break;
-//		case VC0528_CAMERA_TEST_CLOSE:
-//			vc0528_turning_mode_close();
-//		break;
-		case VC0528_CAMERA_PREVIEW:
-			vc0528_camera_preview();
-
 	default:
 		return -EINVAL;
 		break;

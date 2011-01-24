@@ -197,9 +197,10 @@ typedef struct
 #define VC0528_LCD_MODE_BLONLY_0		_IO   ('Q', _CMD3(0x15))
 #define VC0528_LCD_MODE_BLONLY_1		_IO   ('Q', _CMD3(0x16))
 #define VC0528_LCD_MODE_BLEND 			_IO   ('Q', _CMD3(0x17))
+#define VC0528_SUB_MODULE_RESET			_IO   ('Q', _CMD3(0x18))
 
 #define V5_FUNC_STARTNR 				_CMD3(0x00)
-#define V5_FUNC_ENDNR 					_CMD3(0x17)
+#define V5_FUNC_ENDNR 					_CMD3(0x18)
 
 /*_____________________ Function Declarations _______________________________*/
 extern int canopus_bedev_ioctl(unsigned int cmd, void *args);

@@ -97,12 +97,6 @@ unsigned int Jframe_Length[10];
 unsigned char JpegBuf[0x160000];
 
 /*_____________________ Program Body ________________________________________*/
-static void 
-canopus_vc0528_reset(void)
-{
-	mdelay(100);
-}
-
 static void
 canopus_vc0528_bypass_mode(void)
 {
@@ -135,7 +129,6 @@ canopus_vc0528_init(void)
 	dprintk(1,"init \n");
 	canopus_vc0528_normal_mode();
 	mdelay(10);
-	canopus_vc0528_reset();
 	canopus_vc0528_hapi_init();
 }
 
@@ -323,10 +316,10 @@ canopus_vc0528_8_write_burst(ctrl_32_infos args)
 	return 0;
 }
 
-#if 1
+
 unsigned int cnt_jpeg_tap;
-//static void 
-void 
+spinlock_t 	slock_vc0528;
+static void 
 canopus_v0528_camera_jpeg_read(void *args, int size)
 {
 	int fcnt;
@@ -339,8 +332,9 @@ canopus_v0528_camera_jpeg_read(void *args, int size)
 	Jpeg_Length = 0;
 	frame_rate  = jpeg->frame_rate; 
 	buf = (void __force *)jpeg->frame_buf; 
+	//mutex_lock(&vc0528_lock);
+	spin_lock(&slock_vc0528);
 	VIM_HAPI_BufferPosition(buf,jpeg->frbuf_size,jpeg->frame_rate,jpeg->frame_max);
-//	mdelay(5); 
 
 	/* start capture video */
 	for(fcnt=0;fcnt<frame_rate;fcnt++){
@@ -364,7 +358,7 @@ canopus_v0528_camera_jpeg_read(void *args, int size)
 	}
 
 	jpeg->frame_size = Jpeg_Length;
-
+	spin_unlock(&slock_vc0528);
 #if 0
 	dprintk(1,"# frbuf_size:0x%x\n",jpeg->frbuf_size);
 	dprintk(1,"# frame_rate:0x%x\n",jpeg->frame_rate);
@@ -374,72 +368,7 @@ canopus_v0528_camera_jpeg_read(void *args, int size)
 	dprintk(1,"# frame_size:0x%x\n",jpeg->frame_size);
 #endif	
 }
-#else
-#if 0
-static void 
-canopus_v0528_camera_jpeg_read(void *args, int size)
-{
-	unsigned int loop;
-	unsigned int cnt;
-	unsigned int offset;
-	unsigned int fcnt;
 
-	unsigned char *buf,*ubuf;
-	ctrl_jpeg_file 	ctrl_jpeg;
-
-	/* start capture video */
-	VIM_HAPI_StartCaptureVideo(&JpegBuf,0x160000,NULL);
-	dprintk(1,"buf start addr: 0x%08lx\n",&JpegBuf);
-	mdelay(100);
-
-	offset = 16*50;
-	Jpeg_Length = 0;
-	for(fcnt=0;fcnt<10;fcnt++)
-	{
-		mdelay(1);
-		Jframe_Length[fcnt] = VIM_HAPI_Timer2();
-
-		dprintk(1,"Jframe_Length:0x%08lx\n",Jframe_Length[fcnt]);
-		dprintk(1,"Jpeg_Length:0x%08lx\n",Jpeg_Length);
-#if 0
-		for(cnt=0 ; cnt <offset ;cnt++)
-		{
-			if(cnt%32 == 0) dprintk(1,"%08lx:",cnt+Jpeg_Length);
-			dprintk(1,"0x%02lx ",JpegBuf[cnt+Jpeg_Length]);
-			if(cnt%32 == 31)dprintk(1,"\n");
-		}		
-#endif
-		Jpeg_Length += Jframe_Length[fcnt];
-		dprintk(1,"Jpeg_Length_end-1:0x%02lx ",JpegBuf[Jpeg_Length-1]);
-		dprintk(1,"Jpeg_Length_end:0x%02lx ",JpegBuf[Jpeg_Length]);
-	}
-
-	printk("\n");
-	VIM_HAPI_StopCapture();
-
-	/* copy to user jpeg data */
-	copy_from_user((void*)&ctrl_jpeg,args,arg_size);
-	ubuf = ctrl_jpeg.pdata_idx; 
-	ctrl_jpeg.size = 0;
-
-	dprintk(1,"------- ctrl_jpeg buffer index info -------\n");
-	for(loop=0;loop<10;loop++){
-		ctrl_jpeg.data_idx[loop][0] = Jframe_Length[loop];			
-		ctrl_jpeg.size += Jframe_Length[loop];
-		dprintk(1,"index:%02d: length: 0x%08lx length_sum: 0x%08lx\n",
-				loop,ctrl_jpeg.data_idx[loop][0],ctrl_jpeg.size);
-	}
-
-	for(loop=0;loop<(ctrl_jpeg.size);loop++)
-	{
-		put_user(JpegBuf[loop],&ubuf[loop]);				
-	}
-
-	copy_to_user((void*)args,(const void*)
-			&ctrl_jpeg,(unsigned long)arg_size);
-}
-#endif
-#endif
 
 static int 
 canopus_vc0528_set_multi16(void)
@@ -529,6 +458,12 @@ canopus_vc0528_lcd_mode_blend(void)
 }
 
 static void
+canopus_v0528_sub_module_reset(void)
+{
+    VIM_HIF_ResetSubModule(VIM_HIF_RESET_GLOBE);	                			
+}
+
+static void
 canopus_v0528_camera_captur_still(void)
 {
 	unsigned int cnt;
@@ -539,30 +474,18 @@ canopus_v0528_camera_captur_still(void)
 	char timestr[13];
 	long start_jiffies;
 
-#if 0 	
+
 	VIM_HAPI_SetWorkMode(VIM_HAPI_MODE_CAMERAON); 	//through mode power on lcd
+	VIM_HAPI_SetCaptureParameter(640,480);
+	VIM_HAPI_SetPreviewParameter(0,0,240,320);
+#if 1 
 //	VIM_HAPI_SetCaptureParameter(192,240);
 //	VIM_HAPI_SetPreviewParameter(0,0,192,240);
 //	VIM_HAPI_SetCaptureParameter(226,283);
 //	VIM_HAPI_SetPreviewParameter(0,0,226,283);
 //	VIM_HAPI_SetCaptureParameter(240,320);
 //	VIM_HAPI_SetPreviewParameter(0,0,240,320);
-	VIM_HAPI_SetCaptureParameter(640,480);
-	VIM_HAPI_SetPreviewParameter(0,0,240,320);
-	canopus_vc0528_write(0x803,0x2);
-	VIM_HAPI_SetLCDWorkMode(VIM_HAPI_LCDMODE_OVERLAY,0);
-	VIM_HAPI_SetPreviewMode(VIM_HAPI_PREVIEW_ON);
-	mdelay(100);
-	
-	VIM_HAPI_CaptureStill(VIM_HAPI_RAM_SAVE,&JpegBuf,0x160000,0);
-	Jpeg_Length=VIM_HAPI_GetCaptureLength();
-	dprintk(1,"jpeg make !!!!\n");
 #endif 
-
-#if 1	
-	VIM_HAPI_SetWorkMode(VIM_HAPI_MODE_CAMERAON); 	//through mode power on lcd
-	VIM_HAPI_SetCaptureParameter(640,480);
-	VIM_HAPI_SetPreviewParameter(0,0,240,320);
 	canopus_vc0528_write(0x803,0x2);
 	VIM_HAPI_SetPreviewMode(VIM_HAPI_PREVIEW_ON);
 	VIM_DISP_SetLayerEnable(VIM_DISP_ALAYER,DISABLE);
@@ -573,83 +496,8 @@ canopus_v0528_camera_captur_still(void)
 	VIM_HAPI_SetCaptureVideoInfo(VIM_HAPI_RAM_SAVE,10,0xffffffff);
 	VIM_HAPI_StartCaptureVideo(&JpegBuf,0x160000,NULL);
 	mdelay(100);
-#endif 
-
-#if 0	
-	offset = 16*50;
-	Jpeg_Length = 0;
-	for(fcnt=0;fcnt<10;fcnt++)
-	{
-		mdelay(1);
-		Jframe_Length[fcnt] = VIM_HAPI_Timer2();
-
-		dprintk(1,"Jframe_Length:0x%08lx\n",Jframe_Length[fcnt]);
-		dprintk(1,"Jpeg_Length:0x%08lx\n",Jpeg_Length);
-#if 0
-		for(cnt=0 ; cnt <offset ;cnt++)
-		{
-			if(cnt%32 == 0) dprintk(1,"%08lx:",cnt+Jpeg_Length);
-			dprintk(1,"0x%02lx ",JpegBuf[cnt+Jpeg_Length]);
-			if(cnt%32 == 31) dprintk(1,"\n");
-		}		
-#endif
-		Jpeg_Length += Jframe_Length[fcnt];
-		dprintk(1,"Jpeg_Length_end-1:0x%02lx ",JpegBuf[Jpeg_Length-1]);
-		dprintk(1,"Jpeg_Length_end:0x%02lx ",JpegBuf[Jpeg_Length]);
-	}
-
-	dprintk(1,"\n");
-	VIM_HAPI_StopCapture();
-#endif
-
-#if 0
-	/* JPEG Data dump */
-	dprintk(3,"Jpeg_Length:0x%x, frame rate:%d\n",Jpeg_Length,VIM_HAPI_GetFrmCount());
-
-	for(cnt = 0; cnt <5 ;cnt++)
-	{
-		dprintk(1,"%d: 0x%x ,0x%x ,0x%x ,0x%x \n",cnt,JpegBuf[cnt],JpegBuf[cnt+1],JpegBuf[cnt+2],JpegBuf[cnt+3]);
-	}
-#endif 
 }
 
-#if 0
-// jpeg decode: CPU( SDRAM) -> vc0528 -> LCD
-static void
-canopus_vc0528_jpeg_view(void)
-{
-	VIM_HAPI_SetWorkMode( VIM_HAPI_MODE_CAMERAON);//through mode power on lcd
-	VIM_HAPI_SetLCDSize( VIM_HAPI_B0_LAYER,0,0,0,0);
-	VIM_HAPI_SetLCDSize( VIM_HAPI_B1_LAYER,0,0,0,0);
-	VIM_HAPI_SetLCDWorkMode( VIM_HAPI_LCDMODE_OVERLAY,0);
-	VIM_HAPI_SetLCDColordep( VIM_HAPI_COLORDEP_16BIT);
-	VIM_HAPI_Display_Jpeg( VIM_HAPI_RAM_SAVE, test_1212 ,1536, 0, 0,64,96);
-}
-
-//jpeg preview: vc0528 <- Camera
-canopus_vc0528_jpeg_camera_view(void)
-{
-	VIM_HAPI_SetWorkMode( VIM_HAPI_MODE_CAMERAON);//through mode power on lcd
-	VIM_HAPI_SetCaptureParameter( 128,160);
-	VIM_HAPI_SetPreviewParameter( 0,0,128,160);
-	VIM_HAPI_SetLCDWorkMode( VIM_HAPI_LCDMODE_OVERLAY,0);
-	VIM_HAPI_SetPreviewMode( VIM_HAPI_PREVIEW_ON);
-}
-#endif
-
-#if 0
-static void
-canopus_v0528_camera_captur_still(void)
-{
-	dprintk(1,"[vc0528]: camera capture still\n");
-	testcapture(1280,960);
-	VIM_HAPI_SetLcdWorkMode(VIM_HAPI_LCDMODE_AFIRST,0);
-	VIM_HAPI_SetCaptureParameter(1280,960);
-	VIM_HAPI_SetPreviewParameter(0.0.240,320);
-	VIM_HAPI_SetPreviewMode(VIM_HAPI_PREVIEW_ON,1);
-	Delay(1000);
-}
-#endif
 
 static void
 canopus_v0528_camera_preview(void)
@@ -845,6 +693,9 @@ canopus_bedev_ioctl(unsigned int cmd, void *args)
 	case VC0528_LCD_GUI_DROW_2:
 			canopus_v0528_lcd_gui_mode_2();
 			break;
+	case VC0528_SUB_MODULE_RESET:
+			canopus_v0528_sub_module_reset();
+			break;
 
 			/* hw test code */
 #if 0			
@@ -903,139 +754,4 @@ canopus_bedev_ioctl(unsigned int cmd, void *args)
 
 	return 0;
 }
-
-
-#if 0 
-static int
-canopus_bedev_open(struct inode *inode, struct file *file)
-{
-	struct vc0528_dev *h, *dev = NULL;
-	dprintk(1, "canopus_bedev_open\n");
-	return 0;
-}
-
-/* about fasycn funtions */
-static int
-canopus_bedev_release(struct inode *inode, struct file *file)
-{
-	return 0;
-}
-
-static ssize_t 
-canopus_bedev_read(struct file *file, char __user *buf , size_t count, loff_t *ppos)
-{
-	return 0;
-}
-
-static ssize_t 
-canopus_bedev_write(struct file *file, const char __user *buf , size_t count, loff_t *ppos)
-{
-	char tbuf,vbuf[10];
-	unsigned long level; 
-	int cnt;
-
-	for(cnt=0;cnt<count;cnt++ ) {
-		get_user(tbuf,(char*)buf++);
-		vbuf[cnt]=tbuf;
-	}
-	vbuf[cnt+1]=NULL;
-
-	level = simple_strtoul(&vbuf,NULL,10);
- 	return 0;
-}
-
-static struct 
-file_operations canopus_bedev_fos = {
-	.owner		= THIS_MODULE,
-	.ioctl		= canopus_bedev_ioctl,
-	.open		= canopus_bedev_open,
-	.release	= canopus_bedev_release,
-	.read 		= canopus_bedev_read,
-	.write 		= canopus_bedev_write,
-};
-
-int __init
-canopus_bedev_probe(struct platform_device *pdev)
-{
-	struct class_device *bedev_device;
-
-	_bedev_major = register_chrdev(0, DEV_NAME, &canopus_bedev_fos);
-
-	_be_dev_class = class_create(THIS_MODULE, DEV_NAME);
-	if (IS_ERR(_be_dev_class)) {
-		dprintk(1,KERN_ERR "error creating flash dev class\n");
-		return -1;
-	}
-
-	bedev_device = 
-		class_device_create(_be_dev_class, 
-				NULL, MKDEV(_bedev_major, 0), NULL, DEV_NAME);
-	if (IS_ERR(bedev_device)) {
-		dprintk(1,KERN_ERR "error creating flash class device\n");
-		return -1;
-	}
-	
-	return 0;
-}
-
-static int
-canopus_bedev_remove(struct device *dev)
-{
-	unregister_chrdev(_bedev_major, DEV_NAME);
-	return 0;
-}
-
-
-static struct 
-platform_driver canopus_bedev_driver = {
-	.probe          = canopus_bedev_probe,
-	.remove         = canopus_bedev_remove,
-	.suspend        = canopus_bedev_suspend,
-	.resume         = canopus_bedev_resume,
-	.driver		= {
-		.owner	= THIS_MODULE,
-		.name	= DRVNAME,
-	},
-};
-
-
-int 
-__init canopus_bedev_init(void)
-{
-	int rc;
-
-	if (!q_hw_ver(KTQOOK)) return 0;
-
-	_pdev = platform_device_alloc(DRVNAME, 0);
-	if (!_pdev)
-		return -ENOMEM;
-
-	rc = platform_device_add(_pdev);
-	if (rc)
-		goto undo_malloc;
-
-	return platform_driver_register(&canopus_bedev_driver);
-
-undo_malloc:
-	platform_device_put(_pdev);
-
-	return -1;
-}
-
-void 
-__exit canopus_bedev_exit(void)
-{
-	if (!q_hw_ver(KTQOOK)) return ;
-	platform_driver_unregister(&canopus_bedev_driver);
-	platform_device_unregister(_pdev);
-}
-
-/*_____________________ Linux Macro _________________________________________*/
-module_init(canopus_bedev_init);
-module_exit(canopus_bedev_exit);
-
-MODULE_AUTHOR("yongsuk@udcsystems.com");
-MODULE_DESCRIPTION( "flash driver");
-MODULE_LICENSE( "GPL");
-#endif
 
