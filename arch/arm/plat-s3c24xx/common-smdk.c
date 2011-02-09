@@ -635,7 +635,8 @@ void canopus_gpio_init(void)
 	if (q_hw_ver(SWP2000)
 			|| q_hw_ver(7800_MP2)) {
 		s3c2410_gpio_cfgpin(S3C2443_GPH13, S3C2443_GPH13_CLKOUT0);
-	} else if (q_hw_ver(KTQOOK_TP2)) {
+	} else if (q_hw_ver(KTQOOK_TP2)
+			|| q_hw_ver(KTQOOK_MP)) {
 		s3c2410_gpio_cfgpin(S3C2443_GPH14, S3C2443_GPH14_CLKOUT1);
 	}
 }
@@ -733,7 +734,8 @@ void __init smdk_machine_init(void)
 	if (q_hw_ver(SWP2000)
 			|| q_hw_ver(7800_MP2)) {
 		q_usb_clock_init(0);
-	} else if (q_hw_ver(KTQOOK_TP2)) {
+	} else if (q_hw_ver(KTQOOK_TP2)
+			|| q_hw_ver(KTQOOK_MP)) {
 		q_usb_clock_init(1);
 	}
 #endif	// CONFIG_MACH_CANOPUS

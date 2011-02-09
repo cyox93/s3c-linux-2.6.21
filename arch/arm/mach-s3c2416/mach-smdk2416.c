@@ -684,7 +684,8 @@ int wm8350_dev_init(struct wm8350 *wm8350)
 			// for PMIC LDO
 			if (q_hw_ver(SWP2000)
 					|| q_hw_ver(7800_MP2)
-					|| q_hw_ver(KTQOOK_TP2)) {
+					|| q_hw_ver(KTQOOK_TP2)
+					|| q_hw_ver(KTQOOK_MP)) {
 				reg_data = (struct regulator_init_data *)wm8350_regulator_devices[i].dev.platform_data;
 
 				reg_data->constraints.min_uV = 1200000;
@@ -696,7 +697,8 @@ int wm8350_dev_init(struct wm8350 *wm8350)
 			// for PMIC LDO
 			if (q_hw_ver(SWP2000)
 					|| q_hw_ver(7800_MP2)
-					|| q_hw_ver(KTQOOK_TP2)) {
+					|| q_hw_ver(KTQOOK_TP2)
+					|| q_hw_ver(KTQOOK_MP)) {
 				reg_data = (struct regulator_init_data *)wm8350_regulator_devices[i].dev.platform_data;
 				reg_data->constraints.min_uV = 3300000;
 				reg_data->constraints.max_uV = 3300000;

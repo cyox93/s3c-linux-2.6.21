@@ -125,7 +125,12 @@ canopus_pir_ioctl(struct inode *inode, struct file *file,
 				else
 					atomic_set(&_reirq_is_enabled, false);					
 			}
-			s3c2410_gpio_setpin(S3C2410_GPF5, (_pir_is_enabled) ? 0 : 1);
+
+			if (!q_hw_ver(KTQOOK_MP)) {
+				s3c2410_gpio_setpin(S3C2410_GPF5, (_pir_is_enabled) ? 1 : 0);
+			} else {
+				s3c2410_gpio_setpin(S3C2410_GPF5, (_pir_is_enabled) ? 0 : 1);
+			}
 		}
 		break;
 
@@ -206,7 +211,12 @@ canopus_pir_probe(struct platform_device *pdev)
 
 	// off
 	s3c2410_gpio_cfgpin(S3C2410_GPF5, S3C2410_GPF5_OUTP);
-	s3c2410_gpio_setpin(S3C2410_GPF5, 1);
+
+	if (!q_hw_ver(KTQOOK_MP)) {
+		s3c2410_gpio_setpin(S3C2410_GPF5, 0);
+	} else {
+		s3c2410_gpio_setpin(S3C2410_GPF5, 1);
+	}
 
 	INIT_WORK(&_pir_work, _pir_irq_work);
 	request_irq(IRQ_EINT2, _pir_irq_handler,
