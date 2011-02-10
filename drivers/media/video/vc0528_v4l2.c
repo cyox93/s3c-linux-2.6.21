@@ -87,6 +87,7 @@ static struct video_device vc0528;	/* Video device */
 static int video_nr = -1;		 	/* /dev/videoN, -1 for autodetect */
 extern struct mutex smc_lock;
 static int __iomem *_test_addr;
+static int skip_unmap;
 
 char testv4l2_buf[5] = {
 	0x0,
@@ -223,7 +224,8 @@ struct vc0528_fh {
 };
 
 static struct vc0528_dev   *bend_dev;
-
+static void 
+res_free(struct vc0528_dev *dev, struct vc0528_fh *fh);
 /*_____________________ DMA and thread functions _______________________________*/
 
 /* Bars and Colors should match positions */
@@ -1018,6 +1020,9 @@ buffer_release(struct videobuf_queue *vq, struct videobuf_buffer *vb)
 
 	vc0528_stop_thread(vidq);
 
+	if(skip_unmap)
+		buf->vb.state = STATE_ERROR;
+
 	free_buffer(vq,buf);
 }
 
@@ -1321,6 +1326,7 @@ vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type i)
 	struct vc0528_fh  *fh=priv;
 	struct vc0528_dev *dev    = fh->dev;
 
+	skip_unmap = false;
 	if (fh->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
 		return -EINVAL;
 	if (i != fh->type)
@@ -1521,6 +1527,7 @@ vc0528_open(struct inode *inode, struct file *file)
 #endif
 
 	/* VC0528 init */
+	skip_unmap = false;
 	canopus_bedev_ioctl(VC0528_RESET_CORE,NULL);
 	canopus_bedev_ioctl(SSMC_INIT,NULL);
 	canopus_bedev_ioctl(VC0528_SET_MULTI16,NULL);
@@ -1612,6 +1619,7 @@ vc0528_mmap(struct file *file, struct vm_area_struct * vma)
 	pmd_t *pmd;     
 	pte_t *pte;
 
+	skip_unmap = true;
 	ret=videobuf_mmap_mapper(&fh->vb_vidq, vma);
 
 	/* videobuf_querybuif */
