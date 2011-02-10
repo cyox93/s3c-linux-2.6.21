@@ -234,9 +234,11 @@ const TReg gSnrSizeRegValVGA_SIV120D[] =
 
 	//bank1:AE
 	{0x00,0x01,1}, 
-	{0x11,0x1e,1},  // 4fps at lowlux            
+//	{0x11,0x1e,1},  // 4fps at lowlux            
 //	{0x11,0x14,1},  // 6fps at lowlux            
 //	{0x11,0x0c,1},  // 10fps at lowlux            
+//	{0x11,0x08,1},  // 15fps at lowlux            
+	{0x11,0x06,1},  // 20fps at lowlux            
 //	{0x11,0x04,1},  // 30fps at lowlux            
 	{0x12,0x78,1},	// D65 target 0x74
 	{0x13,0x78,1},	// CWF target 0x74
@@ -364,6 +366,8 @@ const TReg gSnrSizeRegValVGA_SIV120D[] =
 	{0x1F,0x3f,1},  // NRTHRSLP( [7:4] @ Normal | [3:0] @ Dark )	0x2f
 	{0x20,0x04,1},  // IllumiInfo STRTNOR
 	{0x21,0x0f,1},  // IllumiInfo STRTDRK
+	{0x2f,0x80,1},  // add bank3 
+
 	//Gamma                   ssignme  
 	{0x30,0x00,1}, 	//0x0 
 	{0x31,0x04,1}, 	//0x3 
@@ -492,13 +496,14 @@ const TReg gSnrSizeRegValVGA_SIV120D[] =
 	//ee/nr
 	{0xdd,0x39,1},         
 	{0xde,0xe3,1},	//NOIZCTRL         
-
+#if 0
 	//dark offset
 	{0xdf,0x10,1},
 	{0xe0,0x60,1},
 	{0xe1,0x90,1},
 	{0xe2,0x08,1},
 	{0xe3,0x0a,1},
+#endif
 	//memory speed
 	{0xe5,0x15,1},
 	{0xe6,0x20,1},
