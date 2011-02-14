@@ -226,6 +226,7 @@ struct vc0528_fh {
 static struct vc0528_dev   *bend_dev;
 static void 
 res_free(struct vc0528_dev *dev, struct vc0528_fh *fh);
+extern void lcd_power_on_off(int set);
 /*_____________________ DMA and thread functions _______________________________*/
 
 /* Bars and Colors should match positions */
@@ -1442,6 +1443,7 @@ vc0528_open(struct inode *inode, struct file *file)
 	enum v4l2_buf_type type = 0;
 	int i;
 
+	lcd_power_on_off(1);
 	mutex_lock(&smc_lock);
 
 	printk(KERN_DEBUG "vc0528: open called (minor=%d)\n",minor);
@@ -1601,6 +1603,7 @@ vc0528_release(struct inode *inode, struct file *file)
 	canopus_bedev_ioctl(VC0528_BYPASS_MODE,NULL);
 	dprintk(1,"close called (minor=%d, users=%d)\n",minor,dev->users);
 	mutex_unlock(&smc_lock);
+	lcd_power_on_off(1);
 
 	return 0;
 }

@@ -375,10 +375,6 @@ void set_brightness(int val)
 	if(val > MAX_DISPLAY_BRIGHTNESS) val=MAX_DISPLAY_BRIGHTNESS;
 
 	display_brightness = val;
-	if (!backlight_power_state) {
-		backup_brightness = val;
-		return ;
-	}
 
 	tcmp = tcnt * val / 100;
 	if (tcnt == tcmp) tcmp--;
@@ -391,11 +387,9 @@ void backlight_power(int val)
 {
 	if (val) {
 		if (atomic_read(&lcd_power_state) == 0) return;
-		backlight_power_state = 1;
 		set_brightness(backup_brightness);
 	} else {
 		set_brightness(0);
-		backlight_power_state = 0;
 	}
 }
 
@@ -1864,6 +1858,17 @@ _lcd_vc0528_init(int init)
 	_lcd_handle.is_init = true;
 
 	s3c_fb_resume_lcd(NULL);
+}
+
+void lcd_power_on_off(int set)
+{
+	if(mutex_is_locked(&smc_lock)) return;
+	
+	if (atomic_read(&lcd_power_state)!= set)
+		lcd_ili9225b_power(set);
+
+	if(set)
+		lcd_trigger(info);
 }
 
 static void
