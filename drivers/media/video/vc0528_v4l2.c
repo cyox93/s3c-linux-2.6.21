@@ -1819,6 +1819,12 @@ int video_ioctl_device(struct inode *inode, struct file *file,
 		case VC0528_CAMERA_PREVIEW:
 			vc0528_camera_preview();
 			break;
+		case VC0528_CAMERA_TEST_INIT:
+			vc0528_turning_mode_init();
+			break;
+//		case VC0528_CAMERA_TEST_CLOSE:
+//			vc0528_turning_mode_close();
+//			break;
 		}
 		break;
 	default:
