@@ -1019,6 +1019,11 @@ buffer_release(struct videobuf_queue *vq, struct videobuf_buffer *vb)
 
 	dprintk(1,"%s\n",__FUNCTION__);
 
+	if(skip_unmap){
+		vc0528_vid_close(dev);
+		res_free(dev,fh);
+	}
+
 	vc0528_stop_thread(vidq);
 
 	if(skip_unmap)
