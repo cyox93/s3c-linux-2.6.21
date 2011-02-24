@@ -400,10 +400,6 @@ void Key_gpio_init(void)
 /* 3.3V LDO  */
 void gpio_wifi_power(bool flag)
 {
-	if (q_hw_ver(SKBB))
-		s3c2410_gpio_setpin(S3C2410_GPF5, (flag ? 1 : 0));
-	// esle
-	// 	not used
 }
 
 void gpio_wifi_power_down(bool flag)
@@ -435,12 +431,6 @@ void wifi_gpio_init (void)
 	// wifi power down
 	s3c2410_gpio_setpin(S3C2410_GPF7, 1);
 	s3c2410_gpio_cfgpin(S3C2410_GPF7, S3C2410_GPF7_OUTP);
-
-	// wifi LDO enable
-	if (q_hw_ver(SKBB)) {
-		s3c2410_gpio_setpin(S3C2410_GPF5, 0);
-		s3c2410_gpio_cfgpin(S3C2410_GPF5, S3C2410_GPF5_OUTP);
-	}
 
 	s3c2410_gpio_cfgpin(S3C2410_GPL0, S3C2410_GPL0_SD0_DAT0);
 	s3c2410_gpio_cfgpin(S3C2410_GPL1, S3C2410_GPL1_SD0_DAT1);
@@ -513,7 +503,7 @@ void lcd_gpio_init(void)
 	if (!q_hw_ver(KTQOOK)) {
 		// set lcd interface
 		val = __raw_readl(S3C2410_GPCCON) & 0x0fcc0;
-		__raw_writel(val | 0xaaaa033a, S3C2410_GPCCON);
+		__raw_writel(val | 0xaaaa022a, S3C2410_GPCCON);
 
 		// set lcd interface
 		val = __raw_readl(S3C2410_GPDCON) & ~(0x003fffff);
@@ -636,7 +626,8 @@ void canopus_gpio_init(void)
 			|| q_hw_ver(7800_MP2)) {
 		s3c2410_gpio_cfgpin(S3C2443_GPH13, S3C2443_GPH13_CLKOUT0);
 	} else if (q_hw_ver(KTQOOK_TP2)
-			|| q_hw_ver(KTQOOK_MP)) {
+			|| q_hw_ver(KTQOOK_MP)
+			|| q_hw_ver(SKATM)) {
 		s3c2410_gpio_cfgpin(S3C2443_GPH14, S3C2443_GPH14_CLKOUT1);
 	}
 }
@@ -735,7 +726,8 @@ void __init smdk_machine_init(void)
 			|| q_hw_ver(7800_MP2)) {
 		q_usb_clock_init(0);
 	} else if (q_hw_ver(KTQOOK_TP2)
-			|| q_hw_ver(KTQOOK_MP)) {
+			|| q_hw_ver(KTQOOK_MP)
+			|| q_hw_ver(SKATM)) {
 		q_usb_clock_init(1);
 	}
 #endif	// CONFIG_MACH_CANOPUS

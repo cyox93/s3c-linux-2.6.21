@@ -98,7 +98,6 @@ static struct s3c2410_uartcfg smdk2416_uartcfgs[] __initdata = {
 		.ulcon	     = 0x03,
 		.ufcon	     = 0x51,
 	},
-#ifndef CONFIG_MACH_CANOPUS
 	[1] = {
 		.hwport	     = 1,
 		.flags	     = 0,
@@ -110,6 +109,7 @@ static struct s3c2410_uartcfg smdk2416_uartcfgs[] __initdata = {
 		.clocks	     = smdk2416_serial_clocks,
 		.clocks_size = ARRAY_SIZE(smdk2416_serial_clocks),
 	},
+#ifndef CONFIG_MACH_CANOPUS
 	/* IR port */
 	[2] = {
 		.hwport	     = 2,
@@ -575,27 +575,15 @@ static int config_s3c_wm8350_gpio(struct wm8350 *wm8350)
 			   WM8350_GPIO_DEBOUNCE_OFF);
 
 	// cradle led
-	if (!q_hw_ver(SKBB)) {
-		wm8350_gpio_config(wm8350, 10, WM8350_GPIO_DIR_IN,
-				   WM8350_GPIO10_GPIO_IN, WM8350_GPIO_ACTIVE_LOW,
-				   WM8350_GPIO_PULL_NONE, WM8350_GPIO_INVERT_OFF,
-				   WM8350_GPIO_DEBOUNCE_OFF);
+	wm8350_gpio_config(wm8350, 10, WM8350_GPIO_DIR_IN,
+			   WM8350_GPIO10_GPIO_IN, WM8350_GPIO_ACTIVE_LOW,
+			   WM8350_GPIO_PULL_NONE, WM8350_GPIO_INVERT_OFF,
+			   WM8350_GPIO_DEBOUNCE_OFF);
 
-		wm8350_gpio_config(wm8350, 11, WM8350_GPIO_DIR_IN,
-				   WM8350_GPIO11_GPIO_IN, WM8350_GPIO_ACTIVE_LOW,
-				   WM8350_GPIO_PULL_NONE, WM8350_GPIO_INVERT_OFF,
-				   WM8350_GPIO_DEBOUNCE_OFF);
-	} else {
-		wm8350_gpio_config(wm8350, 10, WM8350_GPIO_DIR_OUT,
-				   WM8350_GPIO10_GPIO_OUT, WM8350_GPIO_ACTIVE_LOW,
-				   WM8350_GPIO_PULL_NONE, WM8350_GPIO_INVERT_OFF,
-				   WM8350_GPIO_DEBOUNCE_OFF);
-
-		wm8350_gpio_config(wm8350, 11, WM8350_GPIO_DIR_OUT,
-				   WM8350_GPIO11_GPIO_OUT, WM8350_GPIO_ACTIVE_LOW,
-				   WM8350_GPIO_PULL_NONE, WM8350_GPIO_INVERT_OFF,
-				   WM8350_GPIO_DEBOUNCE_OFF);
-	}
+	wm8350_gpio_config(wm8350, 11, WM8350_GPIO_DIR_IN,
+			   WM8350_GPIO11_GPIO_IN, WM8350_GPIO_ACTIVE_LOW,
+			   WM8350_GPIO_PULL_NONE, WM8350_GPIO_INVERT_OFF,
+			   WM8350_GPIO_DEBOUNCE_OFF);
 
 	// line sw
 	wm8350_gpio_config(wm8350, 12, WM8350_GPIO_DIR_OUT,
@@ -685,7 +673,8 @@ int wm8350_dev_init(struct wm8350 *wm8350)
 			if (q_hw_ver(SWP2000)
 					|| q_hw_ver(7800_MP2)
 					|| q_hw_ver(KTQOOK_TP2)
-					|| q_hw_ver(KTQOOK_MP)) {
+					|| q_hw_ver(KTQOOK_MP)
+					|| q_hw_ver(SKATM)) {
 				reg_data = (struct regulator_init_data *)wm8350_regulator_devices[i].dev.platform_data;
 
 				reg_data->constraints.min_uV = 1200000;
@@ -698,7 +687,8 @@ int wm8350_dev_init(struct wm8350 *wm8350)
 			if (q_hw_ver(SWP2000)
 					|| q_hw_ver(7800_MP2)
 					|| q_hw_ver(KTQOOK_TP2)
-					|| q_hw_ver(KTQOOK_MP)) {
+					|| q_hw_ver(KTQOOK_MP)
+					|| q_hw_ver(SKATM)) {
 				reg_data = (struct regulator_init_data *)wm8350_regulator_devices[i].dev.platform_data;
 				reg_data->constraints.min_uV = 3300000;
 				reg_data->constraints.max_uV = 3300000;

@@ -2016,7 +2016,8 @@ static int s3c_udc_probe(struct platform_device *pdev)
 			|| q_hw_ver(7800_MP2)) {
 		clkout0 = clk_get(NULL, "clkout0");
 	} else if (q_hw_ver(KTQOOK_TP2)
-			|| q_hw_ver(KTQOOK_MP)) {
+			|| q_hw_ver(KTQOOK_MP)
+			|| q_hw_ver(SKATM)) {
 		clkout0 = clk_get(NULL, "clkout1");
 	}
 

@@ -142,7 +142,8 @@ int __init canopus_jack_init(void)
 {
 	int rc;
 
-	if (q_hw_ver(KTQOOK)) return -ENXIO;
+	if (q_hw_ver(KTQOOK)
+			|| q_hw_ver(SKATM)) return -ENXIO;
 	
 	_pdev = platform_device_alloc(jack_name, 0);
 	if (!_pdev)
@@ -163,7 +164,8 @@ undo_malloc:
 
 void __exit canopus_jack_exit(void)
 {
-	if (q_hw_ver(KTQOOK)) return;
+	if (q_hw_ver(KTQOOK)
+			|| q_hw_ver(SKATM)) return;
 	
 	platform_driver_unregister(&canopus_jack_driver);
 }

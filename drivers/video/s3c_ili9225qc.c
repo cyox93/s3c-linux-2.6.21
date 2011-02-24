@@ -39,7 +39,7 @@
 #include <asm/plat-s3c24xx/s3c2416.h>
 #include "unidata-logo.h"
 #include "mylg070-logo.h"
-#include "skbb-logo.h"
+#include "skatm-logo.h"
 #include "ktqook-logo.h"
 
 #include "s3cfb.h"
@@ -2283,8 +2283,8 @@ void lcd_module_init (void)
 
 	if (q_hw_ver(7800))
 		logo = (u16 *)&_mylg070_logo[12];
-	else if (q_hw_ver(SKBB))
-		logo = (u16 *)&_skbb_logo[12];
+	else if (q_hw_ver(SKATM))
+		logo = (u16 *)&_skatm_logo[12];
 	else if (q_hw_ver(KTQOOK))
 		logo = (u16 *)&_kt_logo[12];
 

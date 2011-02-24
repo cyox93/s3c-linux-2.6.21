@@ -169,12 +169,8 @@ static int wm8350_bat_green_led_show(struct device *dev, struct device_attribute
 	struct wm8350 *wm8350 = dev_get_drvdata(dev);
 	int ret;
 
-	if (q_hw_ver(SKBB_PP)) {
-		ret = snprintf(buf, PAGE_SIZE, "%d\n", wm8350_gpio_get_status(wm8350, 10) ? 0 : 1);
-	} else {
-		ret = snprintf(buf, PAGE_SIZE, "%d\n",
-				(wm8350_gpio_get_dir(wm8350, 10) ==  WM8350_GPIO_DIR_OUT) ? 1 : 0);
-	}
+	ret = snprintf(buf, PAGE_SIZE, "%d\n",
+			(wm8350_gpio_get_dir(wm8350, 10) ==  WM8350_GPIO_DIR_OUT) ? 1 : 0);
 		
 	return ret;
 }
@@ -188,12 +184,8 @@ static int wm8350_bat_green_led_store(struct device *dev, struct device_attribut
 	if (value > 1)
 		return -ERANGE;
 
-	if (q_hw_ver(SKBB_PP)) {
-		wm8350_gpio_set_status(wm8350, 10, value ? 0 : 1);
-	} else {
-		wm8350_gpio_set_status(wm8350, 10, !value);
-		wm8350_gpio_set_dir(wm8350, 10, value ? WM8350_GPIO_DIR_OUT : WM8350_GPIO_DIR_IN);
-	}
+	wm8350_gpio_set_status(wm8350, 10, !value);
+	wm8350_gpio_set_dir(wm8350, 10, value ? WM8350_GPIO_DIR_OUT : WM8350_GPIO_DIR_IN);
 
 	return len;
 }
@@ -204,12 +196,8 @@ static int wm8350_bat_red_led_show(struct device *dev, struct device_attribute *
 	struct wm8350 *wm8350 = dev_get_drvdata(dev);
 	int ret;
 
-	if (q_hw_ver(SKBB_PP)) {
-		ret = snprintf(buf, PAGE_SIZE, "%d\n", wm8350_gpio_get_status(wm8350, 10) ? 1 : 0);
-	} else {
-		ret = snprintf(buf, PAGE_SIZE, "%d\n",
-				(wm8350_gpio_get_dir(wm8350, 11) ==  WM8350_GPIO_DIR_OUT) ? 1 : 0);
-	}
+	ret = snprintf(buf, PAGE_SIZE, "%d\n",
+			(wm8350_gpio_get_dir(wm8350, 11) ==  WM8350_GPIO_DIR_OUT) ? 1 : 0);
 		
 	return ret;
 }
@@ -223,13 +211,8 @@ static int wm8350_bat_red_led_store(struct device *dev, struct device_attribute 
 	if (value > 1)
 		return -ERANGE;
 
-
-	if (q_hw_ver(SKBB_PP)) {
-		wm8350_gpio_set_status(wm8350, 10, value ? 1 : 0);
-	} else {
-		wm8350_gpio_set_status(wm8350, 11, !value);
-		wm8350_gpio_set_dir(wm8350, 11, value ? WM8350_GPIO_DIR_OUT : WM8350_GPIO_DIR_IN);
-	}
+	wm8350_gpio_set_status(wm8350, 11, !value);
+	wm8350_gpio_set_dir(wm8350, 11, value ? WM8350_GPIO_DIR_OUT : WM8350_GPIO_DIR_IN);
 
 	return len;
 }
@@ -512,15 +495,10 @@ static void wm8350_bat_led_status(struct wm8350 *wm8350, int state)
 		return ;
 	}
 
-	if (q_hw_ver(SKBB_PP)) {
-		wm8350_gpio_set_status(wm8350, 10, red);
-	} else {
-		wm8350_gpio_set_status(wm8350, 10, !green);
-		wm8350_gpio_set_dir(wm8350, 10, green ? WM8350_GPIO_DIR_OUT : WM8350_GPIO_DIR_IN);
-		wm8350_gpio_set_status(wm8350, 11, !red);
-		wm8350_gpio_set_dir(wm8350, 11, red ? WM8350_GPIO_DIR_OUT : WM8350_GPIO_DIR_IN);
-	}
-
+	wm8350_gpio_set_status(wm8350, 10, !green);
+	wm8350_gpio_set_dir(wm8350, 10, green ? WM8350_GPIO_DIR_OUT : WM8350_GPIO_DIR_IN);
+	wm8350_gpio_set_status(wm8350, 11, !red);
+	wm8350_gpio_set_dir(wm8350, 11, red ? WM8350_GPIO_DIR_OUT : WM8350_GPIO_DIR_IN);
 }
 static void wm8350_bat_fault_led_control(int val)
 {
@@ -1071,26 +1049,16 @@ static int wm8350_bat_led_control(struct wm8350 *wm8350, unsigned long arg)
 				sizeof(led_data)))
 		return -EFAULT;
 
-	if (q_hw_ver(SKBB_PP)) {
-		int invert = 0;
-		if (led_data.command == WM8350_BAT_GREEN_LED) invert = 1;
-		if (led_data.control)
-			wm8350_gpio_set_status(wm8350, 10, 1 ^ invert);
-		else
-			wm8350_gpio_set_status(wm8350, 10, 0 ^ invert);
+	int port = 10;
+
+	if (led_data.command == WM8350_BAT_RED_LED) port = 11;
+	if (led_data.control) {
+		wm8350_gpio_set_status(wm8350, port, 0);
+		wm8350_gpio_set_dir(wm8350, port, WM8350_GPIO_DIR_OUT);
 	} else {
-		int port = 10;
-
-		if (led_data.command == WM8350_BAT_RED_LED) port = 11;
-		if (led_data.control) {
-			wm8350_gpio_set_status(wm8350, port, 0);
-			wm8350_gpio_set_dir(wm8350, port, WM8350_GPIO_DIR_OUT);
-		} else {
-			wm8350_gpio_set_status(wm8350, port, 1);
-			wm8350_gpio_set_dir(wm8350, port, WM8350_GPIO_DIR_IN);
-		}
+		wm8350_gpio_set_status(wm8350, port, 1);
+		wm8350_gpio_set_dir(wm8350, port, WM8350_GPIO_DIR_IN);
 	}
-
 
 	return 0;
 }

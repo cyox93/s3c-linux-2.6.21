@@ -727,12 +727,6 @@ static struct clk init_clocks_disable[] = {
 		.ctrlbit	= S3C2443_PCLKCON_SPI_HS_0,
 	}, {
 		.name		= "uart",
-		.id		= 1,
-		.parent		= &clk_p,
-		.enable		= s3c2443_clkcon_enable_p,
-		.ctrlbit	= S3C2443_PCLKCON_UART1,
-	}, {
-		.name		= "uart",
 		.id		= 2,
 		.parent		= &clk_p,
 		.enable		= s3c2443_clkcon_enable_p,
@@ -748,7 +742,49 @@ static struct clk init_clocks_disable[] = {
 };
 
 #ifdef CONFIG_MACH_CANOPUS
+static struct clk init_clocks_disable_kt[] = {
+	{
+		.name		= "uart",
+		.id		= 1,
+		.parent		= &clk_p,
+		.enable		= s3c2443_clkcon_enable_p,
+		.ctrlbit	= S3C2443_PCLKCON_UART1,
+	}
+};
+
 static struct clk init_clocks_disable_wpu7800[] = {
+	{
+		.name		= "uart",
+		.id		= 1,
+		.parent		= &clk_p,
+		.enable		= s3c2443_clkcon_enable_p,
+		.ctrlbit	= S3C2443_PCLKCON_UART1,
+	},{
+		.name    	= "ssmc",
+		.id	   	= -1,
+		.parent  	= &clk_h,
+		.enable  	= s3c2443_clkcon_enable_h,
+		.ctrlbit 	= S3C2443_HCLKCON_SSMC,
+	},{
+		.name    	= "ssmcclk",
+		.id	   	= -1,
+		.parent		= &clk_esysclk,
+		.enable  	= s3c2443_clkcon_enable_s,
+		.ctrlbit 	= S3C2443_SCLKCON_SSMCCLK,
+	}
+};
+
+static struct clk init_clocks_skatm[] = {
+	{
+		.name		= "uart",
+		.id		= 1,
+		.parent		= &clk_p,
+		.enable		= s3c2443_clkcon_enable_p,
+		.ctrlbit	= S3C2443_PCLKCON_UART1,
+	}
+};
+
+static struct clk init_clocks_disable_skatm[] = {
 	{
 		.name    	= "ssmc",
 		.id	   	= -1,
@@ -1140,9 +1176,43 @@ q_s3c2416_init_clocks(void)
 	int ret;
 	int ptr;
 
-	if (!q_hw_ver(KTQOOK)) {
+	if (q_hw_ver(7800) || q_hw_ver(SWP2000)) {
 		clkp = init_clocks_disable_wpu7800;
 		for (ptr = 0; ptr < ARRAY_SIZE(init_clocks_disable_wpu7800); ptr++, clkp++) {
+
+			ret = s3c24xx_register_clock(clkp);
+			if (ret < 0) {
+				printk(KERN_ERR "Failed to register clock %s (%d)\n",
+				       clkp->name, ret);
+			}
+
+			(clkp->enable)(clkp, 0);
+		}
+	} else if (q_hw_ver(KTQOOK)){
+		clkp = init_clocks_disable_kt;
+		for (ptr = 0; ptr < ARRAY_SIZE(init_clocks_disable_kt); ptr++, clkp++) {
+
+			ret = s3c24xx_register_clock(clkp);
+			if (ret < 0) {
+				printk(KERN_ERR "Failed to register clock %s (%d)\n",
+				       clkp->name, ret);
+			}
+
+			(clkp->enable)(clkp, 0);
+		}
+	} else if (q_hw_ver(SKATM)) {
+		clkp = init_clocks_skatm;
+		for (ptr = 0; ptr < ARRAY_SIZE(init_clocks_skatm); ptr++, clkp++) {
+
+			ret = s3c24xx_register_clock(clkp);
+			if (ret < 0) {
+				printk(KERN_ERR "Failed to register clock %s (%d)\n",
+				       clkp->name, ret);
+			}
+		}
+
+		clkp = init_clocks_disable_skatm;
+		for (ptr = 0; ptr < ARRAY_SIZE(init_clocks_disable_skatm); ptr++, clkp++) {
 
 			ret = s3c24xx_register_clock(clkp);
 			if (ret < 0) {

@@ -43,9 +43,7 @@ extern  int s3c2443_baseclk_add(void);
 
 #define q_hw_ver_is_SWP2000()	( (q_hw_version() == 0x15) ? 1 : 0 )	// TP 1.0
 
-#define q_hw_ver_is_SKBB()	( ((q_hw_version() & 0x1c) == 0x18) ? 1 : 0 )
-#define q_hw_ver_is_SKBB_ES()	( (q_hw_version() == 0x18) ? 1 : 0 )
-#define q_hw_ver_is_SKBB_PP()	( (q_hw_version() == 0x19) ? 1 : 0 )
+#define q_hw_ver_is_SKATM()	( ((q_hw_version() & 0x1c) == 0x18) ? 1 : 0 )
 
 #define q_hw_ver_is_KTQOOK()	( ((q_hw_version() & 0x1c) == 0x1c) ? 1 : 0 )
 #define q_hw_ver_is_KTQOOK_TP()	( (q_hw_version() == 0x1d) ? 1 : 0 )	// TP
