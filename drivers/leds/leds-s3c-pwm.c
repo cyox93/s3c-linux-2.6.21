@@ -69,7 +69,7 @@ _s3c_pwm_led_set(struct led_classdev *led_cdev, enum led_brightness value)
 	unsigned int manual, start, reload, invert;
 
 	unsigned long tcon;
-	unsigned long tcnt=0x5000;
+	unsigned long tcnt=0x80;
 	unsigned long tcmp=1;
 	int val = (int)value;
 
