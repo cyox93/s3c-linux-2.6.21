@@ -106,6 +106,7 @@ obj-$(CONFIG_HANGCHECK_TIMER)	+= hangcheck-timer.o
 obj-$(CONFIG_TCG_TPM)		+= tpm/
 obj-$(CONFIG_PIR) 		+= canopus_pir.o
 obj-$(CONFIG_CANOPUS_JACK) 	+= canopus_jack.o
+obj-$(CONFIG_CANOPUS_SMARTCARD)	+= canopus_smartcard.o
 
 obj-$(CONFIG_CPU_S3C6400)	+= s3c-dvfs/
 obj-$(CONFIG_CPU_S3C6410)	+= s3c-dvfs/

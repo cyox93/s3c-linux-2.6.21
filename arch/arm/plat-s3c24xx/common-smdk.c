@@ -642,10 +642,10 @@ void q_boot_flag_set(int flag)
 	__raw_writel(flag, S3C2443_INFORM3);
 }
 
-void q_usb_clock_init(int clkout)
+void q_clock_init(int clkout, int out_freq)
 {
 	struct clk *dclk, *uclk, *clkout0;
-	uint32_t freq = 0, div, cmp, val, usb_freq = 48000000;
+	uint32_t freq = 0, div, cmp, val;
 
 	uclk = clk_get(NULL, "upll");
 	if (IS_ERR(uclk)) {
@@ -677,12 +677,12 @@ void q_usb_clock_init(int clkout)
 				// clk_enable(clkout0);
 
 				freq = clk_get_rate(uclk);
-				div = freq / usb_freq;
+				div = freq / out_freq;
 
 				if (div > 0) div--;
 				cmp = div/2;
 
-				usb_freq = freq / (div + 1);
+				out_freq = freq / (div + 1);
 
 				if (clkout == 0) {
 					val = __raw_readl(S3C2410_DCLKCON) & ~((0xf << 8) | (0xf << 4));
@@ -694,7 +694,7 @@ void q_usb_clock_init(int clkout)
 
 				clk_put(uclk);
 
-				// printk("upll[%d], div[%d], usb[%d]\n", freq, div, usb_freq);
+				// printk("upll[%d], div[%d], usb[%d]\n", freq, div, out_freq);
 			}
 		}
 	}
@@ -724,11 +724,15 @@ void __init smdk_machine_init(void)
 
 	if (q_hw_ver(SWP2000)
 			|| q_hw_ver(7800_MP2)) {
-		q_usb_clock_init(0);
+		q_clock_init(0, 48000000); /* for USB */
 	} else if (q_hw_ver(KTQOOK_TP2)
 			|| q_hw_ver(KTQOOK_MP)
 			|| q_hw_ver(SKATM)) {
-		q_usb_clock_init(1);
+		q_clock_init(1, 48000000); /* for USB */
+	}
+
+	if (q_hw_ver(SKATM)) {
+		q_clock_init(0, 12000000); /* for SmartCard reader */
 	}
 #endif	// CONFIG_MACH_CANOPUS
 	

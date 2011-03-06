@@ -1101,6 +1101,13 @@ config CANOPUS_JACK
 	default y
 	help
 	  Headphone jack detect simple device driver
+
+config CANOPUS_SMARTCARD
+	tristate "Smartcard detect device driver"
+	depends on MACH_CANOPUS
+	default y
+	help
+	  Smartcard detect simple device driver
 	  
 endmenu
 

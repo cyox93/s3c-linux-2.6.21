@@ -782,22 +782,30 @@ static void s3c2410_pm_configure_extint(void)
 	}
 #else
 	s3c2410_gpio_cfgpin(S3C2410_GPF0, S3C2410_GPF0_EINT0);
+#ifndef CONFIG_MACH_CANOPUS
 	s3c2410_gpio_cfgpin(S3C2410_GPF3, S3C2410_GPF3_EINT3);
+#endif
 
 	s3c2410_gpio_pullup(S3C2410_GPF0, 0);
+#ifndef CONFIG_MACH_CANOPUS
 	s3c2410_gpio_pullup(S3C2410_GPF3, 0);
+#endif
 
 	/* EINT0 filter enable */
 	writel((readl(S3C2410_EXTINT0) & ~(1<<3)), S3C2410_EXTINT0); 
 
+#ifndef CONFIG_MACH_CANOPUS
 	/* EINT3 filter enable */
-	writel((readl(S3C2410_EXTINT0) & ~(1<<15)), S3C2410_EXTINT0); 
+	writel((readl(S3C2410_EXTINT0) & ~(1<<15)), S3C2410_EXTINT0);
+#endif
 
 	/* EINT0 falling edge triggered */
 	writel(((readl(S3C2410_EXTINT0) & ~(7<<0))|(2<<0)), S3C2410_EXTINT0); 
 
+#ifndef CONFIG_MACH_CANOPUS
 	/* EINT3 falling edge triggered */
-	writel(((readl(S3C2410_EXTINT0) & ~(7<<12))|(2<<12)), S3C2410_EXTINT0); 
+	writel(((readl(S3C2410_EXTINT0) & ~(7<<12))|(2<<12)), S3C2410_EXTINT0);
+#endif
 #endif
 }
 #else
