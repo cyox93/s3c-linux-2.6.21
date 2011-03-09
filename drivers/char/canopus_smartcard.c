@@ -59,9 +59,10 @@ static ssize_t sc_read(struct file *f, char __user *d, size_t s, loff_t *o)
 	update = 0;
 	spin_unlock(&sc_lock);
 	
-	ret = put_user(data, (unsigned int __user *)d);
+	char result = (data) ? 'O' : 'X';
+	ret = put_user(result, d);
 	if (ret == 0)
-		ret = sizeof(unsigned int);
+		ret = sizeof(char);
 	return ret;
 }
 
@@ -95,15 +96,15 @@ static struct miscdevice miscdev =
 
 static void sc_irq_work(struct work_struct *work)
 {
+	//printk("SmartCard Event = %d\n", s3c2410_gpio_getpin(S3C2410_GPF5) ? 1 : 0);
 	wake_up_interruptible(&sc_wait);
 }
 
 static irqreturn_t sc_irq_handler(int irq, void *data)
 {
 	int i;
-	printk("SC Interrupt\n");
 	cancel_delayed_work(&work);
-	i = schedule_delayed_work(&work, msecs_to_jiffies(50));
+	i = schedule_delayed_work(&work, msecs_to_jiffies(100));
 	return IRQ_HANDLED;
 }
 
@@ -116,7 +117,7 @@ static int __init canopus_sc_probe(struct platform_device *pdev)
 	s3c2410_gpio_pullup(S3C2410_GPF5, 0);
 	s3c2410_gpio_cfgpin(S3C2410_GPF5, S3C2410_GPF5_EINT5);
 	
-	/* reset pin to high */
+	/* reset pin to low */
 	s3c2410_gpio_setpin(S3C2410_GPG7, 0);
 	s3c2410_gpio_cfgpin(S3C2410_GPG7, S3C2410_GPG7_OUTP);
 
@@ -135,12 +136,11 @@ static int __init canopus_sc_probe(struct platform_device *pdev)
 	 *	  Need to change circuit & fix driver also.
 	 */
 	s3c2410_gpio_pullup(S3C2410_GPF3, 0);
-	s3c2410_gpio_cfgpin(S3C2410_GPF3, S3C2410_GPF3_OUTP);
 	s3c2410_gpio_setpin(S3C2410_GPF3, 0);
+	s3c2410_gpio_cfgpin(S3C2410_GPF3, S3C2410_GPF3_OUTP);
 	mdelay(100);
 	s3c2410_gpio_setpin(S3C2410_GPF3, 1);
 	mdelay(100);
-	s3c2410_gpio_setpin(S3C2410_GPF3, 0);
 	
 	ret = request_irq(IRQ_EINT5, sc_irq_handler,
 			  SA_INTERRUPT|SA_TRIGGER_RISING|SA_TRIGGER_FALLING,
