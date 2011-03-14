@@ -474,7 +474,8 @@ s3c24xx_serial_rx_chars(int irq, void *dev_id)
 			goto ignore_char;
 
 #ifdef CONFIG_KGDB
-		check_break_key(ch);
+		if (irq == IRQ_S3CUART_RX0) /* serial 0 only */
+			check_break_key(ch);
 #endif
 		uart_insert_char(port, uerstat, S3C2410_UERSTAT_OVERRUN, ch, flag);
 
