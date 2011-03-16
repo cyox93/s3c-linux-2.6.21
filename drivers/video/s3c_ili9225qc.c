@@ -1816,6 +1816,8 @@ _lcd_vc0528_trigger(struct fb_info *info)
 static void
 _camera_backend_init(void)
 {
+	if (!q_hw_ver(KTQOOK)) return ;
+
 	q_camera_backend_reset(1);
 	msleep(50);
 	q_camera_backend_reset(0);
