@@ -1814,6 +1814,27 @@ _lcd_vc0528_trigger(struct fb_info *info)
 }
 
 static void
+_camera_backend_init(void)
+{
+	q_camera_backend_reset(1);
+	msleep(50);
+	q_camera_backend_reset(0);
+	msleep(10);
+
+	// set bus witdh to 16bit
+	__raw_writeb(0xb4, _index_addr);
+	__raw_writeb(0x18, _be_data_addr);
+	__raw_writeb(0xb2, _index_addr);
+	__raw_writeb(0x8c, _be_data_addr);
+	__raw_writeb(0xb0, _index_addr);
+	__raw_writeb(0x1, _be_data_addr);
+
+	// set through mode
+	__raw_writew(0x1890, _index_addr);
+	__raw_writew(0x1, _be_data_addr);
+}
+
+static void
 _lcd_vc0528_init(int init)
 {
 	int ret = -1;
@@ -1827,23 +1848,7 @@ _lcd_vc0528_init(int init)
 	_lcd_data_addr = _index_addr + 0x04;
 
 	if (init) {
-		q_camera_backend_reset(1);
-		msleep(50);
-		q_camera_backend_reset(0);
-		msleep(10);
-
-		// set bus witdh to 16bit
-		__raw_writeb(0xb4, _index_addr);
-		__raw_writeb(0x18, _be_data_addr);
-		__raw_writeb(0xb2, _index_addr);
-		__raw_writeb(0x8c, _be_data_addr);
-		__raw_writeb(0xb0, _index_addr);
-		__raw_writeb(0x1, _be_data_addr);
-
-		// set through mode
-		__raw_writew(0x1890, _index_addr);
-		__raw_writew(0x1, _be_data_addr);
-
+		_camera_backend_init();
 		lcd_reset();
 	}
 
@@ -1911,8 +1916,13 @@ lcd_ili9225b_power(int set)
 			lcd_set_command_mode(1);
 
 			if (id == _LCD_PANEL_HSD24) {
+				// NOTE : for ESD Test
+				_camera_backend_init();
+				msleep(10);
+
 				//*************Power On sequence ******************//
 				_lcd_ili9225b_reg_write(0x0010, 0x0000); // SAP, BT[3:0], AP, DSTB, SLP, STB
+
 				_lcd_ili9225b_reg_write(0x0011, 0x0007); // DC1[2:0], DC0[2:0], VC[2:0]
 				_lcd_ili9225b_reg_write(0x0012, 0x0000); // VREG1OUT voltage
 				_lcd_ili9225b_reg_write(0x0013, 0x0000); // VDV[4:0] for VCOM amplitude
