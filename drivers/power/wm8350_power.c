@@ -91,13 +91,13 @@ typedef enum _t_wm8350_chg_status {
 } wm8350_chg_status;
 
 typedef enum {
-	WM8350_BAT_EVENT_DETECT = 0,
-	WM8350_BAT_EVENT_NOTDETECT,
-	WM8350_BAT_EVENT_FULL_CHG,
-	WM8350_BAT_EVENT_FAULT,
-	WM8350_BAT_EVENT_PIR,		/*!< \note temporary code for K5 canopus pir sensor */
+	WM8350_EVENT_CHARGING = 0,
+	WM8350_EVENT_BATTERY,
+	WM8350_EVENT_FULL_CHARGED,
+	WM8350_EVENT_FAULT,
+	WM8350_EVENT_PIR,		/*!< \note temporary code for K5 canopus pir sensor */
 	WM8350_BAT_EVENT_NUM,
-} type_bat_event;
+} type_chg_event;
 
 typedef enum {
 	WM8350_BAT_GREEN_LED = 0,
@@ -137,11 +137,6 @@ static struct circ_buf wm8350_event;
 static struct list_head wm8350_bat_events[WM8350_BAT_EVENT_NUM];
 static struct wm8350 *wm8350_bat = NULL;
 
-static int bat_detect = WM8350_BAT_EVENT_DETECT;
-static int bat_detect_retry = 0;
-static bool _is_fault = false;
-static bool _is_temp_fault = false;
-
 #ifdef CONFIG_HAS_WAKELOCK
 static struct wake_lock _bat_wake_lock;
 static struct wake_lock _fault_led_wake_lock;
@@ -151,16 +146,12 @@ static DECLARE_MUTEX(event_mutex);
 
 static int bat_fault_led_status = 0;
 
-static void _wm8350_bat_detect_work(struct work_struct *work);
-static void _wm8350_bat_full_work(struct work_struct *work);
-static void _wm8350_bat_fault_work(struct work_struct *work);
-static void _wm8350_bat_timeout_work(struct work_struct *work);
+static void _wm8350_ac_detect_work(struct work_struct *work);
+static void _wm8350_full_check_work(struct work_struct *work);
 static void _wm8350_bat_fault_led_work(struct work_struct *work);
 
-DECLARE_DELAYED_WORK(_bat_timeout, _wm8350_bat_timeout_work);
-DECLARE_DELAYED_WORK(_bat_full, _wm8350_bat_full_work);
-DECLARE_DELAYED_WORK(_bat_fault, _wm8350_bat_fault_work);
-DECLARE_DELAYED_WORK(_bat_detect, _wm8350_bat_detect_work);
+DECLARE_DELAYED_WORK(_ac_detect, _wm8350_ac_detect_work);
+DECLARE_DELAYED_WORK(_full_check, _wm8350_full_check_work);
 DECLARE_DELAYED_WORK(_bat_fault_led, _wm8350_bat_fault_led_work);
 
 static int wm8350_bat_green_led_show(struct device *dev, struct device_attribute *attr, 
@@ -217,15 +208,6 @@ static int wm8350_bat_red_led_store(struct device *dev, struct device_attribute 
 	return len;
 }
 
-static int
-wm8350_bat_fault_show(struct device *dev, struct device_attribute *attr, 
-					char *buf)
-{
-	int ret;
-	ret = snprintf(buf, PAGE_SIZE, "%d\n", _is_temp_fault);
-	return ret;
-}
-
 static DEVICE_ATTR(green_led, 0644,
 		wm8350_bat_green_led_show,
 		wm8350_bat_green_led_store);
@@ -234,10 +216,7 @@ static DEVICE_ATTR(red_led, 0644,
 		wm8350_bat_red_led_show,
 		wm8350_bat_red_led_store);
 
-static DEVICE_ATTR(fault, 0444,
-		wm8350_bat_fault_show,
-		NULL);
-
+/* battery voltage sensing */
 static int wm8350_aux2_show(struct device *dev, struct device_attribute *attr,
 					char *buf)
 {
@@ -510,6 +489,75 @@ static void wm8350_bat_fault_led_control(int val)
 		wm8350_bat_led_status(wm8350, WM8350_BAT_LED_ALL_OFF);
 }
 
+static type_chg_event _main_state = WM8350_EVENT_BATTERY;
+
+static void _change_state(int new_state)
+{
+	const char *mode = "";
+	struct list_head *p;
+	struct wm8350 *wm8350 = wm8350_bat;
+	wm8350_bat_event_callback_list_t *temp = NULL;
+
+	/* state control */
+	if (new_state == _main_state)
+		return;
+
+	_main_state = new_state;
+	
+	if (!list_empty(&wm8350_bat_events[_main_state])) {
+		list_for_each(p, &wm8350_bat_events[_main_state]) {
+			temp = list_entry(p, wm8350_bat_event_callback_list_t, list);
+			temp->callback.func(temp->callback.param);
+		}
+	}
+
+	cancel_delayed_work(&_bat_fault_led);
+	
+	switch (_main_state) {
+	case WM8350_EVENT_CHARGING:
+		mode = "WM8350_EVENT_CHARGING";
+		wm8350_bat_led_status(wm8350, WM8350_BAT_RED_LED);
+		break;
+	case WM8350_EVENT_BATTERY:
+		mode = "WM8350_EVENT_BATTERY";
+		wm8350_bat_led_status(wm8350, WM8350_BAT_LED_ALL_OFF);
+		break;
+	case WM8350_EVENT_FULL_CHARGED:
+		mode = "WM8350_EVENT_FULL_CHARGED";
+		wm8350_bat_led_status(wm8350, WM8350_BAT_GREEN_LED);
+		break;
+	case WM8350_EVENT_FAULT:
+		mode = "WM8350_EVENT_FAULT";
+		bat_fault_led_status = 0;
+		_wm8350_bat_fault_led_work(NULL);
+		break;
+	}
+	printk(KERN_DEBUG "wm8350-power: mode = %s\n", mode);
+}
+
+static void _fault_process(int irq)
+{
+	int vol;
+	bool over_39v = false;
+	struct wm8350 *wm8350 = wm8350_bat;
+	type_chg_event state;
+	
+	if (_main_state == WM8350_EVENT_BATTERY ||
+	    _main_state == WM8350_EVENT_FULL_CHARGED)
+		return;
+
+	if (q_hw_ver(7800_ES2)) {
+		if ((vol = wm8350_read_battery_uvolts(wm8350)) > 3900000)
+			over_39v = true;
+	} else {
+		if ((vol = wm8350_read_aux2_adc(wm8350)) > 0x77d)
+			over_39v = true;
+	}
+	
+	state = (over_39v) ? WM8350_EVENT_FULL_CHARGED : WM8350_EVENT_FAULT;
+	_change_state(state);
+}
+
 static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 {
 	struct wm8350_power *power = &wm8350->power;
@@ -523,78 +571,33 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 	switch (irq) {
 	case WM8350_IRQ_CHG_BAT_HOT:
 		printk(KERN_DEBUG "wm8350-power: battery too hot\n");
-
-		cancel_delayed_work(&_bat_full);
-		cancel_delayed_work(&_bat_timeout);
-		cancel_delayed_work(&_bat_fault);
-		cancel_delayed_work(&_bat_fault_led);
-
-		_is_temp_fault = true;
-		schedule_delayed_work(&_bat_fault, msecs_to_jiffies(2000));
+		_fault_process(irq);
 		break;
 	case WM8350_IRQ_CHG_BAT_COLD:
 		printk(KERN_DEBUG "wm8350-power: battery too cold\n");
-
-		cancel_delayed_work(&_bat_full);
-		cancel_delayed_work(&_bat_timeout);
-		cancel_delayed_work(&_bat_fault);
-		cancel_delayed_work(&_bat_fault_led);
-
-		_is_temp_fault = true;
-		schedule_delayed_work(&_bat_fault, msecs_to_jiffies(2000));
+		_fault_process(irq);
 		break;
 	case WM8350_IRQ_CHG_BAT_FAIL:
 		printk(KERN_DEBUG "wm8350-power: battery failed\n");
-
-		cancel_delayed_work(&_bat_full);
-		cancel_delayed_work(&_bat_timeout);
-		cancel_delayed_work(&_bat_fault);
-		cancel_delayed_work(&_bat_fault_led);
-
-		_is_temp_fault = false;
-		schedule_delayed_work(&_bat_fault, msecs_to_jiffies(1000));
+		_fault_process(irq);
 		break;
 	case WM8350_IRQ_CHG_TO:
 		printk(KERN_DEBUG "wm8350-power: charger timeout\n");
-
-		cancel_delayed_work(&_bat_full);
-		cancel_delayed_work(&_bat_fault);
-		cancel_delayed_work(&_bat_timeout);
-		cancel_delayed_work(&_bat_fault_led);
-
-		schedule_delayed_work(&_bat_timeout, msecs_to_jiffies(2000));
+		_fault_process(irq);
 		break;
 	case WM8350_IRQ_CHG_END:
 		printk(KERN_DEBUG "wm8350-power: charger stopped\n");
-
-		cancel_delayed_work(&_bat_full);
-		cancel_delayed_work(&_bat_timeout);
-		schedule_delayed_work(&_bat_full, msecs_to_jiffies(2000));
+		if (_main_state != WM8350_EVENT_BATTERY)
+			_change_state(WM8350_EVENT_FULL_CHARGED);
 		break;
 	case WM8350_IRQ_CHG_START:
 		printk(KERN_DEBUG "wm8350-power: charger started\n");
-
-		cancel_delayed_work(&_bat_full);
-
-		if (_is_fault || bat_detect == WM8350_BAT_EVENT_NOTDETECT) {
-			bat_detect_retry = 0;
-			cancel_delayed_work(&_bat_detect);
-			schedule_delayed_work(&_bat_detect, msecs_to_jiffies(100));
-			_is_fault = false;
-		}
-
+		if (_main_state != WM8350_EVENT_FULL_CHARGED)
+			_change_state(WM8350_EVENT_CHARGING);
 		break;
 	case WM8350_IRQ_CHG_FAST_RDY:
 		/* we are ready to fast charge */
 		printk(KERN_DEBUG "wm8350-power: fast charger ready\n");
-
-		if (_is_fault || bat_detect == WM8350_BAT_EVENT_NOTDETECT) {
-			bat_detect_retry = 0;
-			cancel_delayed_work(&_bat_detect);
-			schedule_delayed_work(&_bat_detect, msecs_to_jiffies(100));
-			_is_fault = false;
-		}
-
 		wm8350_charger_config(wm8350, policy);
 		wm8350_reg_unlock(wm8350);
 		wm8350_set_bits(wm8350, WM8350_BATTERY_CHARGER_CONTROL_1,
@@ -617,34 +620,19 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 	case WM8350_IRQ_EXT_USB_FB:
 		printk(KERN_DEBUG "wm8350-power: USB is now supply\n");
 		power->is_usb_supply = 1;
-		_is_fault = false;
 		wm8350_charger_config(wm8350, policy);
 		wm8350_charger_enable(wm8350, 1);
 		break;
 	case WM8350_IRQ_EXT_WALL_FB:
-		printk(KERN_DEBUG "wm8350-power: AC is now supply\n");
+		printk(KERN_DEBUG "wm8350-power: AC power is now supply\n");
 		power->is_usb_supply = 0;
-		_is_fault = false;
 		wm8350_charger_config(wm8350, policy);
 		wm8350_charger_enable(wm8350, 1);
-
-		cancel_delayed_work(&_bat_fault);
-		cancel_delayed_work(&_bat_detect);
-		cancel_delayed_work(&_bat_full);
-		cancel_delayed_work(&_bat_timeout);
-		cancel_delayed_work(&_bat_fault_led);
-
-		bat_detect_retry = 0;
-		schedule_delayed_work(&_bat_detect, msecs_to_jiffies(100));
+		schedule_delayed_work(&_ac_detect, msecs_to_jiffies(10));
 		break;
 	case WM8350_IRQ_EXT_BAT_FB:
 		printk(KERN_DEBUG "wm8350-power: Battery is now supply\n");
 		power->is_usb_supply = 0;
-		_is_fault = false;
-		break;
-	case WM8350_IRQ_SYS_HYST_COMP_FAIL:
-		printk(KERN_DEBUG "wm8350-power : shut down system\n");
-		wm8350_set_bits(wm8350, WM8350_POWER_CHECK_COMPARATOR, WM8350_PCCMP_ERRACT);
 		break;
 	default:
 		printk(KERN_DEBUG "wm8350-power: irq %d don't care\n", irq);
@@ -656,158 +644,54 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 /*********************************************************************
  *		Timer Driver	
  *********************************************************************/
-#define DEF_BAT_DETECT_RETRY	(900 / 50)
-static void _wm8350_bat_detect_work(struct work_struct *work)
+
+#define CHECK_AC_COUNT	100
+
+static int _ac_count;
+static int _ac_state;
+
+static void _wm8350_full_check_work(struct work_struct *work)
 {
-	int event = 0;
-	int state, uvolt;
-	struct list_head *p; struct wm8350 *wm8350 = wm8350_bat;
-	wm8350_bat_event_callback_list_t *temp = NULL;
-	
-	state = wm8350_get_supplies(wm8350) & WM8350_LINE_SUPPLY;
-	uvolt = wm8350_read_battery_uvolts(wm8350);
+	struct wm8350 *wm8350 = wm8350_bat;
 
-	/* check state hold */
-	if (state) {
-		if (bat_detect == WM8350_BAT_EVENT_NOTDETECT)
-			bat_detect_retry = 0;
-
-		bat_detect = WM8350_BAT_EVENT_DETECT;
-	} else {
-		if (bat_detect == WM8350_BAT_EVENT_DETECT)
-			bat_detect_retry = 0;
-		
-		bat_detect = WM8350_BAT_EVENT_NOTDETECT;
-	}
-
-	if (bat_detect_retry < DEF_BAT_DETECT_RETRY) {
-		bat_detect_retry++;
-		schedule_delayed_work(&_bat_detect, msecs_to_jiffies(50));
-		return;
-	}
-		
-	cancel_delayed_work(&_bat_fault);
-	cancel_delayed_work(&_bat_fault_led);
-
-	/* LED Control */
-	if (!state) {
-		printk(KERN_DEBUG "%s battery not detect...\n", __func__);
-
-		wm8350_bat_led_status(wm8350, WM8350_BAT_LED_ALL_OFF);
-
-		event		= WM8350_BAT_EVENT_NOTDETECT;
-		bat_detect	= WM8350_BAT_EVENT_NOTDETECT;
-	}
-	else {
-		printk(KERN_DEBUG "%s battery detect...\n", __func__);
-
-		wm8350_bat_led_status(wm8350, WM8350_BAT_RED_LED);
-
-		event		= WM8350_BAT_EVENT_DETECT;
-		bat_detect	= WM8350_BAT_EVENT_DETECT;
-
-		if (wm8350_batt_status(wm8350) == 
-				POWER_SUPPLY_STATUS_DISCHARGING) {
-			cancel_delayed_work(&_bat_full);
-			cancel_delayed_work(&_bat_timeout);
-			schedule_delayed_work(&_bat_full, msecs_to_jiffies(60000));
-		}
-	}
-
-	if (!list_empty(&wm8350_bat_events[event])) {
-		list_for_each(p, &wm8350_bat_events[event]) {
-			temp = list_entry(p, wm8350_bat_event_callback_list_t, list);
-			temp->callback.func(temp->callback.param);
-		}
+	if (_main_state == WM8350_EVENT_CHARGING &&
+	    wm8350_batt_status(wm8350) == POWER_SUPPLY_STATUS_DISCHARGING) {
+		_change_state(WM8350_EVENT_FULL_CHARGED);
 	}
 }
 
-static void _wm8350_bat_full_work(struct work_struct *work)
+static void _wm8350_ac_detect_work(struct work_struct *work)
 {
-	int event = 0;
-	int line, batt;
-	struct list_head *p;
+	int state;
 	struct wm8350 *wm8350 = wm8350_bat;
-	wm8350_bat_event_callback_list_t *temp = NULL;
+	struct wm8350_power *power = &wm8350->power;
 
-	line = wm8350_get_supplies(wm8350) & WM8350_LINE_SUPPLY;
-	batt = wm8350_batt_status(wm8350);
+	mutex_lock(&power->charger_mutex);
 
-	if (line && (batt == POWER_SUPPLY_STATUS_DISCHARGING) &&
-				(bat_detect == WM8350_BAT_EVENT_DETECT)) {
-		bool over_39v = false;
-		int vol;
+	state = wm8350_get_supplies(wm8350);
+	cancel_delayed_work(&_full_check);
 
-		if (q_hw_ver(7800_ES2)) {
-			if ((vol = wm8350_read_battery_uvolts(wm8350)) > 3900000)
-				over_39v = true;
-		} else {
-			if ((vol = wm8350_read_aux2_adc(wm8350)) > 0x77d)
-				over_39v = true;
-		}
-
-		if (over_39v) {
-			printk(KERN_DEBUG "%s battery full charging..[0x%x]\n", __func__, vol);
-
-			wm8350_bat_led_status(wm8350, WM8350_BAT_GREEN_LED);
-			event = WM8350_BAT_EVENT_FULL_CHG;
-		} else {
-			printk(KERN_DEBUG "%s battery fault ...[0x%x]\n", __func__, vol);
-
-			_is_fault = true;
-			schedule_delayed_work(&_bat_fault_led, msecs_to_jiffies(0));
-			event = WM8350_BAT_EVENT_FAULT;
-		}
+	if (++_ac_count > CHECK_AC_COUNT) {
+		_ac_count = 0;
 		
-		if (!list_empty(&wm8350_bat_events[event])) {
-			list_for_each(p, &wm8350_bat_events[event]) {
-				temp = list_entry(p, wm8350_bat_event_callback_list_t, list);
-				temp->callback.func(temp->callback.param);
+		if (_ac_state == WM8350_BATT_SUPPLY) {
+			if (_main_state != WM8350_EVENT_BATTERY)
+				_change_state(WM8350_EVENT_BATTERY);
+		} else {
+			if (_main_state == WM8350_EVENT_BATTERY) {
+				_change_state(WM8350_EVENT_CHARGING);
+				schedule_delayed_work(&_full_check, msecs_to_jiffies(60*1000));
 			}
 		}
-	}
-}
-
-static void _wm8350_bat_fault_work(struct work_struct *work)
-{
-	int event = 0;
-	struct list_head *p;
-	struct wm8350 *wm8350 = wm8350_bat;
-	wm8350_bat_event_callback_list_t *temp = NULL;
-	int vol = 0;
-
-	event = WM8350_BAT_EVENT_FAULT;
-	_is_fault = true;
-
-	if (_is_temp_fault) {
-		bool over_39v = false;
-		_is_temp_fault = false;
-
-
-		if (q_hw_ver(7800_ES2)) {
-			if ((vol = wm8350_read_battery_uvolts(wm8350)) > 3900000)
-				over_39v = true;
-		} else {
-			if ((vol = wm8350_read_aux2_adc(wm8350)) > 0x77d)
-				over_39v = true;
+	} else {
+		if(state != _ac_state) {
+			_ac_count = 0;
+			_ac_state = state;
 		}
-
-		if (over_39v) {
-			_wm8350_bat_full_work(NULL);
-
-			return ;
-		}
+		schedule_delayed_work(&_ac_detect, msecs_to_jiffies(10));
 	}
 
-	printk(KERN_DEBUG "%s battery fault ...[0x%x]\n", __func__, vol);
-	schedule_delayed_work(&_bat_fault_led, msecs_to_jiffies(0));
-
-	if (!list_empty(&wm8350_bat_events[event])) {
-		list_for_each(p, &wm8350_bat_events[event]) {
-			temp = list_entry(p, wm8350_bat_event_callback_list_t, list);
-			temp->callback.func(temp->callback.param);
-		}
-	}
+	mutex_unlock(&power->charger_mutex);
 }
 
 static void _wm8350_bat_fault_led_work(struct work_struct *work)
@@ -819,8 +703,7 @@ static void _wm8350_bat_fault_led_work(struct work_struct *work)
 	if (bat_fault_led_status) {
 		bat_fault_led_status = 0;
 		wm8350_bat_fault_led_control(1);
-	}
-	else {
+	} else {
 		bat_fault_led_status = 1;
 		wm8350_bat_fault_led_control(0);
 	}
@@ -828,46 +711,10 @@ static void _wm8350_bat_fault_led_work(struct work_struct *work)
 	schedule_delayed_work(&_bat_fault_led, msecs_to_jiffies(500));
 }
 
-static void _wm8350_bat_timeout_work(struct work_struct *work)
-{
-	int event = 0, uVolt, is_full = 0;
-	struct list_head *p;
-	struct wm8350 *wm8350 = wm8350_bat;
-	wm8350_bat_event_callback_list_t *temp = NULL;
-
-	if (q_hw_ver(7800_ES2)) {
-		uVolt = wm8350_read_battery_uvolts(wm8350);
-		if (uVolt > 3800000) is_full = 1;
-	} else {
-		uVolt = wm8350_read_aux2_adc(wm8350);
-		if (uVolt > 0x749) is_full = 1;
-	}
-
-	if (is_full) {
-		printk(KERN_DEBUG "battery timeout [%d] -> full ...\n", uVolt);
-		event = WM8350_BAT_EVENT_FULL_CHG;
-
-		wm8350_bat_led_status(wm8350, WM8350_BAT_GREEN_LED);
-
-	} else {
-		printk(KERN_DEBUG "battery timeout [%d] -> fault ...\n", uVolt);
-		event = WM8350_BAT_EVENT_FAULT;
-
-		schedule_delayed_work(&_bat_fault_led, msecs_to_jiffies(0));
-	}
-
-	if (!list_empty(&wm8350_bat_events[event])) {
-		list_for_each(p, &wm8350_bat_events[event]) {
-			temp = list_entry(p, wm8350_bat_event_callback_list_t, list);
-			temp->callback.func(temp->callback.param);
-		}
-	}
-}
-
 /*********************************************************************
  *		Control Driver	
  *********************************************************************/
-static int wm8350_bat_event_subscribe(type_bat_event event,
+static int wm8350_bat_event_subscribe(type_chg_event event,
 					wm8350_bat_event_callback_t callback)
 {
 	wm8350_bat_event_callback_list_t *new = NULL;
@@ -911,7 +758,7 @@ static int wm8350_bat_event_subscribe(type_bat_event event,
 	return 0;
 }
 
-static int wm8350_bat_event_unsubscribe(type_bat_event event,
+static int wm8350_bat_event_unsubscribe(type_chg_event event,
 				   wm8350_bat_event_callback_t callback)
 {
 	struct list_head *p;
@@ -1070,7 +917,7 @@ static int wm8350_bat_ioctl(struct inode *inode, struct file *file,
 	int ret = 0, online;
 	struct wm8350 *wm8350 = wm8350_bat;
 	wm8350_bat_event_callback_t event_sub;
-	type_bat_event event;
+	type_chg_event event;
 	wm8350_reg_info reg_info;
 
 	if (_IOC_TYPE(cmd) != 'P')
@@ -1317,6 +1164,9 @@ static enum power_supply_property wm8350_bat_props[] = {
 
 static void wm8350_init_charger(struct wm8350 *wm8350)
 {
+	/* hard shutdown when its voltage is under PCCMP_OFF_THR */
+	wm8350_set_bits(wm8350, WM8350_POWER_CHECK_COMPARATOR, WM8350_PCCMP_ERRACT);
+	
 	/* register our interest in charger events */
 	wm8350_register_irq(wm8350, WM8350_IRQ_CHG_BAT_HOT,
 			    wm8350_charger_handler, NULL);
@@ -1359,11 +1209,6 @@ static void wm8350_init_charger(struct wm8350 *wm8350)
 	wm8350_register_irq(wm8350, WM8350_IRQ_EXT_BAT_FB,
 			    wm8350_charger_handler, NULL);
 	wm8350_unmask_irq(wm8350, WM8350_IRQ_EXT_BAT_FB);
-
-	/* system monitoring */
-	wm8350_unmask_irq(wm8350, WM8350_IRQ_SYS_HYST_COMP_FAIL);
-	wm8350_register_irq(wm8350, WM8350_IRQ_SYS_HYST_COMP_FAIL,
-				wm8350_charger_handler, NULL);
 }
 
 static void free_charger_irq(struct wm8350 *wm8350)
@@ -1392,35 +1237,6 @@ static void free_charger_irq(struct wm8350 *wm8350)
 	wm8350_free_irq(wm8350, WM8350_IRQ_EXT_WALL_FB);
 	wm8350_mask_irq(wm8350, WM8350_IRQ_EXT_BAT_FB);
 	wm8350_free_irq(wm8350, WM8350_IRQ_EXT_BAT_FB);
-
-	wm8350_mask_irq(wm8350, WM8350_IRQ_SYS_HYST_COMP_FAIL);
-	wm8350_free_irq(wm8350, WM8350_IRQ_SYS_HYST_COMP_FAIL);
-}
-
-static int wm8350_fast_charger_mode(struct wm8350 *wm8350)
-{
-	int state, uvolts;
-
-	state = wm8350_get_supplies(wm8350) & WM8350_LINE_SUPPLY;
-	uvolts = wm8350_read_battery_uvolts(wm8350);
-	
-	if (state && (uvolts > 3100000)) {
-		printk(KERN_DEBUG "Fast Charger Mode [%d uV]....\n", uvolts);
-		wm8350_reg_unlock(wm8350);
-		wm8350_set_bits(wm8350, WM8350_BATTERY_CHARGER_CONTROL_1,
-			WM8350_CHG_FAST);
-		wm8350_reg_lock(wm8350);
-	}
-
-	if (state) {
-		wm8350_bat_led_status(wm8350, WM8350_BAT_RED_LED);
-
-		cancel_delayed_work(&_bat_full);
-		cancel_delayed_work(&_bat_timeout);
-		schedule_delayed_work(&_bat_full, msecs_to_jiffies(60000));
-	}
-
-	return 0;	
 }
 
 static struct file_operations wm8350_bat_fos = {
@@ -1514,7 +1330,7 @@ void wm8350_power_off(void)
 void
 q_wm8350_notify_pir_event(void)
 {
-	wm8350_bat_user_notify_callback((void *)WM8350_BAT_EVENT_PIR);
+	wm8350_bat_user_notify_callback((void *)WM8350_EVENT_PIR);
 }
 #endif
 
@@ -1612,10 +1428,6 @@ static int __init wm8350_power_probe(struct platform_device *pdev)
 	if (ret <0)
 		printk(KERN_DEBUG "wm8350: failed to add red led sysfs\n");
 
-	ret = device_create_file(&pdev->dev, &dev_attr_fault);
-	if (ret <0)
-		printk(KERN_DEBUG "wm8350: failed to add temp fault sysfs\n");
-
 	ret = device_create_file(&pdev->dev, &dev_attr_aux2_adc);
 	if (ret <0)
 		printk(KERN_DEBUG "wm8350: failed to add aux2 adc sysfs\n");
@@ -1625,6 +1437,11 @@ static int __init wm8350_power_probe(struct platform_device *pdev)
 
 	ret = 0;
 
+#ifdef CONFIG_HAS_WAKELOCK
+	wake_lock_init(&_bat_wake_lock, WAKE_LOCK_SUSPEND, "wm8350-power");
+	wake_lock_init(&_fault_led_wake_lock, WAKE_LOCK_SUSPEND, "fault-led");
+#endif
+
 	if (policy == NULL)
 		printk(KERN_DEBUG "%s: no charger policy - "
 			"charging disabled\n", __func__);
@@ -1632,7 +1449,7 @@ static int __init wm8350_power_probe(struct platform_device *pdev)
 		wm8350_init_charger(wm8350);
 		power->charger_enabled =
 			wm8350_charger_config(wm8350, policy);
-			wm8350_fast_charger_mode(wm8350);
+			wm8350_charger_enable(wm8350, 0);
 			wm8350_charger_enable(wm8350, 1);
 		if (power->charger_enabled < 0) {
 			printk(KERN_DEBUG "%s: failed to enable charger\n",
@@ -1641,17 +1458,14 @@ static int __init wm8350_power_probe(struct platform_device *pdev)
 		}
 	}
 
-#ifdef CONFIG_HAS_WAKELOCK
-	wake_lock_init(&_bat_wake_lock, WAKE_LOCK_SUSPEND, "wm8350-power");
-	wake_lock_init(&_fault_led_wake_lock, WAKE_LOCK_SUSPEND, "fault-led");
-#endif
-
 #ifdef CONFIG_MACH_CANOPUS
 	_wm8350 = wm8350;
 	pm_power_off = wm8350_power_off;
 
 	_wm8350_init_hibernation();
 #endif
+	schedule_delayed_work(&_ac_detect, msecs_to_jiffies(10));
+	
 	return ret;
 
 buf_failed:
@@ -1668,7 +1482,7 @@ battery_failed:
 	return ret;
 }
 
-static int __devexit wm8350_power_remove(struct platform_device *pdev)
+static int wm8350_power_remove(struct platform_device *pdev)
 {
 	struct wm8350 *wm8350 = platform_get_drvdata(pdev);
 	struct wm8350_power *power = &wm8350->power;
@@ -1676,7 +1490,7 @@ static int __devexit wm8350_power_remove(struct platform_device *pdev)
 #ifdef CONFIG_MACH_CANOPUS
 	_wm8350 = NULL;
 #endif
-	if (power->charger_enabled) {
+	if (power->charger_enabled >= 0) {
 		wm8350_charger_enable(wm8350, 0);
 		free_charger_irq(wm8350);
 	}
@@ -1692,10 +1506,6 @@ static int __devexit wm8350_power_remove(struct platform_device *pdev)
 	class_destroy(wm8350_dev_class);
 	unregister_chrdev(wm8350_bat_major, DEV_NAME);
 
-	cancel_delayed_work(&_bat_fault);
-	cancel_delayed_work(&_bat_full);
-	cancel_delayed_work(&_bat_detect);
-	cancel_delayed_work(&_bat_timeout);
 	cancel_delayed_work(&_bat_fault_led);
 
 #ifdef CONFIG_HAS_WAKELOCK
@@ -1706,35 +1516,9 @@ static int __devexit wm8350_power_remove(struct platform_device *pdev)
 	return 0;
 }
 
-#ifdef CONFIG_MACH_CANOPUS
-static int wm8350_power_suspend(struct platform_device *pdev, pm_message_t state)
-{
-	struct wm8350 *wm8350 = platform_get_drvdata(pdev);
-	struct wm8350_power *power = &wm8350->power;
-
-	mutex_lock(&power->charger_mutex);
-
-	return 0;
-}
-
-static int wm8350_power_resume(struct platform_device *pdev)
-{
-	struct wm8350 *wm8350 = platform_get_drvdata(pdev);
-	struct wm8350_power *power = &wm8350->power;
-
-	mutex_unlock(&power->charger_mutex);
-
-	return 0;
-}
-#endif
-
 struct platform_driver wm8350_power_driver = {
 	.probe = wm8350_power_probe,
-	.remove = __devexit(wm8350_power_remove),
-#ifdef CONFIG_MACH_CANOPUS
-	.suspend = wm8350_power_suspend,
-	.resume = wm8350_power_resume,
-#endif
+	.remove = wm8350_power_remove,
 	.driver = {
 		.name = "wm8350-power",
 	},
