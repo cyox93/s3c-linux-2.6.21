@@ -1841,7 +1841,6 @@ _lcd_vc0528_init(int init)
 {
 	int ret = -1;
 	uint val;
-	atomic_set(&lcd_power_state,1);
 
 	if (_lcd_handle.is_init) return ;
 
@@ -1964,6 +1963,7 @@ lcd_ili9225b_power(int set)
 
 static void s3c_fb_change_fb(struct fb_info *info)
 {
+	printk("Atomic = %d\n", lcd_power_state);
 	if (atomic_read(&lcd_power_state)) {
 		lcd_trigger(info);
 	}
@@ -2275,7 +2275,7 @@ void lcd_module_init (void)
 	int i = _h_resolution * _v_resolution;
 	u16 *logo = NULL;
 
-
+	atomic_set(&lcd_power_state,1);
 
 	if (q_boot_flag_get() != Q_BOOT_FLAG_LCD_INIT) {
 		if (q_hw_ver(KTQOOK))
