@@ -113,6 +113,9 @@ static int __init canopus_sc_probe(struct platform_device *pdev)
 {
 	int ret;
 
+	s3c2410_gpio_setpin(S3C2410_GPF2, 0);
+	s3c2410_gpio_cfgpin(S3C2410_GPF2, S3C2410_GPF2_INP);
+
 	/* Card detect interrupt */
 	s3c2410_gpio_pullup(S3C2410_GPF5, 0);
 	s3c2410_gpio_cfgpin(S3C2410_GPF5, S3C2410_GPF5_EINT5);
@@ -136,11 +139,19 @@ static int __init canopus_sc_probe(struct platform_device *pdev)
 	 *	  Need to change circuit & fix driver also.
 	 */
 	s3c2410_gpio_pullup(S3C2410_GPF3, 0);
-	s3c2410_gpio_setpin(S3C2410_GPF3, 0);
 	s3c2410_gpio_cfgpin(S3C2410_GPF3, S3C2410_GPF3_OUTP);
-	mdelay(100);
-	s3c2410_gpio_setpin(S3C2410_GPF3, 1);
-	mdelay(100);
+	
+	if (s3c2410_gpio_getpin(S3C2410_GPF2)) {
+		s3c2410_gpio_setpin(S3C2410_GPG7, 1);
+		mdelay(100);
+		s3c2410_gpio_setpin(S3C2410_GPG7, 0);
+		mdelay(100);
+	} else {
+		s3c2410_gpio_setpin(S3C2410_GPF3, 0);
+		mdelay(100);
+		s3c2410_gpio_setpin(S3C2410_GPF3, 1);
+		mdelay(100);
+	}
 	
 	ret = request_irq(IRQ_EINT5, sc_irq_handler,
 			  SA_INTERRUPT|SA_TRIGGER_RISING|SA_TRIGGER_FALLING,
