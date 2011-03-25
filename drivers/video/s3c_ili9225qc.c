@@ -1963,7 +1963,6 @@ lcd_ili9225b_power(int set)
 
 static void s3c_fb_change_fb(struct fb_info *info)
 {
-	printk("Atomic = %d\n", lcd_power_state);
 	if (atomic_read(&lcd_power_state)) {
 		lcd_trigger(info);
 	}
