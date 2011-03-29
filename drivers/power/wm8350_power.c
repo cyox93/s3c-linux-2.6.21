@@ -635,6 +635,7 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 		power->is_usb_supply = 0;
 		wm8350_charger_config(wm8350, policy);
 		wm8350_charger_enable(wm8350, 1);
+		_ac_count = 1;
 		schedule_delayed_work(&_ac_detect, msecs_to_jiffies(10));
 		break;
 	case WM8350_IRQ_EXT_BAT_FB:
@@ -1468,6 +1469,7 @@ static int __init wm8350_power_probe(struct platform_device *pdev)
 
 	_wm8350_init_hibernation();
 #endif
+	_ac_count = 1;
 	schedule_delayed_work(&_ac_detect, msecs_to_jiffies(10));
 	
 	return ret;
