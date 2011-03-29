@@ -146,6 +146,9 @@ static DECLARE_MUTEX(event_mutex);
 
 static int bat_fault_led_status = 0;
 
+static int _ac_count;
+static int _ac_state;
+
 static void _wm8350_ac_detect_work(struct work_struct *work);
 static void _wm8350_full_check_work(struct work_struct *work);
 static void _wm8350_bat_fault_led_work(struct work_struct *work);
@@ -546,6 +549,10 @@ static void _fault_process(int irq)
 	    _main_state == WM8350_EVENT_FULL_CHARGED)
 		return;
 
+	/* disabled during chaging power source */
+	if (_ac_count > 0)
+		return;
+
 	if (q_hw_ver(7800_ES2)) {
 		if ((vol = wm8350_read_battery_uvolts(wm8350)) > 3900000)
 			over_39v = true;
@@ -647,9 +654,6 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 
 #define CHECK_AC_COUNT	100
 
-static int _ac_count;
-static int _ac_state;
-
 static void _wm8350_full_check_work(struct work_struct *work)
 {
 	struct wm8350 *wm8350 = wm8350_bat;
@@ -685,7 +689,7 @@ static void _wm8350_ac_detect_work(struct work_struct *work)
 		}
 	} else {
 		if(state != _ac_state) {
-			_ac_count = 0;
+			_ac_count = 1;
 			_ac_state = state;
 		}
 		schedule_delayed_work(&_ac_detect, msecs_to_jiffies(10));
