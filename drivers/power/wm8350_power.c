@@ -683,10 +683,11 @@ static void _wm8350_ac_detect_work(struct work_struct *work)
 			if (_main_state != WM8350_EVENT_BATTERY)
 				_change_state(WM8350_EVENT_BATTERY);
 		} else {
-			if (_main_state == WM8350_EVENT_BATTERY) {
+			if (_main_state == WM8350_EVENT_BATTERY)
 				_change_state(WM8350_EVENT_CHARGING);
+
+			if (_main_state == WM8350_EVENT_CHARGING)
 				schedule_delayed_work(&_full_check, msecs_to_jiffies(60*1000));
-			}
 		}
 	} else {
 		if(state != _ac_state) {
