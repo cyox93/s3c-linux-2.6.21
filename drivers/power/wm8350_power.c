@@ -553,6 +553,14 @@ static void _fault_process(int irq)
 	if (_ac_count > 0)
 		return;
 
+	/* TODO: temporarily patch */
+#ifdef CONFIG_HAS_WAKELOCK
+	if (_main_state == WM8350_EVENT_CHARGING)
+		wake_lock(&_bat_wake_lock);
+	else 
+		wake_unlock(&_bat_wake_lock);
+#endif
+	
 	if (q_hw_ver(7800_ES2)) {
 		if ((vol = wm8350_read_battery_uvolts(wm8350)) > 3900000)
 			over_39v = true;
@@ -571,7 +579,7 @@ static void wm8350_charger_handler(struct wm8350 *wm8350, int irq, void *data)
 	struct wm8350_charger_policy *policy = power->policy;
 
 #ifdef CONFIG_HAS_WAKELOCK
-	wake_lock_timeout(&_bat_wake_lock, 5 * HZ);
+//	wake_lock_timeout(&_bat_wake_lock, 5 * HZ);
 #endif
 
 	mutex_lock(&power->charger_mutex);
