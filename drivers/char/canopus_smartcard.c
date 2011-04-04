@@ -31,9 +31,17 @@
 #include <asm/hardware.h>
 #include <asm/uaccess.h>
 #include <asm/plat-s3c24xx/s3c2416.h>
+#include <linux/delay.h>
+
+#define	SC_IOCTL_S_POWER_ON		0
+#define	SC_IOCTL_S_POWER_OFF		1
+#define	SC_IOCTL_S_POWER_RESET		2
+#define	SC_IOCTL_G_POWER_STATUS		3
+#define	SC_IOCTL_G_CARD_STATUS		4
 
 static void sc_irq_work(struct work_struct *work);
 
+static struct fasync_struct *_sc_queue;
 static struct platform_device *_pdev;
 
 static const char sc_name[] = "canopus-sc";
@@ -51,7 +59,7 @@ static ssize_t sc_read(struct file *f, char __user *d, size_t s, loff_t *o)
 	ssize_t ret;
 	unsigned int data;
 
-	if (s < sizeof(unsigned int))
+	if (s < sizeof(unsigned char))
 		return -EINVAL;
 
 	spin_lock(&sc_lock);
@@ -81,11 +89,102 @@ static unsigned int sc_poll(struct file *f, struct poll_table_struct *p)
 	return (update) ? POLLIN | POLLWRNORM : 0;
 }
 
+static int
+sc_ioctl(struct inode *inode, struct file *file,
+				unsigned int cmd, unsigned long arg)
+{
+	switch(cmd){
+	case SC_IOCTL_S_POWER_ON:
+		//printk("SmartCard Power ON\n");
+
+		if (s3c2410_gpio_getpin(S3C2410_GPF2))
+			break;
+
+		s3c2410_gpio_setpin(S3C2410_GPF3, 0);
+		mdelay(100);
+		s3c2410_gpio_setpin(S3C2410_GPF3, 1);
+		//mdelay(100);
+		break;
+	case SC_IOCTL_S_POWER_OFF:
+		//printk("SmartCard Power OFF\n");
+
+		if (!s3c2410_gpio_getpin(S3C2410_GPF2))
+			break;
+
+		s3c2410_gpio_setpin(S3C2410_GPF3, 0);
+		mdelay(100);
+		s3c2410_gpio_setpin(S3C2410_GPF3, 1);
+		//mdelay(100);
+		break;
+	case SC_IOCTL_S_POWER_RESET:
+		//printk("SmartCard Power RESET\n");
+
+		s3c2410_gpio_setpin(S3C2410_GPG7, 1);
+		mdelay(100);
+		s3c2410_gpio_setpin(S3C2410_GPG7, 0);
+		//mdelay(100);
+		break;
+	case SC_IOCTL_G_POWER_STATUS: {
+		int value;
+
+		value = s3c2410_gpio_getpin(S3C2410_GPF2) ? 1 : 0;
+
+		//printk("SmartCard Power STATUS = [%s]\n", (value ? "On" : "Off"));
+
+		if (copy_to_user
+				((int *)arg, &value,
+				 sizeof(int)))
+			return -EFAULT;
+	}
+		break;
+	case SC_IOCTL_G_CARD_STATUS: {
+		int value;
+
+		value = s3c2410_gpio_getpin(S3C2410_GPF5) ? 1 : 0;
+
+		//printk("SmartCard Card STATUS = [%s]\n", (value ? "On" : "Off"));
+
+		if (copy_to_user
+				((int *)arg, &value,
+				 sizeof(int)))
+			return -EFAULT;
+	}
+		break;
+	default:
+		//printk(KERN_ERR "PIR DEVICE DRIVER: No pir Device driver Command defined\n");
+		return -ENXIO;
+	}
+
+	return 0;
+}
+
+static int
+sc_open(struct inode *inode, struct file *file)
+{
+	return 0;
+}
+
+static int
+sc_release(struct inode *inode, struct file *file)
+{
+	return 0;
+}
+
+static int
+sc_fasync(int fd, struct file *filp, int mode)
+{
+	return fasync_helper(fd, filp, mode, &_sc_queue);
+}
+
 static struct file_operations fops =
 {
 	.owner		= THIS_MODULE,
 	.read		= sc_read,
-	.poll		= sc_poll
+	.poll		= sc_poll,
+	.ioctl		= sc_ioctl,
+	.open		= sc_open,
+	.release	= sc_release,
+	.fasync		= sc_fasync,
 };
 static struct miscdevice miscdev =
 {
@@ -108,7 +207,6 @@ static irqreturn_t sc_irq_handler(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-#include <linux/delay.h>
 static int __init canopus_sc_probe(struct platform_device *pdev)
 {
 	int ret;
