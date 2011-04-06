@@ -48,9 +48,18 @@ I2C_CLIENT_INSMOD;
 
 static struct i2c_driver wm8350_i2c_driver;
 static struct i2c_client client_template;
+static volatile int i2c_suspend;
 
 static void wm8350_irq_work(struct work_struct *work)
 {
+	if (i2c_suspend) {
+#ifdef CONFIG_HAS_WAKELOCK
+		wake_lock_timeout(&_wm8350_wake_lock, 1*HZ);
+#endif
+		schedule_delayed_work(work, msecs_to_jiffies(10));
+		return;
+	}
+
 #ifdef CONFIG_HAS_WAKELOCK
 	wake_lock(&_wm8350_wake_lock);
 #endif
@@ -115,7 +124,7 @@ static int wm8350_i2c_probe(struct i2c_adapter *adapter, int addr, int kind)
 		goto err;
 	}
 
-	INIT_WORK(&wm8350->work, wm8350_irq_work);
+	INIT_DELAYED_WORK(&wm8350->work, wm8350_irq_work);
 	ret = request_irq(IRQ_EINT1, wm8350_irq_handler,
 			SA_INTERRUPT|SA_TRIGGER_RISING, "wm8350", wm8350);
 
@@ -155,6 +164,18 @@ static int wm8350_i2c_attach(struct i2c_adapter *adapter)
 	return i2c_probe(adapter, &addr_data, wm8350_i2c_probe);
 }
 
+static int wm8350_i2c_suspend(struct i2c_client * client, pm_message_t mesg)
+{
+	i2c_suspend = 1;
+	return 0;
+}
+
+static int wm8350_i2c_resume(struct i2c_client * client)
+{
+	i2c_suspend = 0;
+	return 0;
+}
+
 static struct i2c_driver wm8350_i2c_driver = {
 	.driver = {
 		   .name = "wm8350-i2c",
@@ -163,6 +184,8 @@ static struct i2c_driver wm8350_i2c_driver = {
 	.id =				I2C_DRIVERID_WM8350,
 	.attach_adapter =	wm8350_i2c_attach,
 	.detach_client =	wm8350_i2c_detach,
+	.suspend =		wm8350_i2c_suspend,
+	.resume =		wm8350_i2c_resume,
 	.command =			NULL,
 };
 

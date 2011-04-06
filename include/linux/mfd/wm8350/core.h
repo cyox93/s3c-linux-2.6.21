@@ -580,7 +580,7 @@ struct wm8350 {
 	struct wm8350_power power;
 
 	/* irq handlers and workq */
-	struct work_struct work;
+	struct delayed_work work;
 	struct mutex work_mutex; /* work mutex */
 	struct wm8350_irq irq[WM8350_NUM_IRQ];
 };
