@@ -20,8 +20,8 @@
  *		     - S3C2410 and S3C2440 serial support
  *		     - Power Management support
  *		     - Fix console via IrDA devices
- *		     - SysReq (Herbert Pötzl)
- *		     - Break character handling (Herbert Pötzl)
+ *		     - SysReq (Herbert Pï¿½zl)
+ *		     - Break character handling (Herbert Pï¿½zl)
  *		     - spin-lock initialisation (Dimitry Andric)
  *		     - added clock control
  *		     - updated init code to use platform_device info
@@ -1474,6 +1474,9 @@ static int s3c2440_serial_setsource(struct uart_port *port,
 				     struct s3c24xx_uart_clksrc *clk)
 {
 	unsigned long ucon = rd_regl(port, S3C2410_UCON);
+#ifdef CONFIG_MACH_CANOPUS
+	struct s3c2410_uartcfg *cfg = s3c24xx_port_to_cfg(port);
+#endif
 
 	// todo - proper fclk<>nonfclk switch //
 
@@ -1495,6 +1498,11 @@ static int s3c2440_serial_setsource(struct uart_port *port,
 	}
 
 	wr_regl(port, S3C2410_UCON, ucon);
+
+#ifdef CONFIG_MACH_CANOPUS
+	cfg->ucon = ucon;
+#endif
+
 	return 0;
 }
 
