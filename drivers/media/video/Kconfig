@@ -7,19 +7,6 @@ menu "Video Capture Adapters"
 
 comment "Video Capture Adapters"
 
-config VIDEO_VM_VC0528
-     tristate "S3C SMDK CAMERA support"
-     default y
-     ---help---
-       Support for VC0528 Mobiile phone video processor
-
-config VC0528
-	tristate "VC0528 Test Device config"
-	depends on VIDEO_VC0528_V4L2
-	default y
-	help
-	  video controller chip test code
-
 config VIDEO_ADV_DEBUG
 	bool "Enable advanced debug functionality"
 	depends on VIDEO_DEV
@@ -270,7 +257,6 @@ config VIDEO_VPX3220
 	  To compile this driver as a module, choose M here: the
 	  module will be called vpx3220.
 
-
 comment "Video and audio decoders"
 
 source "drivers/media/video/cx25840/Kconfig"
@@ -359,12 +345,6 @@ config VIDEO_BUF
 	default y
 	---help---
 	  video buffer driver
-
-config VIDEO_VC0528_V4L2
-	tristate "v4l2 interface for vc0528 device driver"
-	default y
-	---help---
-	  v4l2 interface of vc0528 and device driver
 
 config VIDEO_VIVI
 	tristate "Virtual Video Driver"

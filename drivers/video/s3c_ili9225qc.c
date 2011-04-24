@@ -1710,7 +1710,6 @@ static void __iomem *_index_addr;
 static void __iomem *_lcd_data_addr;
 static void __iomem *_be_data_addr;
 
-
 static void
 _lcd_vc0528_reg(int reg)
 {
@@ -1869,7 +1868,7 @@ _lcd_vc0528_init(int init)
 void lcd_power_on_off(int set)
 {
 	if(mutex_is_locked(&smc_lock)) return;
-	
+
 	if (atomic_read(&lcd_power_state)!= set)
 		lcd_ili9225b_power(set);
 
@@ -1957,7 +1956,7 @@ lcd_ili9225b_power(int set)
 			lcd_trigger(info);
 		}
 	}else{
-		return; 
+		return;
 	}
 }
 

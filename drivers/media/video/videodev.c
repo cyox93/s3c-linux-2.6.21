@@ -419,15 +419,6 @@ static int check_fmt (struct video_device *vfd, enum v4l2_buf_type type)
 	return (-EINVAL);
 }
 
-
-char testv4l2_buf2[5] = {
-	0x0,
-	0x1,
-	0x2,
-	0x3,
-	0x4
-};
-
 static int __video_do_ioctl(struct inode *inode, struct file *file,
 		unsigned int cmd, void *arg)
 {
@@ -727,16 +718,7 @@ static int __video_do_ioctl(struct inode *inode, struct file *file,
 	case VIDIOC_QUERYBUF:
 	{
 		struct v4l2_buffer *p=arg;
-		static void __iomem	*_user_addr;
 
-#if 0
-		/* videobuf_querybuif */
-		_user_addr = (unsigned int *)(p->reserved);
-		printk("buffer: addr: 0x%x, 0x%x\n",p->reserved,_user_addr);
-		memcpy(_user_addr,testv4l2_buf2,5);
-		printk("index: 0x%x\n",p->index);
-		//return 0;
-#endif
 		if (!vfd->vidioc_querybuf)
 			break;
 		ret = check_fmt (vfd, p->type);

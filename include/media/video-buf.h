@@ -137,7 +137,6 @@ struct videobuf_mapping {
 	unsigned int count;
 	unsigned long start;
 	unsigned long end;
-	unsigned long remap;
 	struct videobuf_queue *q;
 };
 
@@ -170,9 +169,7 @@ struct videobuf_buffer {
 	enum v4l2_memory        memory;
 	size_t                  boff;    /* buffer offset (mmap + overlay) */
 	size_t                  bsize;   /* buffer size */
-	unsigned int            jpeg_size;
 	unsigned long           baddr;   /* buffer addr (userland ptr!) */
-	unsigned long 			remap;   /* kernel & user shared memory addr */
 	struct videobuf_mapping *map;
 
 	/* touched by irq handler */
