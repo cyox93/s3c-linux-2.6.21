@@ -1135,10 +1135,6 @@ static void kbd_keycode(unsigned int keycode, int down, int hw_raw)
 	unsigned char type, raw_mode;
 	struct tty_struct *tty;
 	int shift_final;
-#define __UDP__
-#ifdef __UDP__
-	down += 1;
-#endif /* _UDP_ */
 
 	tty = vc->vc_tty;
 
@@ -1146,10 +1142,6 @@ static void kbd_keycode(unsigned int keycode, int down, int hw_raw)
 		/* No driver data? Strange. Okay we fix it then. */
 		tty->driver_data = vc;
 	}
-
-#ifdef __UDP__
-	put_queue(vc, down);
-#endif /* __UDP__ */
 
 	kbd = kbd_table + fg_console;
 
@@ -1160,7 +1152,7 @@ static void kbd_keycode(unsigned int keycode, int down, int hw_raw)
 		sparc_l1_a_state = down;
 #endif
 
-	rep = (down == 3);
+	rep = (down == 2);
 
 #ifdef CONFIG_MAC_EMUMOUSEBTN
 	if (mac_hid_mouse_emulate_buttons(1, keycode, down))
