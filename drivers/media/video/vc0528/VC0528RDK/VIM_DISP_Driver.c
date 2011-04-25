@@ -206,7 +206,9 @@ UINT8 byMode;
 	}
 
 	VIM_HIF_SetReg8(V5_REG_LCDC_DE, byMode);
+#ifndef CONFIG_MACH_CANOPUS
 	VIM_USER_DelayMs(1);
+#endif
 	return VIM_SUCCEED;
 }
 /*-----------------------------------------------------------------------------

@@ -291,8 +291,10 @@ TPoint pt;
 		case VIM_HAPI_PREVIEW_ON:
 		case VIM_HAPI_PREVIEW_FRAMEON:		
 			VIM_SIF_EnableSyncGen(DISABLE);
-			VIM_DISP_SetLayerEnable(VIM_DISP_ALAYER,DISABLE);	
+			VIM_DISP_SetLayerEnable(VIM_DISP_ALAYER,DISABLE);
+#ifndef CONFIG_MACH_CANOPUS
 			VIM_MAPI_Delay_Frame(1);
+#endif
 			//set chip work mode
                     if(MODE!=VIM_HAPI_PREVIEW_FRAMEON)
 		 		VIM_MAPI_SetChipMode(VIM_MARB_PREVIEW_MODE,VIM_IPP_HAVE_NOFRAME);	//actually capture mode
@@ -447,7 +449,11 @@ CHAGNEAMODE:
 			VIM_DISP_SetLayerEnable(VIM_DISP_ALAYER,DISABLE);//angela 2007-1-25	
 			VIM_MAPI_Delay_Frame(1);
 		 	VIM_SIF_EnableSyncGen(DISABLE);//next frame
+#ifndef CONFIG_MACH_CANOPUS
 			VIM_USER_DelayMs(50);/*added by shiyong for bug10586*/
+#else
+			VIM_USER_DelayMs(1);
+#endif
 		 	pt.x=pt.y=Amem.cx=Amem.cy=0;
 		 	VIM_DISP_SetA_Memory(pt,Amem);
 		}
@@ -946,6 +952,9 @@ UINT16 VIM_HAPI_StartCaptureVideo(HUGE void *StillBuf,UINT32 BUF_Length,VIM_HAPI
 	gVc0528_Info.VideoStatus.CapCallback=pUCallBack;
 	gVc0528_Info.VideoStatus.VideoLength=0;
 	gVc0528_Info.VideoStatus.NowFrame=0;
+#ifdef CONFIG_MACH_CANOPUS
+	gVc0528_Info.VideoStatus.Abort = 0;
+#endif
 	// can enable recapture function
 	if((dwTwc+VIM_USER_RECAPTURE_OFFSET)<=gVc0528_Info.MarbStatus.MapList.jbufsize)
 	{
@@ -1066,7 +1075,13 @@ UINT16 VIM_HAPI_GetOneJpeg(HUGE void *StillBuf,UINT32 BUF_Length,UINT32 *dwOneLe
 	//-----------------------------------------------------------
 	if(gVc0528_Info.CaptureStatus.CapCallback==NULL)
 	{
+#ifndef CONFIG_MACH_CANOPUS
 		while((gVc0528_Info.CaptureStatus.Mode!=VIM_CAPTUREDONE)&&(dwCount--))
+#else
+		while((gVc0528_Info.CaptureStatus.Mode!=VIM_CAPTUREDONE)
+				&& (dwCount--)
+				&& !gVc0528_Info.VideoStatus.Abort)
+#endif
 		{
 			VIM_USER_DelayMs(2); 
 			_ISR_HIF_IntHandle();
@@ -1206,6 +1221,9 @@ UINT16 VIM_HAPI_StopCapture(void)
     VIM_MAPI_Delay_Frame(1);
     VIM_SIF_EnableSyncGen(DISABLE);	//angela 2006-9-4
 	gVc0528_Info.VideoStatus.Mode=VIM_VIDEO_STOP;
+#ifdef CONFIG_MACH_CANOPUS
+	gVc0528_Info.VideoStatus.Abort=0;
+#endif
 	gVc0528_Info.CaptureStatus.CapFileLength=gVc0528_Info.VideoStatus.VideoLength;
 	if((gVc0528_Info.VideoStatus.CapCallback)&&(gVc0528_Info.CaptureStatus.CaptureError==0))
 	 	gVc0528_Info.VideoStatus.CapCallback(VIM_HAPI_CAPTURE_END,gVc0528_Info.VideoStatus.VideoLength);
@@ -1355,7 +1373,7 @@ Parameters:
 		V5H_SUCCEED: set ok
 		V5H_ERROR_WORKMODE: error work mode
 		V5H_FAILED: error parameter
-	Note£º
+	Noteï¿½ï¿½ï¿½ï¿½ï¿½
 		Only write to the 568 internal ram, not update to LCD.
 	This function can be used in Camera open mode or Photo process mode 
 Remarks:
@@ -3110,10 +3128,10 @@ Description:
 Parameters:
 	Mode:
 		 VIM_HAPI_SPECIAL_NORMAL.
-		 VIM_HAPI_SPECIAL_MONOCHROME,	 //ºÚ°×
-		 VIM_HAPI_SPECIAL_SEPIA,		//»³¾É
-		 VIM_HAPI_SPECIAL_NEGATIVE,	//¸ºÆ¬
-		 VIM_HAPI_SPECIAL_REDONLY,	 //ºìÉ«Í»³ö
+		 VIM_HAPI_SPECIAL_MONOCHROME,	 //ï¿½ï¿½ï¿½æ€¨ã…¼ï¿½
+		 VIM_HAPI_SPECIAL_SEPIA,		//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+		 VIM_HAPI_SPECIAL_NEGATIVE,	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+		 VIM_HAPI_SPECIAL_REDONLY,	 //ï¿½ï¿½ï¿½ï¿½ï¿½ì˜™ï¿½ê¿¨ï¿½ï¿½ï¿½ï¿½
 	Y = ( 77R + 150G + 29B)/256
 	U = (-43R - 85G + 128B)/256 + 128
 	V = (128R - 107G - 21B)/256 + 128
@@ -3250,6 +3268,20 @@ void VIM_HAPI_Timer(void)
 	 	_ISR_HIF_IntHandle();
 	 return ;
 }
+
+#ifdef CONFIG_MACH_CANOPUS
+void VIM_HAPI_SetBuf(HUGE void *StillBuf,UINT32 BUF_Length)
+{
+	gVc0528_Info.CaptureStatus.BufPoint = StillBuf;
+	gVc0528_Info.CaptureStatus.BufLength = BUF_Length;
+}
+
+void VIM_HAPI_AbortCapture()
+{
+	if (gVc0528_Info.VideoStatus.Mode == VIM_VIDEO_STARTCAPTURE)
+		gVc0528_Info.VideoStatus.Abort = 1;
+}
+#endif
 
 #if VIM_USER_SUPPORT_REALTIME_ROTATION
 /********************************************************************************

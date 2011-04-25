@@ -341,9 +341,25 @@ static struct platform_device __initdata *smdk_devs[] = {
 };
 
 #ifdef CONFIG_MACH_CANOPUS
+static struct resource canopus_vc0528_resources[] = {
+      [0] = {
+              .start  = S3C_PA_SMC9115,
+              .end    = S3C_PA_SMC9115 + 0x1ff,
+              .flags  = IORESOURCE_MEM,
+      },
+};
+
+static struct platform_device canopus_vc0528 = {
+	.name		= "canopus_vc0528",
+	.id		= 0,
+	.num_resources	= ARRAY_SIZE(canopus_vc0528_resources),
+	.resource	= canopus_vc0528_resources,
+};
+
 static struct platform_device __initdata *kt_devs[] = {
     &smdk_led_pir,
     &smdk_led_cam_flash,
+    &canopus_vc0528,
 };
 #endif	// CONFIG_MACH_CANOPUS
 

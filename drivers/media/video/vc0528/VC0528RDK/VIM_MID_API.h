@@ -172,6 +172,9 @@ typedef struct tag_VIM_VIDEO
 	UINT32	MaxFrame;		//VIM_WORK_MODE
 	UINT32	NowFrame;		//VIM_WORK_MODE	
 	UINT32	VideoLength;		//VIM_WORK_MODE
+#ifdef CONFIG_MACH_CANOPUS
+	int Abort;
+#endif
 }VIM_VIDEO,*PVIM_VIDEO;
 typedef struct tag_VIM_STATUS{
 	PTSnrInfo	pSensorInfo;

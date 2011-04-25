@@ -28,6 +28,10 @@ work must include the VIMICRO copyright notice and this paragraph in
 the transferred software.
 ****************************************************************************/
 
+#ifdef CONFIG_MACH_CANOPUS
+#include <linux/kernel.h>
+#endif
+
 #ifndef _VIM_5XRDK_USER_INFO_H_
 #define _VIM_5XRDK_USER_INFO_H_
 
@@ -57,8 +61,13 @@ extern "C" {
 *    when access to v5x ,please define this address
 **********************************************************************************/
 //  CS address
+#ifndef CONFIG_MACH_CANOPUS
 #define VIM_REG_INDEX		0x8000000	// vc0528 a8(rs) is 0,means address 
-#define VIM_REG_VALUE		0x8000100    // vc0528 a8(rs) is 1,means value 
+#define VIM_REG_VALUE		0x8000100    // vc0528 a8(rs) is 1,means value
+#else
+extern void __iomem *VIM_REG_INDEX;
+extern void __iomem *VIM_REG_VALUE;
+#endif
 
 /********************************************************************************
 *    Write read IO control by GPIO
@@ -103,13 +112,18 @@ extern "C" {
 /********************************************************************************
 *    Select driver ic
 **********************************************************************************/
+#ifndef CONFIG_MACH_CANOPUS
 #define V5_MAINDRIVERIC_TYPE 	V5_DEF_LCD_S1D19120_16BIT//V5_DEF_LCD_S1D19102_S1D17D01_16BIT//V5_DEF_LCD_S1D19102_S1D17D01_16BIT//V5_DEF_LCD_LGDP4524_8BIT//V5_DEF_LCD_ILI9320_16BIT//V5_DEF_LCD_S1D19120_16BIT//V5_DEF_LCD_S1D19102_S1D17D01_16BIT//V5_DEF_LCD_S1D19120_16BIT//V5_DEF_LCD_R61503B_8BIT//
+#else
+#define V5_MAINDRIVERIC_TYPE 	V5_DEF_LCD_ILI9325_16BIT
+#endif
 #define V5_SUBDRIVERIC_TYPE 	NOSUB
 
 /********************************************************************************
 *  select sensor
 **********************************************************************************/
 //0.3M
+#ifndef CONFIG_MACH_CANOPUS
 #define V5_DEF_SNR_MT9V111_YUV		1	//MI360SOC
 
 #define V5_DEF_SNR_OV7660_YUV 		1
@@ -145,6 +159,9 @@ extern "C" {
 
 //OM6802 is a special sensor, must check this sensor ID at last.
 #define  V5_DEF_SNR_OM6802_YUV		1
+#else
+#define V5_DEF_SNR_SIV120D_YUV		1
+#endif
 
 
 /********************************************************************************
@@ -176,7 +193,11 @@ extern UINT8 FastPreview;
 #define VIM_USER_QFONESTEP	10
 #define VIM_USER_CAPTURE_TIMER   5 //(MS ) means when capture ,timer interval check done interrupt
 #define VIM_USER_GETQUICKPIC_TIMES   5//(MS ) when use VIM_HAPI_GetQuickOneJpeg this funciton ,if no interrupt times more than this value,it  will restart capture
+#ifndef CONFIG_MACH_CANOPUS
 #define VIM_USER_SURPORT_AVI	1	// 1 means support avi capture ,0 means not
+#else
+#define VIM_USER_SURPORT_AVI	0
+#endif
 #define VIM_USER_MAX_ARRAY_AE	  10	//the max number of array which store the AE register value. add by guoying 12/28/2007
 //#define VIM_USER_MCLK_45M		1			//if 1, MCLK=45M, CLKIN=13Mhz ; if 0, MCLK=24M, CLKIN=24Mhz.
 
@@ -195,7 +216,9 @@ extern UINT8 g_Reverse;
 
 
 /*-----------------for 568api support ---------------*/
+#ifndef CONFIG_MACH_CANOPUS
 #define VIM_USER_SUPPORT568_API	1
+#endif
 
 
 
@@ -345,6 +368,16 @@ UINT8 VIM_USER_CheckBigendian(void);
 VIM_RESULT VIM_USER_StartTimer(UINT32 Intervel);
 VIM_RESULT VIM_USER_StopTimer(void);
 void VIM_USER_Reset(void);
+
+#ifdef CONFIG_MACH_CANOPUS
+#define Uart_Printf
+
+extern int vc0528_timer_start(unsigned int interval);
+extern int vc0528_timer_stop(void);
+extern void VIM_HAPI_SetBuf(HUGE void *StillBuf,UINT32 BUF_Length);
+extern void VIM_HAPI_AbortCapture(void);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

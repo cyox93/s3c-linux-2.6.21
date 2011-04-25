@@ -27,12 +27,17 @@ modifications. Any person who transfers this source code or any derivative
 work must include the VIMICRO copyright notice and this paragraph in
 the transferred software.
 ****************************************************************************/
+#ifndef CONFIG_MACH_CANOPUS
 #include "..\vc0528demo\inc\nucleus.h"  //"..\GUI\GUI\src\nucleus.h"
 #include"VIM_COMMON.h"
 
 
 #include "..\vc0528demo\inc\thin_usr.h"//"..\FS_library\fat_thin\thin_usr.h"
 #include "..\vc0528demo\inc\fat_thin.h"//"..\FS_library\fat_thin\fat_thin.h"
+#else
+#include <linux/delay.h>
+#include"VIM_COMMON.h"
+#endif
 
 const VIM_USER_INITINFO g_UserInfo=
 {
@@ -128,12 +133,21 @@ const VIM_USER_INITINFO g_UserInfo=
 	 	2,//3,/////4,//4
 */
 	 	
+#ifndef CONFIG_MACH_CANOPUS
 		13000, 	//clk in  				//guoying 1/22/2008//have tested, capture 1280x960 OK!
 		45000,
 		56,///32,	// 24,//Pll m  128
 		2,/////4, 		//Pll n  [4:0]: pll_n  >2  2
 	 	2,		//0, //no( 1;2;4,8): pll_od
-	 	2,//3,/////4,//4	
+	 	2,//3,/////4,//4
+#else
+		12000, 	//clk in
+		48000,
+		64,	// 24,//Pll m  128
+	 	2,//4, 		//Pll n  [4:0]: pll_n  >2  2
+	 	2,		//0, //no( 1;2;4,8): pll_od
+	 	2,//4,//4		//Clk output div*/
+#endif
 
 /*
 		24000, 	//clk in  
@@ -188,7 +202,9 @@ const VIM_USER_INITINFO g_UserInfo=
 		0//cs_delay_sel
 	},
 };
+#ifndef CONFIG_MACH_CANOPUS
 #define DEMOTEST	
+#endif
 #ifndef DEMOTEST	
 UINT8 FastPreview;
 UINT8 g_Reverse;
@@ -393,7 +409,9 @@ Returns:
 		void
 
 ****************************************************************/
+#ifndef CONFIG_MACH_CANOPUS
 extern void Uart_Printf(char *fmt,...);
+#endif
 void VIM_USER_PrintHex(char *string,UINT32 data)
 {
 	Uart_Printf("\n%s0x%x",string,data);
@@ -444,7 +462,11 @@ Returns:
 extern void Delay(int time); // 1ms 
 void VIM_USER_DelayMs(UINT32 ms)
 {
+#ifndef CONFIG_MACH_CANOPUS
 	Delay(ms);
+#else
+	if (ms) mdelay(ms);
+#endif
 	
 }
 /***************************************************************
@@ -481,6 +503,7 @@ Returns:
 		1-255: error
 
 ****************************************************************/
+#ifndef CONFIG_MACH_CANOPUS
 extern UINT8 g_DemoFlage;
 NU_TIMER video_timer;
 extern void 	InitTimer0ForCommandParase(void (*func)(),int interval);
@@ -502,6 +525,13 @@ VIM_RESULT VIM_USER_StartTimer(UINT32 Intervel)
 #endif
 	return VIM_SUCCEED;
 }
+#else
+VIM_RESULT VIM_USER_StartTimer(UINT32 Intervel)
+{
+	return vc0528_timer_start(Intervel);
+}
+#endif
+
 /***************************************************************
 Description:
 		cancel Timer 
@@ -512,6 +542,7 @@ Returns:
 		1-255: error
 
 ****************************************************************/
+#ifndef CONFIG_MACH_CANOPUS
 extern void Timer0_stop(void);
 VIM_RESULT VIM_USER_StopTimer(void)
 {
@@ -526,6 +557,12 @@ VIM_RESULT VIM_USER_StopTimer(void)
 #endif
 	return VIM_SUCCEED;
 }
+#else
+VIM_RESULT VIM_USER_StopTimer(void)
+{
+	return vc0528_timer_stop();
+}
+#endif
 
 /***************************************************************
 Description:
@@ -538,9 +575,11 @@ Returns:
 
 void VIM_USER_Reset(void)
 {
+#ifndef CONFIG_MACH_CANOPUS
 	//reset jpeg ic.
 	(*(volatile unsigned *)0x1d20044) = 0x7f;
 	Delay(100);
 	(*(volatile unsigned *)0x1d20044) = 0xff;
 	Delay(100);
+#endif
 }

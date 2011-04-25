@@ -804,6 +804,8 @@ source "drivers/media/video/zc0301/Kconfig"
 
 source "drivers/media/video/pwc/Kconfig"
 
+source "drivers/media/video/vc0528/Kconfig"
+
 endmenu # V4L USB devices
 
 endmenu

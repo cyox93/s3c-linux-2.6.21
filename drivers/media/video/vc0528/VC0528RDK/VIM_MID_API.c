@@ -87,10 +87,18 @@ VIM_RESULT VIM_MAPI_AutoFindSensor(void)
 		VIM_SIF_SetSensorPowerOn(gVc0528_Info.pSensorInfo);//having reset sensor
  		if(gVc0528_Info.pSensorInfo->snrIdChkCall!= NULL)
 		{
+#ifndef CONFIG_MACH_CANOPUS
 			VIM_USER_DelayMs(100);
+#else
+			VIM_USER_DelayMs(10);
+#endif
 		 	if(gVc0528_Info.pSensorInfo->snrIdChkCall() == SUCCEED)
 		 	{
+#ifndef CONFIG_MACH_CANOPUS
 		 		VIM_USER_DelayMs(100);
+#else
+		 		VIM_USER_DelayMs(1);
+#endif
 		 		Result = VIM_SIF_SifSensorInit(gVc0528_Info.pSensorInfo);
 		 		if (Result) 
 		 		   return	Result;
@@ -219,7 +227,9 @@ VIM_RESULT Result;
 
 
 	VIM_SET_XCLKON();
+#ifndef CONFIG_MACH_CANOPUS
 	VIM_USER_DelayMs(10);	//angela 2007-2-3
+#endif
 #if VIM_BUSTYPE==VIM_MULTI16
 	VIM_HIF_SetMulti16();
 #endif
@@ -232,6 +242,7 @@ VIM_RESULT Result;
 	if(Result)
 		return Result;
 	
+#ifndef CONFIG_MACH_CANOPUS
 	VIM_HIF_SetReg8(V5_REG_BIU_RESET_CORE, 0);	//angela 2006 11 17 update for ldo on
 	VIM_HIF_SetLdoStatus(VIM_LDO_ON);
 	VIM_USER_DelayMs(10);
@@ -252,7 +263,30 @@ VIM_RESULT Result;
 	
 	VIM_USER_DelayMs(1); 
 	VIM_HIF_InitMarbRereshTime(&(gVc0528_Info.pUserInfo->WorkMClk));
-	VIM_USER_DelayMs(5); 
+	VIM_USER_DelayMs(5);
+#else
+	VIM_HIF_SetReg8(V5_REG_BIU_RESET_CORE, 0);	//angela 2006 11 17 update for ldo on
+	VIM_HIF_SetLdoStatus(VIM_LDO_ON);
+	VIM_USER_DelayMs(1);
+	VIM_HIF_SetPllStatus(VIM_HIF_PLLPOWERON);
+	VIM_HIF_SetReg8(V5_REG_BIU_RESET_CORE, 1);
+	VIM_USER_DelayMs(1);
+	VIM_HIF_SetReg8(V5_REG_BIU_STDBY, 0);
+
+	VIM_HIF_SetReg8(V5_REG_BIU_PLL_RESET,1);	//reset pll high active
+	VIM_USER_DelayMs(1);
+	VIM_HIF_SetReg8(V5_REG_BIU_PLL_RESET,0);
+	VIM_USER_DelayMs(1);
+
+	VIM_HIF_SetModClkOn(VIM_HIF_CLOCK_ALL);
+	//reset marb
+	VIM_MARB_Set1TSramMode(VIM_MARB_1TSRAM_0,VIM_MARB_1TSRAM_POWERON);
+	VIM_MARB_ResetSubModule(VIM_MARB_RESET_ALL);
+
+	VIM_USER_DelayMs(1);
+	VIM_HIF_InitMarbRereshTime(&(gVc0528_Info.pUserInfo->WorkMClk));
+	VIM_USER_DelayMs(1);
+#endif
 
 	//test 
 	Result=VIM_MAPI_TestRegister();

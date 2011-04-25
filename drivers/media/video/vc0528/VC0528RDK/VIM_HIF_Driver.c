@@ -124,13 +124,13 @@ void VIM_HIF_SetReg16(UINT32 adr, UINT16 val)
 		*(volatile UINT16 *)(VIM_REG_INDEX) = (UINT16)adr-0x01;
 		VIM_SET_RSHIGH_BY_GPIO();
 		uTemp = *(volatile UINT16 *)(VIM_REG_VALUE);
-		*(volatile UINT16 *)(VIM_REG_VALUE) = (uTemp&0xff) | (val<<8);	// »°µÕ∞ÀŒª
+		*(volatile UINT16 *)(VIM_REG_VALUE) = (uTemp&0xff) | (val<<8);	// √à¬°¬µ√ç¬∞√ã√é¬ª
 
 		VIM_SET_RSLOW_BY_GPIO();
 		*(volatile UINT16 *)(VIM_REG_INDEX) = (UINT16)adr+0x01;
 		VIM_SET_RSHIGH_BY_GPIO();
 		uTemp = *(volatile UINT16 *)(VIM_REG_VALUE);
-		*(volatile UINT16 *)(VIM_REG_VALUE) = (uTemp&0xff00) | (val>>8);	// »°∏ﬂ∞ÀŒª
+		*(volatile UINT16 *)(VIM_REG_VALUE) = (uTemp&0xff00) | (val>>8);	// √à¬°¬∏√ü¬∞√ã√é¬ª
 	}
 }
 /***************************************************************
@@ -684,8 +684,8 @@ UINT32 VIM_HIF_WriteSramOnWord(UINT32 adr, UINT32 dat, UINT32 size)
   Summary:
 	Set register value by 32 bit
   Parameters:
-	adr : Register address£¨UINT32
-	val : Register value£¨UINT32
+	adr : Register address¬£¬¨UINT32
+	val : Register value¬£¬¨UINT32
   Note:
   Returns: void
   Remarks:
@@ -700,9 +700,9 @@ void	VIM_HIF_SetReg32(UINT32 adr,UINT32 val)
   Summary:
 	Get register value by 32 bit
   Parameters:
-	adr : Register address£¨UINT32
+	adr : Register address¬£¬¨UINT32
   Note:
-  Returns: Register value£¨UINT32
+  Returns: Register value¬£¬¨UINT32
   Remarks:
 --------------------------------------------------------------------------------*/
 UINT32	VIM_HIF_GetReg32(UINT32 adr)
@@ -719,17 +719,17 @@ UINT32	VIM_HIF_GetReg32(UINT32 adr)
  V5_REG_BIU_REG_8_FLG				(V5_REG_BIU_BASE+0x0B0)
 	//Register port when 8 bit multiplex bus is used.
  V5_REG_BIU_REG_8_LOW_WORD			(V5_REG_BIU_BASE+0x0B2)
-	//De fault value 8°Øb0  Register low address when 8 bit multiplex bus is used.
+	//De fault value 8¬°¬Øb0  Register low address when 8 bit multiplex bus is used.
  V5_REG_BIU_REG_8_HIGH_WORD			(V5_REG_BIU_BASE+0x0B4)
-        //De fault value 8°Øb0  Register high address when 8 bit multiplex bus is used.
+        //De fault value 8¬°¬Øb0  Register high address when 8 bit multiplex bus is used.
 
 V5_REG_BIU_SEL_8_16					(V5_REG_BIU_BASE+0x08C)
 	This register express data bus width of host.
 	0: it is 8 bit data width.  
 	1: it is 16 bit data width.  
-	De fault value - 1°Øb0
+	De fault value - 1¬°¬Øb0
 ********************************************************************************
-Description:    //set the 8 /16 bit width  …Ë÷√ŒªøÌ≤¢≥ı ºªØ
+Description:    //set the 8 /16 bit width  √â√®√ñ√É√é¬ª¬ø√≠¬≤¬¢¬≥√µ√ä¬º¬ª¬Ø
    
 De fault value 
 *********************************************************************************
@@ -763,8 +763,8 @@ void VIM_HIF_SetMulti16(void)
   Summary:
 	Control Modul Reset
   Parameters:
-	wVal : Set which Modul Reset£¨enum VIM_HIF_CpmModReset_CTRLenum
-  Note: ƒ¨»œ 1:OFF 0:ON
+	wVal : Set which Modul Reset¬£¬¨enum VIM_HIF_CpmModReset_CTRLenum
+  Note: √Ñ¬¨√à√è 1:OFF 0:ON
   Returns: void
   Remarks: 
   			This register is the software reset control register and can be cleared by the hardware reset.
@@ -805,8 +805,8 @@ void VIM_HIF_ResetSubModule(VIM_HIF_RESET wVal)
   Summary:
 	Control clock On
   Parameters:
-	wVal : Set which Modul On£¨enum VIM_HIF_CLK_CTRL
-  Note: ƒ¨»œ 1:OFF 0:ON
+	wVal : Set which Modul On¬£¬¨enum VIM_HIF_CLK_CTRL
+  Note: √Ñ¬¨√à√è 1:OFF 0:ON
   Returns: void
   Remarks: 
 --------------------------------------------------------------------------------*/
@@ -823,8 +823,8 @@ void VIM_HIF_SetModClkOn(UINT16 wVal)
   Summary:
 	Control clock Off	
   Parameters:
-	wVal : Set which Modul Off£¨enum VIM_HIF_CLK_CTRL
-  Note: ƒ¨»œ 1:OFF 0:ON
+	wVal : Set which Modul Off¬£¬¨enum VIM_HIF_CLK_CTRL
+  Note: √Ñ¬¨√à√è 1:OFF 0:ON
   Returns: void
   Remarks: 
 --------------------------------------------------------------------------------*/
@@ -852,15 +852,27 @@ void VIM_HIF_SetLdoStatus(VIM_LDOMODE wVal)
 	if(wVal==VIM_LDO_ON)
 	{
 		VIM_HIF_SetReg8(V5_REG_BIU_STDBY_PR, 0);
+#ifndef CONFIG_MACH_CANOPUS
 		VIM_USER_DelayMs(10); 
-		VIM_USER_DelayMs(10); 
+		VIM_USER_DelayMs(10);
+#else
+		VIM_USER_DelayMs(1);
+		VIM_USER_DelayMs(1);
+#endif
 	}
 	else
 	{
+#ifndef CONFIG_MACH_CANOPUS
 		VIM_HIF_SetReg8(V5_REG_BIU_STDBY, 1);
 		VIM_USER_DelayMs(10); 
 		VIM_HIF_SetReg8(V5_REG_BIU_STDBY_PR, 1);
 		VIM_USER_DelayMs(10); 
+#else
+		VIM_HIF_SetReg8(V5_REG_BIU_STDBY, 1);
+		VIM_USER_DelayMs(1);
+		VIM_HIF_SetReg8(V5_REG_BIU_STDBY_PR, 1);
+		VIM_USER_DelayMs(1);
+#endif
 	}
 }
 /***************************************************************
@@ -918,7 +930,7 @@ UINT16 temp = 0;
   Summary:
 	Initialize Bypass Type and Address of bypass register
   Parameters:
-	 byAddr : Register address£¨UINT8, V5_REG_BIU_BASE + byBypassRegAdr
+	 byAddr : Register address¬£¬¨UINT8, V5_REG_BIU_BASE + byBypassRegAdr
 	 byPassType : Set Bypass or Normal Type,V5_REG_BIU_BYPASS_FROM_SEL
   Note: this method only call when Initialize process
   Returns: 
@@ -1109,7 +1121,11 @@ void VIM_HIF_SetPllStatus(VIM_HIF_PLLMODE Mode)
 			VIM_HIF_SetReg8(V5_REG_BIU_XCLK_DISABLE,0);//xclk enable
 			VIM_USER_DelayMs(1); 
 			VIM_HIF_SetReg8(V5_REG_BIU_PLL_OE,1);//enable out put
-			VIM_USER_DelayMs(10); 
+#ifndef CONFIG_MACH_CANOPUS
+			VIM_USER_DelayMs(10);
+#else
+			VIM_USER_DelayMs(1);
+#endif
 			break;
 		case VIM_HIF_PLLPOWERDOWN:
 			VIM_HIF_SetReg8(V5_REG_BIU_PLL_OE,0);//disable output
@@ -1117,7 +1133,11 @@ void VIM_HIF_SetPllStatus(VIM_HIF_PLLMODE Mode)
 			VIM_USER_DelayMs(1); 
 			VIM_HIF_SetReg8(V5_REG_BIU_PLL_BP,1);//bypass enable
 			VIM_HIF_SetReg8(V5_REG_BIU_PLL_PD,1);//power down enable
-			VIM_USER_DelayMs(10); 
+#ifndef CONFIG_MACH_CANOPUS
+			VIM_USER_DelayMs(10);
+#else
+			VIM_USER_DelayMs(1);
+#endif
 			break;
 		case VIM_HIF_PLLBYPASS:
 			VIM_HIF_SetReg8(V5_REG_BIU_PLL_OE,0);//disable output
@@ -1128,7 +1148,11 @@ void VIM_HIF_SetPllStatus(VIM_HIF_PLLMODE Mode)
 			VIM_HIF_SetReg8(V5_REG_BIU_XCLK_DISABLE,0);//xclk enalbe
 			VIM_USER_DelayMs(1); 
 			VIM_HIF_SetReg8(V5_REG_BIU_PLL_OE,1);//enable output
-			VIM_USER_DelayMs(10); 
+#ifndef CONFIG_MACH_CANOPUS
+			VIM_USER_DelayMs(10);
+#else
+			VIM_USER_DelayMs(1);
+#endif
 			break;
 		default:
 			break;
@@ -1288,8 +1312,8 @@ UINT8 bTemp;
 }
 /***************************************************************/
 /*V5_REG_CPM_INTSERV	 Default value 00
-			This register is the interrupt serve flag, when corresponding bit is °∞1°±, means the interrupt is
-			under serving, °∞0°± means interrupt service over.
+			This register is the interrupt serve flag, when corresponding bit is ¬°¬∞1¬°¬±, means the interrupt is
+			under serving, ¬°¬∞0¬°¬± means interrupt service over.
 			[0] sif interrupt souce service
 			[1] isp interrupt souce service
 			[2] lbuf interrupt souce service
@@ -1312,7 +1336,7 @@ UINT8 bTemp;
   Remarks:
 *********************************************************************************/
 
-UINT8 VIM_HIF_GetIntFlagSec(VIM_HIF_INT_TYPE byOffset)        //∂˛º∂  ÷–∂œ±Í÷æ
+UINT8 VIM_HIF_GetIntFlagSec(VIM_HIF_INT_TYPE byOffset)        //¬∂√æ¬º¬∂  √ñ√ê¬∂√è¬±√™√ñ¬æ
 {
 	UINT8 x;
 	x = VIM_HIF_GetReg8(V5_REG_CPM_INTFLAG0+(byOffset<<1));
@@ -1430,8 +1454,8 @@ static void VIM_HIF_HandleISR(VIM_HIF_INT_TYPE byFirstLevelInt, UINT8 bSecondLev
   Returns:
   Remarks:
 			Default value ff
-			Interrupt enable register. Enable interrupt request to first level flag, corresponding bit is °∞1°±,
-			°∞0°± the request is masked.
+			Interrupt enable register. Enable interrupt request to first level flag, corresponding bit is ¬°¬∞1¬°¬±,
+			¬°¬∞0¬°¬± the request is masked.
 			[0] sif  interrupt enable
 			[1] isp  interrupt enable
 			[2] lbuf interrupt enable

@@ -458,9 +458,15 @@ void VIM_SIF_SensorReset(void)
 		VIM_HIF_SetReg8(V5_REG_SIF_SNR_MODE, byMode | BIT0);
 	}
 
+#ifndef CONFIG_MACH_CANOPUS
 	VIM_USER_DelayMs(50);
 	VIM_HIF_SetReg8(V5_REG_SIF_SNR_MODE, byMode);
 	VIM_USER_DelayMs(50);
+#else
+	VIM_USER_DelayMs(5);
+	VIM_HIF_SetReg8(V5_REG_SIF_SNR_MODE, byMode);
+	VIM_USER_DelayMs(1);
+#endif
 }
 
 

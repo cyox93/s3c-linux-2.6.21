@@ -43,6 +43,7 @@
 #include "ktqook-logo.h"
 
 #include "s3cfb.h"
+#include <media/vc0528.h>
 
 #define ON 		1
 #define OFF		0
@@ -1535,6 +1536,9 @@ int s3c_fb_set_out_path(struct s3c_fb_info *fbi, int Path)
 #define lcd_write_pixel(color)			_lcd_handle.write_pixel(color)
 #define lcd_set_command_mode(set)		_lcd_handle.command_mode(set)
 #define lcd_trigger(info)			_lcd_handle.trigger(info)
+#define lcd_trylock()				_lcd_handle.try_lock()
+#define lcd_unlock()				_lcd_handle.unlock()
+#define lcd_is_locked()				_lcd_handle.is_locked()
 
 typedef struct __QLcdHandle {
 	int is_init;
@@ -1547,6 +1551,10 @@ typedef struct __QLcdHandle {
 	void (*prepare_write)(int x, int y);
 	void (*write_pixel)(int color);
 	void (*command_mode)(int set);
+
+	int (*try_lock)(void);
+	void (*unlock)(void);
+	int (*is_locked)(void);
 } _QLcdHandle;
 
 /*_____________________ Imported Variables __________________________________*/
@@ -1677,6 +1685,23 @@ _lcd_s3c_i80_trigger(struct fb_info *info)
 	__raw_writel((1<<0), S3C_CPUTRIGCON2);
 }
 
+static int
+_lcd_s3c_i80_trylock(void)
+{
+	return 1;
+}
+
+static void
+_lcd_s3c_i80_unlock(void)
+{
+}
+
+static int
+_lcd_s3c_i80_is_locked(void)
+{
+	return 0;
+}
+
 static void
 _lcd_s3c_i80_init(int init)
 {
@@ -1690,63 +1715,26 @@ _lcd_s3c_i80_init(int init)
 	_lcd_handle.write_pixel		= _lcd_s3c_i80_write_pixel;
 	_lcd_handle.command_mode	= _lcd_s3c_i80_set_command_mode;
 	_lcd_handle.trigger		= _lcd_s3c_i80_trigger;
+	_lcd_handle.try_lock		= _lcd_s3c_i80_trylock;
+	_lcd_handle.unlock		= _lcd_s3c_i80_unlock;
+	_lcd_handle.is_locked		= _lcd_s3c_i80_is_locked;
 
 	_lcd_handle.is_init = true;
-}
-
-/* lcd handle for vc0528 camera backend ic */
-#define _VC0528_PA_ADDRESS		(0x20000000)
-
-typedef struct __QLcdDma {
-	void __iomem *reg_base;
-
-	int is_requested;
-	int on_request;
-} _QLcdDma;
-
-static _QLcdDma _lcd_dma;
-
-static void __iomem *_index_addr;
-static void __iomem *_lcd_data_addr;
-static void __iomem *_be_data_addr;
-
-static void
-_lcd_vc0528_reg(int reg)
-{
-	__raw_writew((unsigned short)reg, _index_addr);
-}
-
-static int
-_lcd_vc0528_reg_read(int reg)
-{
-	int data;
-
-	__raw_writew((unsigned short)reg, _index_addr);
-	data = __raw_readw(_lcd_data_addr);
-
-	return data & 0x3ffff;
-}
-
-static void
-_lcd_vc0528_reg_write(int reg, int data)
-{
-	__raw_writew((unsigned short)reg, _index_addr);
-	__raw_writew((unsigned short)data, _lcd_data_addr);
 }
 
 static void
 _lcd_vc0528_prepare_write(int x, int y)
 {
-	_lcd_vc0528_reg_write(0x20, x & 0xff);
-	_lcd_vc0528_reg_write(0x21, y & 0xff);
+	vc0528_lcd_write(0x20, (u16)(x & 0xff));
+	vc0528_lcd_write(0x21, (u16)(y & 0xff));
 
-	_lcd_vc0528_reg(0x22);
+	vc0528_lcd_reg(0x22);
 }
 
 static void
 _lcd_vc0528_write_pixel(int color)
 {
-	__raw_writew(color, _lcd_data_addr);
+	vc0528_lcd_data((u16)color);
 }
 
 static void
@@ -1755,26 +1743,12 @@ _lcd_vc0528_set_command_mode(int set)
 
 }
 
-#define VM0528_DMA_DCON	(S3C2410_DCON_SYNC_HCLK|S3C2416_DCON_WHOLE_SERV)
-
-static struct s3c2410_dma_client vm0528_dma_client = {
-	.name		= "vc0528-lcd-dma",
-};
-
-static void *dma_vm0528_done;
-
-static void vm0528_dma_finish(struct s3c2410_dma_chan *dma_ch, void *buf_id,
-	int size, enum s3c2410_dma_buffresult result){
-	complete(dma_vm0528_done);
-
-}
-
 int s3c_fb_suspend_lcd(struct s3c_fb_info *info)
 {
 	if (!q_hw_ver(KTQOOK))
 		return 0;
 
-	s3c2410_dma_free(DMACH_XD0, &vm0528_dma_client);
+	vc0528_dma_free();
 }
 
 int s3c_fb_resume_lcd(struct s3c_fb_info *info)
@@ -1782,57 +1756,16 @@ int s3c_fb_resume_lcd(struct s3c_fb_info *info)
 	if (!q_hw_ver(KTQOOK))
 		return 0;
 
-	if (s3c2410_dma_request(DMACH_XD0, &vm0528_dma_client, NULL)) {
-		printk(KERN_WARNING "Unable to get DMA channel.\n");
-		return;
-	}
-	s3c2410_dma_set_buffdone_fn(DMACH_XD0, vm0528_dma_finish);
-	s3c2410_dma_devconfig(DMACH_XD0, S3C2410_DMASRC_MEM, 1, (u_long) _VC0528_PA_ADDRESS+4);
-	s3c2410_dma_config(DMACH_XD0, 2, VM0528_DMA_DCON);
-	s3c2410_dma_setflags(DMACH_XD0, S3C2410_DMAF_AUTOSTART);
+	vc0528_dma_set();
 }
 
 
-DEFINE_MUTEX(smc_lock);
 static void
 _lcd_vc0528_trigger(struct fb_info *info)
 {
-	int i, size;
 	struct s3c_fb_info *fbi = container_of(info, struct s3c_fb_info, fb);
-	unsigned short *fb_ptr = (unsigned short *)fbi->map_cpu_f1;
-
-	if(mutex_trylock(&smc_lock)){
-
-		DECLARE_COMPLETION_ONSTACK(complete);
-		dma_vm0528_done = &complete;
-
-		s3c2410_dma_enqueue(DMACH_XD0, NULL, (dma_addr_t) fbi->map_dma_f1, fbi->map_size_f1);
-		wait_for_completion(&complete);
-		mutex_unlock(&smc_lock);
-	}
-}
-
-static void
-_camera_backend_init(void)
-{
-	if (!q_hw_ver(KTQOOK)) return ;
-
-	q_camera_backend_reset(1);
-	msleep(50);
-	q_camera_backend_reset(0);
-	msleep(10);
-
-	// set bus witdh to 16bit
-	__raw_writeb(0xb4, _index_addr);
-	__raw_writeb(0x18, _be_data_addr);
-	__raw_writeb(0xb2, _index_addr);
-	__raw_writeb(0x8c, _be_data_addr);
-	__raw_writeb(0xb0, _index_addr);
-	__raw_writeb(0x1, _be_data_addr);
-
-	// set through mode
-	__raw_writew(0x1890, _index_addr);
-	__raw_writew(0x1, _be_data_addr);
+	vc0528_dma_request(VC0528_DMA_LCD_WRITE,
+			(dma_addr_t)fbi->map_dma_f1, fbi->map_size_f1);
 }
 
 static void
@@ -1843,37 +1776,27 @@ _lcd_vc0528_init(int init)
 
 	if (_lcd_handle.is_init) return ;
 
-	_index_addr    = ioremap(_VC0528_PA_ADDRESS, 0x100);
-	_be_data_addr  = _index_addr + 0x08;
-	_lcd_data_addr = _index_addr + 0x04;
+	vc0528_map_io();
 
 	if (init) {
-		_camera_backend_init();
+		vc0528_reset();
 		lcd_reset();
 	}
 
-	_lcd_handle.set_reg		= _lcd_vc0528_reg;
-	_lcd_handle.reg_read		= _lcd_vc0528_reg_read;
-	_lcd_handle.reg_write		= _lcd_vc0528_reg_write;
+	_lcd_handle.set_reg		= vc0528_lcd_reg;
+	_lcd_handle.reg_read		= vc0528_lcd_read;
+	_lcd_handle.reg_write		= vc0528_lcd_write;
 	_lcd_handle.prepare_write	= _lcd_vc0528_prepare_write;
 	_lcd_handle.write_pixel		= _lcd_vc0528_write_pixel;
 	_lcd_handle.command_mode	= _lcd_vc0528_set_command_mode;
 	_lcd_handle.trigger		= _lcd_vc0528_trigger;
+	_lcd_handle.try_lock		= vc0528_trylock;
+	_lcd_handle.unlock		= vc0528_unlock;
+	_lcd_handle.is_locked		= vc0528_is_locked;
 
 	_lcd_handle.is_init = true;
 
 	s3c_fb_resume_lcd(NULL);
-}
-
-void lcd_power_on_off(int set)
-{
-	if(mutex_is_locked(&smc_lock)) return;
-
-	if (atomic_read(&lcd_power_state)!= set)
-		lcd_ili9225b_power(set);
-
-	if(set)
-		lcd_trigger(info);
 }
 
 static void
@@ -1884,7 +1807,7 @@ lcd_ili9225b_power(int set)
 	if (!_lcd_handle.is_init) return ;
 	if (atomic_read(&lcd_power_state)== set) return;
 
-	if(mutex_trylock(&smc_lock)){
+	if(lcd_trylock()){
 		if (!set) {
 			atomic_set(&lcd_power_state,set);
 			lcd_set_command_mode(1);
@@ -1911,14 +1834,16 @@ lcd_ili9225b_power(int set)
 			}
 
 			lcd_set_command_mode(0);
-			mutex_unlock(&smc_lock);
+			lcd_unlock();
 		} else {
 			lcd_set_command_mode(1);
 
 			if (id == _LCD_PANEL_HSD24) {
 				// NOTE : for ESD Test
-				_camera_backend_init();
-				msleep(10);
+				if (vc0528_mode_get() != VC0528_MODE_NORMAL) {
+					vc0528_reset();
+					msleep(10);
+				}
 
 				//*************Power On sequence ******************//
 				_lcd_ili9225b_reg_write(0x0010, 0x0000); // SAP, BT[3:0], AP, DSTB, SLP, STB
@@ -1952,7 +1877,7 @@ lcd_ili9225b_power(int set)
 			lcd_set_command_mode(0);
 			mdelay(2);
 			atomic_set(&lcd_power_state,set);
-			mutex_unlock(&smc_lock);
+			lcd_unlock();
 			lcd_trigger(info);
 		}
 	}else{

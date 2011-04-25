@@ -198,6 +198,7 @@ void VIM_LCDIF_InitLcdIFParm(PTLcdifParm parm)
 *********************************************************************************/
 void VIM_LCDIF_ResetPanel(void)
 {
+#ifndef CONFIG_MACH_CANOPUS
 	VIM_HIF_SetReg8(V5_REG_LCDIF_LCD_RESET, 0x0);
 //#ifndef NCSC
 	VIM_USER_DelayMs(100);
@@ -206,6 +207,7 @@ void VIM_LCDIF_ResetPanel(void)
 //#ifndef NCSC
 	VIM_USER_DelayMs(20);	//wait signal stable to avoid writing reg fail.
 //#endif
+#endif
 }
 
 
