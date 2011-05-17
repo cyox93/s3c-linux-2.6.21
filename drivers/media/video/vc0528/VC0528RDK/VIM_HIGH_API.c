@@ -446,12 +446,13 @@ CHAGNEAMODE:
 		case VIM_HAPI_PREVIEW_OFF:
 		default:
 			VIM_USER_StopTimer();
-			VIM_DISP_SetLayerEnable(VIM_DISP_ALAYER,DISABLE);//angela 2007-1-25	
+			VIM_DISP_SetLayerEnable(VIM_DISP_ALAYER,DISABLE);//angela 2007-1-25
+#ifndef CONFIG_MACH_CANOPUS
 			VIM_MAPI_Delay_Frame(1);
 		 	VIM_SIF_EnableSyncGen(DISABLE);//next frame
-#ifndef CONFIG_MACH_CANOPUS
 			VIM_USER_DelayMs(50);/*added by shiyong for bug10586*/
 #else
+		 	VIM_SIF_EnableSyncGen(DISABLE);//next frame
 			VIM_USER_DelayMs(1);
 #endif
 		 	pt.x=pt.y=Amem.cx=Amem.cy=0;
