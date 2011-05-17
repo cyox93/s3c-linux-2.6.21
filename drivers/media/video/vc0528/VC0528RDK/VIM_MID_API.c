@@ -74,7 +74,13 @@ VIM_RESULT VIM_MAPI_AutoFindSensor(void)
 	{
 		if(gPSensorInfo[i]==NULL)
 		{
+#ifndef CONFIG_MACH_CANOPUS
 			gVc0528_Info.pSensorInfo = gPSensorInfo[i];
+#else
+			gVc0528_Info.pSensorInfo = gPSensorInfo[0];
+			printk(KERN_DEBUG"%s : could not find camera, set to first one\n", __func__);
+#endif
+
 			return VIM_ERROR_SENSOR_AUTOFIND; //sensor error;
 		}
 		VIM_HIF_ResetSubModule(VIM_HIF_RESET_SIF);
@@ -311,6 +317,10 @@ VIM_RESULT Result;
 
 	//clear interrupt 
 	VIM_HIF_ClearIntModule(INT_ALL);  //angela 2006-09-07 for interrupt init
+
+#ifdef CONFIG_MACH_CANOPUS
+	VIM_HIF_SetExterPinCrlEn(VIM_HIF_PIN_ALL,DISABLE);
+#endif
 	return VIM_SUCCEED;
 }
 
