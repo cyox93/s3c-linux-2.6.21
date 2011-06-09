@@ -52,6 +52,7 @@
 /*_____________________ Constants Definitions _______________________________*/
 #define DRVNAME				"canopus-pir"
 #define DEV_NAME			"pir"
+#define _DEFAULT_PIR_DECTECTION_TIMEOUT	400
 
 #define PIR_IOCTL_S_ENABLE		_IOW ('Q', 0x80, int)
 #define PIR_IOCTL_REISR_ENABLE	_IOW ('Q', 0x81, int)
@@ -60,7 +61,7 @@
 
 /*_____________________ Imported Variables __________________________________*/
 extern void q_wm8350_notify_pir_event(void);
-static void pir_irq_work(struct work_struct *work);
+static void _pir_enable_work_cb(struct work_struct *work);
 /*_____________________ Variables Definitions _______________________________*/
 
 /*_____________________ Local Declarations __________________________________*/
@@ -71,12 +72,48 @@ static struct class *_pir_dev_class;
 static struct work_struct _pir_work;
 static int _pir_is_enabled = false;
 atomic_t _irq_is_enabled; 
-atomic_t _reirq_is_enabled; 
-static DECLARE_DELAYED_WORK(work, pir_irq_work);
+atomic_t _reirq_is_enabled;
+
+static struct timer_list _pir_timer;
+static atomic_t _pir_pin_state;
+static unsigned int _pir_detect_timeout = _DEFAULT_PIR_DECTECTION_TIMEOUT;
+
+static DECLARE_DELAYED_WORK(_enable_work, _pir_enable_work_cb);
 
 /*_____________________ Program Body ________________________________________*/
-static void pir_irq_work(struct work_struct *work)
+static int
+_pir_timeout_show(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t len)
 {
+	printk("pir detect timeout %d ms\n", _pir_detect_timeout);
+
+	return 1;
+}
+
+static int
+_pir_timeout_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t len)
+{
+	_pir_detect_timeout = simple_strtoull(buf, NULL, 0);
+	printk("pir detect timeout %d ms\n", _pir_detect_timeout);
+
+	return len;
+}
+
+static DEVICE_ATTR(pir_timeout, 0644,
+		_pir_timeout_show,
+		_pir_timeout_store);
+
+static int
+_pir_create_file(struct platform_device *pdev)
+{
+	return device_create_file(&(pdev->dev), &dev_attr_pir_timeout);
+}
+
+static void _pir_enable_work_cb(struct work_struct *work)
+{
+	atomic_set(&_pir_pin_state, false);
+
 	atomic_set(&_irq_is_enabled, true);
 	__raw_writel(1UL << 2, S3C2410_SRCPND);
 	__raw_writel(1UL << 2, S3C2410_INTPND);
@@ -84,16 +121,43 @@ static void pir_irq_work(struct work_struct *work)
 }
 
 static void
-_pir_irq_work(struct work_struct *work)
+_pir_irq_work_cb(struct work_struct *work)
 {
 	if((_pir_is_enabled)&& atomic_read(&_reirq_is_enabled))
 		q_wm8350_notify_pir_event();
 }
 
+static void
+_pir_timer_handler(unsigned long data)
+{
+	if (atomic_read(&_pir_pin_state)) {
+		del_timer(&_pir_timer);
+		atomic_set(&_pir_pin_state, false);
+
+		schedule_work(&_pir_work);
+		printk("[%8lu] pir sensor detected [over %d]\n",
+				jiffies_to_msecs(jiffies), _pir_detect_timeout);
+	}
+}
+
 static irqreturn_t
 _pir_irq_handler(int irq, void *data)
 {
-	schedule_work(&_pir_work);
+	unsigned int timestamp;
+
+	if (s3c2410_gpio_getpin(S3C2410_GPF2) & 0x4) {
+		atomic_set(&_pir_pin_state, true);
+
+		del_timer(&_pir_timer);
+		_pir_timer.expires = jiffies + msecs_to_jiffies(_pir_detect_timeout);
+		add_timer(&_pir_timer);
+	} else {
+		if (atomic_read(&_pir_pin_state)) {
+			del_timer(&_pir_timer);
+			atomic_set(&_pir_pin_state, false);
+		}
+	}
+
 	return IRQ_HANDLED;
 }
 
@@ -113,7 +177,7 @@ canopus_pir_ioctl(struct inode *inode, struct file *file,
 		if (enable != _pir_is_enabled) {
 
 			_pir_is_enabled = enable;
-			cancel_delayed_work(&work);
+			cancel_delayed_work(&_enable_work);
 
 			if (atomic_read(&_irq_is_enabled)){
 				disable_irq(IRQ_EINT2);
@@ -121,7 +185,7 @@ canopus_pir_ioctl(struct inode *inode, struct file *file,
 				atomic_set(&_reirq_is_enabled, false);
 			}else{ 
 				if(_pir_is_enabled)	
-					schedule_delayed_work(&work, msecs_to_jiffies(30000));
+					schedule_delayed_work(&_enable_work, msecs_to_jiffies(30000));
 				else
 					atomic_set(&_reirq_is_enabled, false);					
 			}
@@ -218,11 +282,16 @@ canopus_pir_probe(struct platform_device *pdev)
 		s3c2410_gpio_setpin(S3C2410_GPF5, 1);
 	}
 
-	INIT_WORK(&_pir_work, _pir_irq_work);
+	init_timer(&_pir_timer);
+	_pir_timer.function = _pir_timer_handler;
+
+	INIT_WORK(&_pir_work, _pir_irq_work_cb);
 	request_irq(IRQ_EINT2, _pir_irq_handler,
-			SA_INTERRUPT|SA_TRIGGER_RISING, "pir", NULL);
+			SA_INTERRUPT|SA_TRIGGER_RISING|SA_TRIGGER_FALLING, "pir", NULL);
 
 	disable_irq(IRQ_EINT2);
+
+	_pir_create_file(pdev);
 
 	return 0;
 }
