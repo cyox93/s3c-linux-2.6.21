@@ -1853,13 +1853,21 @@ lcd_ili9225b_power(int set)
 				_lcd_ili9225b_reg_write(0x0013, 0x0000); // VDV[4:0] for VCOM amplitude
 				_lcd_ili9225b_reg_write(0x0007, 0x0001);
 				mdelay(100); // Dis-charge capacitor power voltage
+#if 0
 				_lcd_ili9225b_reg_write(0x0010, 0x1690); // SAP, BT[3:0], AP, DSTB, SLP, STB
+#else
+				_lcd_ili9225b_reg_write(0x0010, 0x1790); // SAP, BT[3:0], AP, DSTB, SLP, STB
+#endif
 				_lcd_ili9225b_reg_write(0x0011, 0x0227); // Set DC1[2:0], DC0[2:0], VC[2:0]
 				mdelay(50); // Delay 50ms
 				_lcd_ili9225b_reg_write(0x0012, 0x000D); // External reference voltage= Vci;
 				mdelay(50); // Delay 50ms
 				_lcd_ili9225b_reg_write(0x0013, 0x1200); // VDV[4:0] for VCOM amplitude
+#if 0
 				_lcd_ili9225b_reg_write(0x0029, 0x0007); // VCM[5:0] for VCOMH
+#else
+				_lcd_ili9225b_reg_write(0x0029, 0x0009); // VCM[5:0] for VCOMH
+#endif
 				mdelay(50); // Delay 50ms
 				_lcd_ili9225b_reg_write(0x0007, 0x0133); // 262K color and display ON
 				lcd_set_command_mode(1);
@@ -2053,13 +2061,21 @@ _lcd_panel_init_hsd24(void)
 	_lcd_ili9225b_reg_write(0x0013, 0x0000); // VDV[4:0] for VCOM amplitude
 	_lcd_ili9225b_reg_write(0x0007, 0x0001);
 	msleep(200); // Dis-charge capacitor power voltage
+#if 0
 	_lcd_ili9225b_reg_write(0x0010, 0x1690); // SAP, BT[3:0], AP, DSTB, SLP, STB
+#else
+	_lcd_ili9225b_reg_write(0x0010, 0x1790); // SAP, BT[3:0], AP, DSTB, SLP, STB
+#endif
 	_lcd_ili9225b_reg_write(0x0011, 0x0227); // Set DC1[2:0], DC0[2:0], VC[2:0]
 	msleep(50); // Delay 50ms
 	_lcd_ili9225b_reg_write(0x0012, 0x000D); // External reference voltage= Vci;
 	msleep(50); // Delay 50ms
 	_lcd_ili9225b_reg_write(0x0013, 0x1200); // VDV[4:0] for VCOM amplitude
+#if 0
 	_lcd_ili9225b_reg_write(0x0029, 0x0007); // VCM[5:0] for VCOMH
+#else
+	_lcd_ili9225b_reg_write(0x0029, 0x0009); // VCM[5:0] for VCOMH
+#endif
 	_lcd_ili9225b_reg_write(0x002B, 0x000C); // Set Frame Rate
 	msleep(50); // Delay 50ms
 	_lcd_ili9225b_reg_write(0x0020, 0x0000); // GRAM horizontal Address
