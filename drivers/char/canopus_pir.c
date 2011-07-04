@@ -135,7 +135,7 @@ _pir_timer_handler(unsigned long data)
 		atomic_set(&_pir_pin_state, false);
 
 		schedule_work(&_pir_work);
-		printk("[%8lu] pir sensor detected [over %d]\n",
+		printk(KERN_DEBUG"[%8lu] pir sensor detected [over %d]\n",
 				jiffies_to_msecs(jiffies), _pir_detect_timeout);
 	}
 }
