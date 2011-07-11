@@ -701,6 +701,11 @@ static void _wm8350_ac_detect_work(struct work_struct *work)
 		if(state != _ac_state) {
 			_ac_count = 1;
 			_ac_state = state;
+
+			/* for fast cradle off detection */
+			if (_ac_state == WM8350_BATT_SUPPLY &&
+			    _main_state != WM8350_EVENT_BATTERY)
+				_change_state(WM8350_EVENT_BATTERY);
 		}
 		schedule_delayed_work(&_ac_detect, msecs_to_jiffies(10));
 	}
