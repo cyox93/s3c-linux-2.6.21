@@ -38,6 +38,7 @@
 #define	SC_IOCTL_S_POWER_RESET		2
 #define	SC_IOCTL_G_POWER_STATUS		3
 #define	SC_IOCTL_G_CARD_STATUS		4
+#define	SC_IOCTL_S_READY		5
 
 static void sc_irq_work(struct work_struct *work);
 
@@ -54,6 +55,8 @@ static DEFINE_SPINLOCK(sc_lock);
 static int last_state;
 static int update;
 
+static int is_ready;
+
 static ssize_t sc_read(struct file *f, char __user *d, size_t s, loff_t *o)
 {
 	ssize_t ret;
@@ -63,7 +66,10 @@ static ssize_t sc_read(struct file *f, char __user *d, size_t s, loff_t *o)
 		return -EINVAL;
 
 	spin_lock(&sc_lock);
-	last_state = data = s3c2410_gpio_getpin(S3C2410_GPF5) ? 1 : 0;
+	if (!is_ready)
+		last_state = data = 0;
+	else
+		last_state = data = s3c2410_gpio_getpin(S3C2410_GPF5) ? 1 : 0;
 	update = 0;
 	spin_unlock(&sc_lock);
 	
@@ -81,7 +87,10 @@ static unsigned int sc_poll(struct file *f, struct poll_table_struct *p)
 	poll_wait(f, &sc_wait, p);
 
 	spin_lock(&sc_lock);
-	data = s3c2410_gpio_getpin(S3C2410_GPF5) ? 1 : 0;
+	if (!is_ready)
+		data = 0;
+	else
+		data = s3c2410_gpio_getpin(S3C2410_GPF5) ? 1 : 0;
 	if (last_state != data)
 		update = 1;
 	spin_unlock(&sc_lock);
@@ -150,6 +159,12 @@ sc_ioctl(struct inode *inode, struct file *file,
 			return -EFAULT;
 	}
 		break;
+	case SC_IOCTL_S_READY: {
+		if (!is_ready) {
+			is_ready = 1;
+		}
+	}
+		break;
 	default:
 		//printk(KERN_ERR "PIR DEVICE DRIVER: No pir Device driver Command defined\n");
 		return -ENXIO;
@@ -211,45 +226,52 @@ static int __init canopus_sc_probe(struct platform_device *pdev)
 {
 	int ret;
 
-	s3c2410_gpio_setpin(S3C2410_GPF2, 0);
-	s3c2410_gpio_cfgpin(S3C2410_GPF2, S3C2410_GPF2_INP);
-
-	/* Card detect interrupt */
-	s3c2410_gpio_pullup(S3C2410_GPF5, 0);
-	s3c2410_gpio_cfgpin(S3C2410_GPF5, S3C2410_GPF5_EINT5);
-	
-	/* reset pin to low */
-	s3c2410_gpio_setpin(S3C2410_GPG7, 0);
-	s3c2410_gpio_cfgpin(S3C2410_GPG7, S3C2410_GPG7_OUTP);
-
 	/* UART */
 	s3c2410_gpio_cfgpin(S3C2410_GPH2, S3C2410_GPH2_TXD0);
 	s3c2410_gpio_cfgpin(S3C2410_GPH3, S3C2410_GPH3_RXD0);
-	
+
 	// set clockout0 to 12MHz
 	s3c2410_gpio_cfgpin(S3C2443_GPH13, S3C2443_GPH13_CLKOUT0);
 	struct clk *clkout0;
 	clkout0 = clk_get(NULL, "clkout0");
 	clk_enable(clkout0);
 
+	s3c2410_gpio_setpin(S3C2410_GPF2, 0);
+	s3c2410_gpio_cfgpin(S3C2410_GPF2, S3C2410_GPF2_INP);
+
+	/* reset pin to low */
+	s3c2410_gpio_setpin(S3C2410_GPG7, 0);
+	s3c2410_gpio_cfgpin(S3C2410_GPG7, S3C2410_GPG7_OUTP);
+	
 	/* toggle power pin */
 	/* FIXME: power on logic is not proper embedded device.
 	 *	  Need to change circuit & fix driver also.
 	 */
 	s3c2410_gpio_pullup(S3C2410_GPF3, 0);
 	s3c2410_gpio_cfgpin(S3C2410_GPF3, S3C2410_GPF3_OUTP);
+
+	/* Card detect interrupt */
+	s3c2410_gpio_pullup(S3C2410_GPF5, 0);
+	s3c2410_gpio_cfgpin(S3C2410_GPF5, S3C2410_GPF5_EINT5);
 	
 	if (s3c2410_gpio_getpin(S3C2410_GPF2)) {
+		mdelay(100);
 		s3c2410_gpio_setpin(S3C2410_GPG7, 1);
 		mdelay(100);
 		s3c2410_gpio_setpin(S3C2410_GPG7, 0);
 		mdelay(100);
 	} else {
+		mdelay(100);
 		s3c2410_gpio_setpin(S3C2410_GPF3, 0);
 		mdelay(100);
 		s3c2410_gpio_setpin(S3C2410_GPF3, 1);
 		mdelay(100);
 	}
+
+#if 0
+	printk("------------ SmartCard Event insert = %d\n", s3c2410_gpio_getpin(S3C2410_GPF5) ? 1 : 0);
+	printk("------------ SmartCard Event on/off = %d\n", s3c2410_gpio_getpin(S3C2410_GPF2) ? 1 : 0);
+#endif
 	
 	ret = request_irq(IRQ_EINT5, sc_irq_handler,
 			  SA_INTERRUPT|SA_TRIGGER_RISING|SA_TRIGGER_FALLING,
