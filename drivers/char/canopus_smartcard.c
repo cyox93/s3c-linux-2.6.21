@@ -39,6 +39,7 @@
 #define	SC_IOCTL_G_POWER_STATUS		3
 #define	SC_IOCTL_G_CARD_STATUS		4
 #define	SC_IOCTL_S_READY		5
+#define	SC_IOCTL_S_POWER_TOGGLE		6
 
 static void sc_irq_work(struct work_struct *work);
 
@@ -163,6 +164,14 @@ sc_ioctl(struct inode *inode, struct file *file,
 		if (!is_ready) {
 			is_ready = 1;
 		}
+	}
+		break;
+	case SC_IOCTL_S_POWER_TOGGLE: {
+		//printk("SmartCard Power Toggle\n");
+
+		s3c2410_gpio_setpin(S3C2410_GPF3, 0);
+		mdelay(100);
+		s3c2410_gpio_setpin(S3C2410_GPF3, 1);
 	}
 		break;
 	default:
