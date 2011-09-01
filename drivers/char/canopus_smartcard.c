@@ -172,6 +172,7 @@ sc_ioctl(struct inode *inode, struct file *file,
 		s3c2410_gpio_setpin(S3C2410_GPF3, 0);
 		mdelay(100);
 		s3c2410_gpio_setpin(S3C2410_GPF3, 1);
+		//mdelay(100);
 	}
 		break;
 	default:
@@ -235,34 +236,35 @@ static int __init canopus_sc_probe(struct platform_device *pdev)
 {
 	int ret;
 
+	s3c2410_gpio_setpin(S3C2410_GPF2, 0);
+	s3c2410_gpio_cfgpin(S3C2410_GPF2, S3C2410_GPF2_INP);
+
+	/* Card detect interrupt */
+	s3c2410_gpio_pullup(S3C2410_GPF5, 0);
+	s3c2410_gpio_cfgpin(S3C2410_GPF5, S3C2410_GPF5_EINT5);
+	
+	/* reset pin to low */
+	s3c2410_gpio_setpin(S3C2410_GPG7, 0);
+	s3c2410_gpio_cfgpin(S3C2410_GPG7, S3C2410_GPG7_OUTP);
+
 	/* UART */
 	s3c2410_gpio_cfgpin(S3C2410_GPH2, S3C2410_GPH2_TXD0);
 	s3c2410_gpio_cfgpin(S3C2410_GPH3, S3C2410_GPH3_RXD0);
-
+	
 	// set clockout0 to 12MHz
 	s3c2410_gpio_cfgpin(S3C2443_GPH13, S3C2443_GPH13_CLKOUT0);
 	struct clk *clkout0;
 	clkout0 = clk_get(NULL, "clkout0");
 	clk_enable(clkout0);
 
-	s3c2410_gpio_setpin(S3C2410_GPF2, 0);
-	s3c2410_gpio_cfgpin(S3C2410_GPF2, S3C2410_GPF2_INP);
-
-	/* reset pin to low */
-	s3c2410_gpio_setpin(S3C2410_GPG7, 0);
-	s3c2410_gpio_cfgpin(S3C2410_GPG7, S3C2410_GPG7_OUTP);
-	
 	/* toggle power pin */
 	/* FIXME: power on logic is not proper embedded device.
 	 *	  Need to change circuit & fix driver also.
 	 */
 	s3c2410_gpio_pullup(S3C2410_GPF3, 0);
 	s3c2410_gpio_cfgpin(S3C2410_GPF3, S3C2410_GPF3_OUTP);
-
-	/* Card detect interrupt */
-	s3c2410_gpio_pullup(S3C2410_GPF5, 0);
-	s3c2410_gpio_cfgpin(S3C2410_GPF5, S3C2410_GPF5_EINT5);
 	
+#if 0
 	if (s3c2410_gpio_getpin(S3C2410_GPF2)) {
 		mdelay(100);
 		s3c2410_gpio_setpin(S3C2410_GPG7, 1);
@@ -276,6 +278,7 @@ static int __init canopus_sc_probe(struct platform_device *pdev)
 		s3c2410_gpio_setpin(S3C2410_GPF3, 1);
 		mdelay(100);
 	}
+#endif
 
 #if 0
 	printk("------------ SmartCard Event insert = %d\n", s3c2410_gpio_getpin(S3C2410_GPF5) ? 1 : 0);
