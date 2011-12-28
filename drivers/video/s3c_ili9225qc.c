@@ -1915,6 +1915,58 @@ _lcd_panel_set_display(int on)
 }
 
 static void
+_lcd_panel_init_byd(void)
+{
+	_lcd_ili9225b_reg_write(0x0001,0x011C); /* set SS and NL bit */
+	_lcd_ili9225b_reg_write(0x0002,0x0100);	/* set 1 line inversion */
+	_lcd_ili9225b_reg_write(0x0003,0x1030); /* set GRAM write direction and BGR=1. */
+
+	_lcd_ili9225b_reg_write(0x0008,0x0808); /* set BP and FP */
+	_lcd_ili9225b_reg_write(0x000C,0x0000); /* RGB interface setting R0Ch=0x0110 for RGB
+						   18Bit and R0Ch=0111for RGB16Bit */
+	_lcd_ili9225b_reg_write(0x000F,0x0801);	/* Set frame rate */
+
+	/* Power On sequence */
+	mdelay(50);
+	_lcd_ili9225b_reg_write(0x0010,0x0800); /* Set SAP,DSTB,STB */
+	_lcd_ili9225b_reg_write(0x0011,0x1038); /* Set APON,PON,AON,VCI1EN,VC */
+	mdelay(50);
+	_lcd_ili9225b_reg_write(0x0012,0x1121); /* Internal reference voltage= Vci; */
+	_lcd_ili9225b_reg_write(0x0013,0x0062); /* Set GVDD */
+	_lcd_ili9225b_reg_write(0x0014,0x5379); /* Set VCOMH/VCOML voltage */
+	
+	/* Set GRAM area */
+	_lcd_ili9225b_reg_write(0x0030,0x0000);
+	_lcd_ili9225b_reg_write(0x0031,0x00DB);
+	_lcd_ili9225b_reg_write(0x0032,0x0000);
+	_lcd_ili9225b_reg_write(0x0033,0x0000);
+	_lcd_ili9225b_reg_write(0x0034,0x00DB);
+	_lcd_ili9225b_reg_write(0x0035,0x0000);
+
+	/* Adjust the Gamma Curve */
+	_lcd_ili9225b_reg_write(0x0050,0x0000);
+	_lcd_ili9225b_reg_write(0x0051,0x010B);
+	_lcd_ili9225b_reg_write(0x0052,0x0B04);
+	_lcd_ili9225b_reg_write(0x0053,0x0403);
+	_lcd_ili9225b_reg_write(0x0054,0x040B);
+	_lcd_ili9225b_reg_write(0x0055,0x0B01);
+	_lcd_ili9225b_reg_write(0x0056,0x0000);
+	_lcd_ili9225b_reg_write(0x0057,0x0304);
+	_lcd_ili9225b_reg_write(0x0058,0x0000);
+	_lcd_ili9225b_reg_write(0x0059,0x0000);
+	mdelay(50);
+	
+	_lcd_ili9225b_reg_write(0x0007,0x1017); 
+	_lcd_ili9225b_reg_write(0x0037,0x0000);
+	_lcd_ili9225b_reg_write(0x0036,0x00b0);
+	_lcd_ili9225b_reg_write(0x0039,0x0000);
+	_lcd_ili9225b_reg_write(0x0038,0x00dc);
+	_lcd_ili9225b_reg_write(0x0020,0x0000); /* Set GRAM Address */
+	_lcd_ili9225b_reg_write(0x0021,0x0000); /* Set GRAM Address */
+	_lcd_ili9225b_reg(0x0022);
+}
+
+static void
 _lcd_panel_init_tcl(void)
 {
 	_lcd_ili9225b_reg_write(0x0000,0x0001);
@@ -2137,6 +2189,9 @@ _lcd_panel_init(void)
 		break;
 	case _LCD_PANEL_TRULY:
 		_lcd_panel_init_truly();
+		break;
+	case _LCD_PANEL_BYD:
+		_lcd_panel_init_byd();
 		break;
 	case _LCD_PANEL_TCL:
 	default:
