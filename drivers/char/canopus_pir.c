@@ -52,7 +52,7 @@
 /*_____________________ Constants Definitions _______________________________*/
 #define DRVNAME				"canopus-pir"
 #define DEV_NAME			"pir"
-#define _DEFAULT_PIR_DECTECTION_TIMEOUT	400
+#define _DEFAULT_PIR_DECTECTION_TIMEOUT	350
 
 #define PIR_IOCTL_S_ENABLE		_IOW ('Q', 0x80, int)
 #define PIR_IOCTL_REISR_ENABLE	_IOW ('Q', 0x81, int)
